@@ -680,3 +680,430 @@ a.fila:hover { border-color: var(--verde); }
     .casillas { grid-template-columns: repeat(10, 1fr); }
     .casilla__input { height: 3.75rem; font-size: 1.375rem; }
 }
+
+/* ============================================================
+   Portal del cliente
+
+   Misma paleta y tipografías que el panel — es la misma marca —
+   pero todo un escalón más grande y más quieto. El supervisor
+   mira estas pantallas cien veces por semana; el cliente, una.
+   Así que acá manda el estado (ganó / no ganó / sigue jugando),
+   y los números son el respaldo, no el titular.
+
+   Los aciertos NO se marcan sólo por color: llevan un tilde
+   adentro. Marcar "salió" únicamente en verde deja afuera a
+   quien no distingue verde de gris, que es ~8% de los varones.
+   ============================================================ */
+
+.portal-nav { --barra: 84px; }
+
+/* ── Encabezado del cliente ───────────────────────────────── */
+
+.cabecera-cliente {
+    background: var(--verde-oscuro);
+    color: #fff;
+    padding: 1rem 1rem 1.25rem;
+    padding-top: calc(1rem + env(safe-area-inset-top));
+    position: relative;
+    overflow: hidden;
+}
+
+/* La misma trama diagonal del pozo y del login: hilo entre pantallas */
+.cabecera-cliente::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, .05) 0 1px,
+        transparent 1px 12px
+    );
+    pointer-events: none;
+}
+
+.cabecera-cliente__interior {
+    position: relative;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.cabecera-cliente__saludo {
+    font-family: var(--ff-display);
+    font-weight: 700;
+    font-size: 1.375rem;
+    line-height: 1.15;
+    letter-spacing: -.02em;
+    color: #fff;
+    margin: 0;
+}
+
+.cabecera-cliente__nro {
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .6);
+}
+
+/* ── Estado de la jugada: el titular de cada tarjeta ──────── */
+
+.estado-jugada {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: 1rem 1rem .875rem;
+    border-radius: var(--radio) var(--radio) 0 0;
+    margin: -1px -1px 0;
+}
+
+.estado-jugada__icono {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    font-size: 1.5rem;
+}
+
+.estado-jugada__titulo {
+    font-family: var(--ff-display);
+    font-weight: 800;
+    font-size: 1.25rem;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    margin: 0;
+}
+
+.estado-jugada__detalle {
+    font-size: .875rem;
+    margin: .125rem 0 0;
+    opacity: .85;
+}
+
+/* Ganó: el único lugar del portal donde aparece el oro */
+.estado-jugada--gano {
+    background: var(--verde-oscuro);
+    color: #fff;
+}
+.estado-jugada--gano .estado-jugada__icono { background: #f2d382; color: var(--verde-oscuro); }
+.estado-jugada--gano .estado-jugada__titulo { color: #f2d382; }
+
+/* Sigue en juego */
+.estado-jugada--jugando { background: var(--verde-claro); color: var(--verde-oscuro); }
+.estado-jugada--jugando .estado-jugada__icono { background: var(--verde); color: #fff; }
+
+/* Ciclo cerrado sin premio: gris tranquilo, sin dramatismo */
+.estado-jugada--cerrada { background: #eceae3; color: var(--tinta-suave); }
+.estado-jugada--cerrada .estado-jugada__icono { background: var(--borde-fuerte); color: #fff; }
+
+.premio-monto {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: clamp(2rem, 10vw, 2.75rem);
+    line-height: 1;
+    color: #f2d382;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Bolillas grandes, para el cliente ────────────────────── */
+
+.bolillas-cliente {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: .5rem;
+}
+
+.bolilla-cli {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: var(--radio-sm);
+    background: var(--superficie);
+    border: 2px solid var(--borde);
+    color: var(--tinta-tenue);
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: 1.375rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Salió: color + tilde. Nunca sólo color. */
+.bolilla-cli--salio {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: #fff;
+}
+
+.bolilla-cli--salio::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--verde);
+    /* Tilde dibujado en SVG para no depender de la fuente de íconos */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2314663f' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E");
+    background-size: .75rem;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* ── Renglón por sorteo ───────────────────────────────────── */
+
+.reng-sorteo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .625rem .75rem;
+    border-radius: var(--radio-sm);
+    font-size: .9375rem;
+}
+
+.reng-sorteo + .reng-sorteo { margin-top: .25rem; }
+
+.reng-sorteo--mejor {
+    background: var(--verde-claro);
+    font-weight: 600;
+    color: var(--verde-oscuro);
+}
+
+.reng-sorteo__conteo {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* ── Pozo del portal: más grande que en el panel ──────────── */
+
+.pozo-cliente { padding: 1.5rem 1.25rem; }
+.pozo-cliente .pozo__monto { font-size: clamp(2.75rem, 15vw, 4rem); }
+
+/* ── Aviso de primer ingreso ──────────────────────────────── */
+
+.aviso-clave {
+    background: var(--oro-claro);
+    border: 1px solid #e8d6a4;
+    border-radius: var(--radio);
+    padding: 1rem;
+    color: #7a5a0d;
+}
+
+@media (min-width: 576px) {
+    .bolillas-cliente { grid-template-columns: repeat(10, 1fr); }
+    .bolilla-cli { font-size: 1.25rem; }
+}
+
+/* ============================================================
+   Reportes
+
+   Sobre los gráficos: la recaudación por ciclo va como barras de
+   UNA sola serie, no apiladas 60/40. El reparto es un porcentaje
+   fijo, así que una barra apilada mostraría exactamente la misma
+   proporción todas las semanas — codificaría una constante y no
+   agregaría información. El 60/40 vive arriba, en las tarjetas,
+   que es donde un número fijo se lee mejor.
+
+   Una serie ⇒ sin leyenda (el título la nombra), un solo tono,
+   etiqueta directa por barra, ejes recesivos.
+   ============================================================ */
+
+.barra-ciclo {
+    display: block;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    padding: .75rem .875rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.barra-ciclo + .barra-ciclo { margin-top: .5rem; }
+
+a.barra-ciclo:hover { border-color: var(--verde); }
+
+/* La pista es recesiva; el dato es lo único con color */
+.barra-ciclo__pista {
+    position: relative;
+    height: 10px;
+    margin-top: .5rem;
+    border-radius: 999px;
+    background: #eceae3;
+    overflow: hidden;
+}
+
+.barra-ciclo__dato {
+    position: absolute;
+    inset: 0 auto 0 0;
+    /* Extremo redondeado sólo del lado del dato: el otro queda anclado
+       a la línea de base, que es de donde arranca la comparación */
+    border-radius: 0 999px 999px 0;
+    background: var(--verde);
+    min-width: 3px;
+}
+
+/* Ciclo cerrado sin ganador: mismo tono, más apagado. Nunca otro
+   color, que leería como otra serie. */
+.barra-ciclo__dato--tenue { background: #8fb3a1; }
+
+.barra-ciclo__cifra {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    /* Texto con token de texto, nunca del color de la serie */
+    color: var(--tinta);
+}
+
+/* ── Tarjetas resumen ─────────────────────────────────────── */
+
+.tarjeta-dato {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    padding: .875rem;
+    height: 100%;
+}
+
+.tarjeta-dato__valor {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: clamp(1.25rem, 6vw, 1.625rem);
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+}
+
+.tarjeta-dato__rotulo {
+    font-size: .6875rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tinta-tenue);
+    margin-top: .25rem;
+}
+
+.tarjeta-dato__pie {
+    font-size: .75rem;
+    color: var(--tinta-suave);
+    margin-top: .375rem;
+}
+
+/* ── Tablas densas ────────────────────────────────────────── */
+
+/* La tabla scrollea dentro de su caja; el body nunca de costado */
+.tabla-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    background: var(--superficie);
+}
+
+.tabla-reporte {
+    width: 100%;
+    margin: 0;
+    font-size: .875rem;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.tabla-reporte th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--papel);
+    border-bottom: 1px solid var(--borde);
+    padding: .625rem .75rem;
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tinta-tenue);
+    white-space: nowrap;
+    text-align: left;
+}
+
+.tabla-reporte td {
+    padding: .625rem .75rem;
+    border-bottom: 1px solid var(--borde);
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.tabla-reporte tbody tr:last-child td { border-bottom: 0; }
+
+.tabla-reporte .num {
+    font-family: var(--ff-cifra);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+/* Aviso de que la tabla se desplaza, que en un celular no es obvio */
+.tabla-pista {
+    font-size: .75rem;
+    color: var(--tinta-tenue);
+    margin-top: .375rem;
+}
+
+/* ── Filtros ──────────────────────────────────────────────── */
+
+.filtros {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    padding: .875rem;
+}
+
+.filtros .form-label { margin-bottom: .25rem; }
+
+.chip-alcance {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .25rem .625rem;
+    border-radius: 999px;
+    background: var(--verde-claro);
+    color: var(--verde-oscuro);
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+/* ── Línea de tiempo de auditoría ─────────────────────────── */
+
+.evento {
+    display: flex;
+    gap: .75rem;
+    padding: .75rem 0;
+    border-bottom: 1px solid var(--borde);
+}
+
+.evento:last-child { border-bottom: 0; }
+
+.evento__marca {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--verde-claro);
+    color: var(--verde-oscuro);
+    font-size: .875rem;
+}
+
+.evento__marca--sorteo  { background: var(--oro-claro);  color: var(--oro); }
+.evento__marca--cliente { background: #e9eff4;           color: #22475f; }
+
+.evento__cuando {
+    font-family: var(--ff-cifra);
+    font-size: .75rem;
+    color: var(--tinta-tenue);
+    font-variant-numeric: tabular-nums;
+}

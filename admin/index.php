@@ -143,16 +143,18 @@ require __DIR__ . '/../includes/topbar.php';
         <?php endforeach; ?>
     <?php endif; ?>
 
-    <a href="<?= APP_URL ?>/admin/ciclos/ver.php?id=<?= $cicloId ?>"
-       class="btn btn-outline-secondary w-100 mt-3">
-        <i class="bi bi-clipboard-data"></i> Resumen completo del ciclo
-    </a>
-
-    <!-- Recordatorio de lo que todavia no esta -->
-    <div class="alert alert-info mt-4 mb-0" role="note">
-        <strong>Proxima fase:</strong> portal del cliente, para que cada uno
-        consulte sus jugadas y el estado del pozo desde su celular.
+    <div class="d-flex flex-column gap-2 mt-3">
+        <a href="<?= APP_URL ?>/admin/ciclos/ver.php?id=<?= $cicloId ?>"
+           class="btn btn-outline-secondary w-100">
+            <i class="bi bi-clipboard-data"></i> Resumen completo del ciclo
+        </a>
+        <a href="<?= APP_URL ?>/admin/reportes/index.php"
+           class="btn btn-outline-secondary w-100">
+            <i class="bi bi-bar-chart-line"></i>
+            <?= isAdmin() ? 'Reportes y recaudación' : 'Reportes de lo que cargaste' ?>
+        </a>
     </div>
+
 </main>
 
 <?php

@@ -1,0 +1,682 @@
+/* ============================================================
+   Polla Semanal Los Quevedo — capa de diseño sobre Bootstrap 5.3
+
+   Dirección: swiss / tipográfica. Retícula limpia, jerarquía por
+   tamaño y peso más que por color, un verde profundo como color
+   dominante y el oro reservado exclusivamente para la plata (pozo,
+   recaudación). Nada de degradés decorativos.
+
+   Mobile-first de verdad: todo lo táctil arranca en 48px, la acción
+   principal de cada pantalla vive fija abajo al alcance del pulgar,
+   y ninguna tabla obliga a hacer scroll horizontal.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+:root {
+    /* Tipografías */
+    --ff-display: 'Bricolage Grotesque', 'Sora', 'Segoe UI', sans-serif;
+    --ff-texto:   'Sora', 'Segoe UI', sans-serif;
+    --ff-cifra:   'Space Grotesk', 'Consolas', monospace;
+
+    /* Paleta */
+    --tinta:        #10201a;
+    --tinta-suave:  #4b5b54;
+    --tinta-tenue:  #8b9a93;
+    --papel:        #f4f3ee;
+    --superficie:   #ffffff;
+    --borde:        #e2e0d8;
+    --borde-fuerte: #cbc8bc;
+
+    --verde:        #14663f;
+    --verde-oscuro: #0d4a2d;
+    --verde-claro:  #e6f1eb;
+    --oro:          #a67c12;
+    --oro-claro:    #fbf3dd;
+    --rojo:         #a52620;
+    --rojo-claro:   #fbeae9;
+
+    /* Retícula */
+    --radio:     14px;
+    --radio-sm:  10px;
+    --toque:     48px;   /* alto mínimo de todo lo que se toca */
+    --barra:     76px;   /* alto de la barra de navegación inferior */
+
+    --sombra-sutil: 0 1px 2px rgba(16, 32, 26, .05);
+    --sombra-card:  0 1px 3px rgba(16, 32, 26, .06), 0 8px 24px -12px rgba(16, 32, 26, .12);
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+
+body {
+    font-family: var(--ff-texto);
+    background-color: var(--papel);
+    color: var(--tinta);
+    -webkit-font-smoothing: antialiased;
+    /* Deja aire para la barra inferior + el gesto de inicio del celular */
+    padding-bottom: calc(var(--barra) + env(safe-area-inset-bottom));
+}
+
+body.sin-barra { padding-bottom: 0; }
+
+h1, h2, h3, h4, .display-titulo {
+    font-family: var(--ff-display);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--tinta);
+}
+
+.cifra {
+    font-family: var(--ff-cifra);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+}
+
+/* Rótulo de sección: chico, espaciado, en versalitas */
+.rotulo {
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--tinta-tenue);
+}
+
+a { color: var(--verde); }
+
+/* Foco visible y consistente en todo lo interactivo (WCAG 2.4.7) */
+:focus-visible {
+    outline: 3px solid var(--verde);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ── Encabezado ───────────────────────────────────────────── */
+
+.topbar {
+    background: var(--verde-oscuro);
+    color: #fff;
+    padding: .75rem 1rem;
+    padding-top: calc(.75rem + env(safe-area-inset-top));
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+
+.topbar__marca {
+    font-family: var(--ff-display);
+    font-weight: 800;
+    font-size: 1.0625rem;
+    letter-spacing: -.02em;
+    line-height: 1.1;
+    color: #fff;
+    text-decoration: none;
+}
+
+.topbar__sub {
+    font-size: .6875rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .62);
+}
+
+.topbar__usuario {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .14);
+    color: #fff;
+    font-weight: 700;
+    font-size: .875rem;
+    text-decoration: none;
+}
+
+/* ── Contenedor ───────────────────────────────────────────── */
+
+.pantalla {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 1.5rem;
+}
+
+.pantalla__titulo {
+    font-size: 1.625rem;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.pantalla__bajada {
+    color: var(--tinta-suave);
+    font-size: .9375rem;
+    margin: .375rem 0 0;
+}
+
+/* ── Tarjetas ─────────────────────────────────────────────── */
+
+.tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra-sutil);
+}
+
+.tarjeta--realce { box-shadow: var(--sombra-card); }
+
+/* Tarjeta del pozo: el único lugar donde manda el oro */
+.pozo {
+    background: var(--verde-oscuro);
+    border-radius: var(--radio);
+    color: #fff;
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Trama diagonal tenue: la firma visual del tablero */
+.pozo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, .05) 0 1px,
+        transparent 1px 11px
+    );
+    pointer-events: none;
+}
+
+.pozo__monto {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: clamp(2.25rem, 12vw, 3.25rem);
+    line-height: 1;
+    color: #f2d382;
+    font-variant-numeric: tabular-nums;
+}
+
+.pozo__rotulo {
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .62);
+}
+
+/* ── Métricas ─────────────────────────────────────────────── */
+
+.metrica {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    padding: .875rem;
+}
+
+.metrica__valor {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: 1.375rem;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.metrica__valor--oro { color: var(--oro); }
+
+.metrica__rotulo {
+    font-size: .6875rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--tinta-tenue);
+    margin-top: .25rem;
+}
+
+/* ── Bolillas (los números de la quiniela) ────────────────── */
+
+.bolilla {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.125rem;
+    height: 2.125rem;
+    padding: 0 .375rem;
+    border-radius: 8px;
+    background: var(--verde-claro);
+    border: 1px solid #cfe2d8;
+    color: var(--verde-oscuro);
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: .9375rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bolilla--acertada {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: #fff;
+}
+
+.bolillas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3125rem;
+}
+
+/* ── Formularios ──────────────────────────────────────────── */
+
+.form-label {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--tinta-suave);
+    margin-bottom: .375rem;
+}
+
+.form-control,
+.form-select {
+    min-height: var(--toque);
+    border-radius: var(--radio-sm);
+    border-color: var(--borde-fuerte);
+    /* 16px evita que Safari en iOS haga zoom al enfocar el campo */
+    font-size: 1rem;
+    padding: .625rem .875rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--verde);
+    box-shadow: 0 0 0 .2rem rgba(20, 102, 63, .15);
+}
+
+.form-control::placeholder { color: var(--tinta-tenue); }
+
+.form-text { font-size: .8125rem; color: var(--tinta-suave); }
+
+/* ── Botones ──────────────────────────────────────────────── */
+
+.btn {
+    min-height: var(--toque);
+    border-radius: var(--radio-sm);
+    font-weight: 600;
+    font-size: 1rem;
+    padding: .625rem 1.125rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+}
+
+.btn-sm {
+    min-height: 40px;
+    font-size: .875rem;
+    padding: .375rem .75rem;
+}
+
+.btn-primary {
+    background: var(--verde);
+    border-color: var(--verde);
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background: var(--verde-oscuro) !important;
+    border-color: var(--verde-oscuro) !important;
+}
+
+.btn-primary:disabled {
+    background: var(--borde-fuerte);
+    border-color: var(--borde-fuerte);
+    color: #fff;
+    opacity: 1;
+}
+
+.btn-outline-secondary {
+    border-color: var(--borde-fuerte);
+    color: var(--tinta-suave);
+    background: var(--superficie);
+}
+
+.btn-outline-danger { border-color: #ddb3b0; color: var(--rojo); }
+
+/* ── Acción principal fija al pulgar ──────────────────────── */
+
+.accion-fija {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1035;
+    background: rgba(244, 243, 238, .94);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid var(--borde);
+    padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom));
+}
+
+.accion-fija__interior {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+/* Cuando hay barra de acción, no hay barra de navegación */
+body.con-accion-fija { padding-bottom: 7.5rem; }
+
+/* ── Navegación inferior ──────────────────────────────────── */
+
+.navbar-abajo {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1030;
+    display: flex;
+    background: var(--superficie);
+    border-top: 1px solid var(--borde);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.navbar-abajo__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .125rem;
+    min-height: var(--barra);
+    padding: .5rem .25rem;
+    color: var(--tinta-tenue);
+    text-decoration: none;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+
+.navbar-abajo__item i { font-size: 1.375rem; }
+
+.navbar-abajo__item.active { color: var(--verde); }
+
+.navbar-abajo__item.active i { transform: translateY(-1px); }
+
+/* ── Listados ─────────────────────────────────────────────── */
+
+/* En vez de tablas: filas apiladas que entran en 360px de ancho */
+.fila {
+    display: block;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio-sm);
+    padding: .875rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.fila + .fila { margin-top: .5rem; }
+
+a.fila:hover { border-color: var(--verde); }
+
+.fila__titulo {
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.fila__meta {
+    font-size: .8125rem;
+    color: var(--tinta-suave);
+    margin: .125rem 0 0;
+}
+
+.vacio {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: var(--tinta-suave);
+}
+
+.vacio i {
+    font-size: 2.5rem;
+    color: var(--borde-fuerte);
+    display: block;
+    margin-bottom: .75rem;
+}
+
+/* ── Etiquetas de estado ──────────────────────────────────── */
+
+.etiqueta {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .1875rem .5rem;
+    border-radius: 999px;
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.etiqueta--verde   { background: var(--verde-claro); color: var(--verde-oscuro); }
+.etiqueta--oro     { background: var(--oro-claro);   color: var(--oro); }
+.etiqueta--roja    { background: var(--rojo-claro);  color: var(--rojo); }
+.etiqueta--gris    { background: #eceae3;            color: var(--tinta-suave); }
+
+/* ── Login ────────────────────────────────────────────────── */
+
+.login {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1.5rem 1.25rem;
+    background: var(--verde-oscuro);
+}
+
+/* Misma trama diagonal que el pozo: hilo visual entre las dos pantallas */
+.login::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, .04) 0 1px,
+        transparent 1px 12px
+    );
+    pointer-events: none;
+}
+
+.login__caja {
+    position: relative;
+    width: 100%;
+    max-width: 26rem;
+    margin: 0 auto;
+}
+
+.login__marca {
+    font-family: var(--ff-display);
+    font-weight: 800;
+    font-size: clamp(2rem, 9vw, 2.75rem);
+    line-height: 1.02;
+    letter-spacing: -.035em;
+    color: #fff;
+    margin-bottom: .5rem;
+}
+
+.login__marca em {
+    font-style: normal;
+    color: #f2d382;
+    display: block;
+}
+
+.login__bajada {
+    color: rgba(255, 255, 255, .68);
+    font-size: .9375rem;
+    margin-bottom: 1.75rem;
+}
+
+.login__panel {
+    background: var(--superficie);
+    border-radius: var(--radio);
+    padding: 1.5rem 1.25rem;
+    box-shadow: 0 24px 48px -24px rgba(0, 0, 0, .5);
+}
+
+/* ── Alertas ──────────────────────────────────────────────── */
+
+.alert {
+    border-radius: var(--radio-sm);
+    border: 1px solid transparent;
+    font-size: .9375rem;
+    padding: .875rem 1rem;
+}
+
+.alert-success { background: var(--verde-claro); border-color: #c6ded1; color: var(--verde-oscuro); }
+.alert-danger  { background: var(--rojo-claro);  border-color: #eec9c7; color: var(--rojo); }
+.alert-warning { background: var(--oro-claro);   border-color: #e8d6a4; color: #7a5a0d; }
+.alert-info    { background: #e9eff4;            border-color: #cddbe6; color: #22475f; }
+
+/* ── Escritorio ───────────────────────────────────────────── */
+
+@media (min-width: 768px) {
+    .pantalla { padding: 2rem 1.5rem 2.5rem; }
+    .pantalla__titulo { font-size: 2rem; }
+    body { padding-bottom: 2rem; }
+
+    /* En pantalla grande el menú va arriba, no tapando el contenido */
+    .navbar-abajo {
+        position: static;
+        max-width: 720px;
+        margin: 1rem auto 0;
+        border: 1px solid var(--borde);
+        border-radius: var(--radio-sm);
+        overflow: hidden;
+    }
+
+    .navbar-abajo__item { min-height: 60px; flex-direction: row; gap: .5rem; font-size: .875rem; }
+    .navbar-abajo__item i { font-size: 1.125rem; }
+
+    .accion-fija {
+        position: static;
+        background: none;
+        border-top: 0;
+        padding: 0;
+        backdrop-filter: none;
+    }
+
+    body.con-accion-fija { padding-bottom: 2rem; }
+}
+
+/* ── Respeto por prefers-reduced-motion ───────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+/* ============================================================
+   Carga de jugada — el corazón táctil de la app
+   ============================================================ */
+
+/* Las 10 casillas: 5 por fila en el celular, 10 en pantalla ancha.
+   Cada una entra holgada bajo el pulgar y muestra el número en la
+   misma tipografía monoespaciada que el resto de las cifras. */
+.casillas {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: .5rem;
+}
+
+.casilla { position: relative; }
+
+.casilla__indice {
+    position: absolute;
+    top: .25rem;
+    left: .4375rem;
+    font-size: .625rem;
+    font-weight: 700;
+    color: var(--tinta-tenue);
+    pointer-events: none;
+}
+
+.casilla__input {
+    width: 100%;
+    height: 4rem;
+    padding: .75rem 0 0;
+    text-align: center;
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    /* 1.5rem = 24px: bien por encima del umbral de zoom de iOS */
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--tinta);
+    background: var(--superficie);
+    border: 1.5px solid var(--borde-fuerte);
+    border-radius: var(--radio-sm);
+    transition: border-color .12s ease, background-color .12s ease;
+}
+
+.casilla__input::placeholder { color: var(--borde-fuerte); font-weight: 500; }
+
+.casilla__input:focus {
+    outline: none;
+    border-color: var(--verde);
+    background: #fff;
+    box-shadow: 0 0 0 .2rem rgba(20, 102, 63, .15);
+}
+
+.casilla__input.cargada {
+    border-color: var(--verde);
+    background: var(--verde-claro);
+    color: var(--verde-oscuro);
+}
+
+/* Repetido: color + un aro grueso, para que no dependa sólo del color */
+.casilla__input.repetida {
+    border-color: var(--rojo);
+    border-width: 2.5px;
+    background: var(--rojo-claro);
+    color: var(--rojo);
+}
+
+/* Tablero 00–99 de sólo lectura: confirmación visual de la jugada.
+   No se toca (sería un blanco de 30px), sólo se mira. */
+.tablero {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+}
+
+.tablero__celda {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    background: #eceae3;
+    color: var(--tinta-tenue);
+    font-family: var(--ff-cifra);
+    font-size: .5625rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+.tablero__celda.marcada {
+    background: var(--verde);
+    color: #fff;
+    font-weight: 700;
+}
+
+/* Contador de la barra fija: 7/10 */
+.contador {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: 1.25rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.contador--completo { color: var(--verde); }
+
+@media (min-width: 576px) {
+    .casillas { grid-template-columns: repeat(10, 1fr); }
+    .casilla__input { height: 3.75rem; font-size: 1.375rem; }
+}

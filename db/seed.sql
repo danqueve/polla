@@ -3,7 +3,7 @@
 -- Correr DESPUES de schema.sql
 -- ============================================================
 
-USE `polla_quevedo`;
+USE `iifatgdb_decena`;
 
 SET NAMES utf8mb4;
 

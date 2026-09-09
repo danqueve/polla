@@ -4,11 +4,11 @@
 -- Instalador limpio con el acumulado de las fases 1 a 6
 -- ============================================================
 
-CREATE DATABASE IF NOT EXISTS `polla_quevedo`
+CREATE DATABASE IF NOT EXISTS `iifatgdb_decena`
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE `polla_quevedo`;
+USE `iifatgdb_decena`;
 
 SET NAMES utf8mb4;
 

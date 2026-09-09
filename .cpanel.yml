@@ -1,0 +1,13 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/iifatgdb/public_html/
+    - /bin/cp -R admin $DEPLOYPATH
+    - /bin/cp -R assets $DEPLOYPATH
+    - /bin/cp -R auth $DEPLOYPATH
+    - /bin/cp -R config $DEPLOYPATH
+    - /bin/cp -R includes $DEPLOYPATH
+    - /bin/cp -R portal $DEPLOYPATH
+    - /bin/cp -R src $DEPLOYPATH
+    - /bin/cp index.php $DEPLOYPATH
+    - /bin/cp registro.php $DEPLOYPATH

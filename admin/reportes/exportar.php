@@ -10,6 +10,9 @@
  * El CSV va con BOM y separado por punto y coma, que es lo que Excel
  * en español espera: con coma abre todo en una sola columna y sin BOM
  * rompe los acentos.
+ *
+ * Exclusivo del admin: jugadas.php y ganadores.php (las pantallas que
+ * este archivo exporta) tambien lo son.
  */
 require_once __DIR__ . '/../../config/app.php';
 
@@ -17,7 +20,7 @@ use Polla\Services\ReporteService;
 use Polla\Support\AlcanceReporte;
 use Polla\Support\FiltroReporte;
 
-requireLogin();
+requireAdmin();
 
 $db      = getPDO();
 $usuario = currentUser();

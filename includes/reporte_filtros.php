@@ -2,9 +2,12 @@
 /**
  * Filtros comunes de las pantallas de reportes.
  *
- * Espera definidas: $filtro, $reporte, $accion (URL del form).
+ * Espera definidas: $filtro, $reporte, $alcance, $accion (URL del form).
  * El desplegable de "cargado por" solo se dibuja para el admin, y el
- * de clientes ya viene acotado por el alcance desde el service.
+ * de clientes tambien: para un supervisor ya no hay ninguna pantalla
+ * de detalle por cliente que ese filtro pueda acotar (ver
+ * admin/reportes/index.php), asi que mostrarlo seria una opcion que no
+ * hace nada.
  */
 $_clientes = $reporte->clientesParaFiltro();
 $_usuarios = $reporte->usuariosParaFiltro();
@@ -37,18 +40,20 @@ $_ciclos   = $reporte->ciclosParaFiltro();
             </select>
         </div>
 
-        <div class="col-12">
-            <label class="form-label" for="cliente">Cliente</label>
-            <select class="form-select" id="cliente" name="cliente">
-                <option value="">Todos los clientes</option>
-                <?php foreach ($_clientes as $c): ?>
-                    <option value="<?= (int) $c['id'] ?>"
-                            <?= $filtro->clienteId === (int) $c['id'] ? 'selected' : '' ?>>
-                        <?= e($c['nombre']) ?> — N° <?= e($c['nro_cliente']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
+        <?php if ($alcance->esAdmin()): ?>
+            <div class="col-12">
+                <label class="form-label" for="cliente">Cliente</label>
+                <select class="form-select" id="cliente" name="cliente">
+                    <option value="">Todos los clientes</option>
+                    <?php foreach ($_clientes as $c): ?>
+                        <option value="<?= (int) $c['id'] ?>"
+                                <?= $filtro->clienteId === (int) $c['id'] ? 'selected' : '' ?>>
+                            <?= e($c['nombre']) ?> — N° <?= e($c['nro_cliente']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        <?php endif; ?>
 
         <?php if ($_usuarios): ?>
             <div class="col-12">

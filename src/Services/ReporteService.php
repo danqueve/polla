@@ -112,6 +112,75 @@ class ReporteService
         return (int) $stmt->fetchColumn();
     }
 
+    // ── Vista "todo el staff" para el supervisor ─────────────
+    //
+    // Un supervisor tiene alcance propio() en el resto de la clase, pero
+    // necesita comparar su recaudacion contra el total y contra sus
+    // compañeros. Estos dos metodos ignoran el alcance a proposito -no
+    // porque el alcance este mal, sino porque su pregunta no es "cuanto
+    // cargue yo" sino "como viene el total y quien va cargando cuanto"-,
+    // mismo criterio que auditoria() (que en cambio rechaza al no-admin)
+    // y usuariosParaFiltro() (que devuelve vacio): la excepcion al
+    // alcance queda documentada aca, no colada en la llamada.
+
+    /**
+     * Total recaudado por todo el staff, sin importar quien cargo cada
+     * jugada. A diferencia de resumen(), ignora el alcance a proposito:
+     * un supervisor necesita este numero para compararlo contra lo que
+     * el mismo cargo, aunque el resto de sus consultas sigan acotadas.
+     */
+    public function recaudadoGlobal(FiltroReporte $filtro): array
+    {
+        $where  = ["j.estado <> 'anulada'"];
+        $params = [];
+        if ($filtro->desde)   { $where[] = 'DATE(j.fecha_carga) >= :desde'; $params[':desde'] = $filtro->desde; }
+        if ($filtro->hasta)   { $where[] = 'DATE(j.fecha_carga) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
+        if ($filtro->cicloId) { $where[] = 'j.ciclo_id = :ciclo';           $params[':ciclo'] = $filtro->cicloId; }
+
+        $sql = "SELECT COUNT(*) AS jugadas, COALESCE(SUM(j.importe),0) AS recaudado
+                  FROM jugadas j WHERE " . implode(' AND ', $where);
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetch() ?: ['jugadas' => 0, 'recaudado' => 0];
+    }
+
+    /**
+     * Una fila por usuario del staff con lo que cargo, sin acotar por
+     * alcance: el objetivo es precisamente comparar entre todos.
+     *
+     * LEFT JOIN para que un usuario sin cargas todavia aparezca en 0 en
+     * vez de desaparecer de la lista. Los filtros de $filtro van en el
+     * ON, no en un WHERE: puestos en WHERE, el LEFT JOIN se comporta
+     * como INNER JOIN y los usuarios en 0 se pierden justo cuando hay
+     * un filtro aplicado, que es cuando mas interesa verlos.
+     *
+     * No se filtra por u.activo = 1: si alguien dado de baja tiene
+     * jugadas viejas dentro del filtro, tienen que seguir contando aca
+     * para que la suma de esta tabla cuadre con recaudadoGlobal().
+     */
+    public function recaudacionPorUsuario(FiltroReporte $filtro): array
+    {
+        $on     = ['j.cargado_por = u.id', "j.estado <> 'anulada'"];
+        $params = [];
+        if ($filtro->desde)   { $on[] = 'DATE(j.fecha_carga) >= :desde'; $params[':desde'] = $filtro->desde; }
+        if ($filtro->hasta)   { $on[] = 'DATE(j.fecha_carga) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
+        if ($filtro->cicloId) { $on[] = 'j.ciclo_id = :ciclo';           $params[':ciclo'] = $filtro->cicloId; }
+
+        $sql = "SELECT u.id, u.nombre, u.rol, u.activo,
+                       COUNT(j.id) AS jugadas, COALESCE(SUM(j.importe),0) AS recaudado
+                  FROM usuarios u
+                  LEFT JOIN jugadas j ON " . implode(' AND ', $on) . "
+                 GROUP BY u.id, u.nombre, u.rol, u.activo
+                 ORDER BY u.activo DESC, recaudado DESC, u.nombre ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
     // ── Recaudacion por ciclo ───────────────────────────────
 
     /**

@@ -1,12 +1,12 @@
 <?php
-/** Detalle de jugadas, con filtros y exportable. */
+/** Detalle de jugadas, con filtros y exportable. Exclusivo del admin. */
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\ReporteService;
 use Polla\Support\AlcanceReporte;
 use Polla\Support\FiltroReporte;
 
-requireLogin();
+requireAdmin();
 
 $db      = getPDO();
 $usuario = currentUser();

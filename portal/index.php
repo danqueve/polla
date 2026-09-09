@@ -51,7 +51,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                style="font-size:2.5rem;color:var(--borde-fuerte)" aria-hidden="true"></i>
             <p class="fw-semibold mb-2">Esta semana no tenés jugadas</p>
             <p class="fila__meta mb-0">
-                Hablá con Los Quevedo para cargar una y entrar en el pozo
+                Hablá con Decena de Oro para cargar una y entrar en el pozo
                 de <?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?>.
             </p>
         </div>

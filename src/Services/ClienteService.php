@@ -9,14 +9,14 @@ use Polla\Support\ValidacionException;
 /**
  * ABM de clientes.
  *
- * El alta genera el nro_cliente (AAAA-NNNN, correlativo por anio) y deja
- * la clave del portal igual al DNI con debe_cambiar_clave = 1, para que
- * el cliente tenga que cambiarla en su primer ingreso.
+ * El alta genera el nro_cliente (AAAA-NNNNNN: anio + 6 digitos al azar) y
+ * deja la clave del portal igual al DNI con debe_cambiar_clave = 1, para
+ * que el cliente tenga que cambiarla en su primer ingreso.
  */
 class ClienteService
 {
-    /** Reintentos ante colision del correlativo con otra alta simultanea. */
-    private const REINTENTOS_NRO = 5;
+    /** Reintentos ante colision del numero aleatorio con uno ya existente. */
+    private const REINTENTOS_NRO = 10;
 
     private PDO $db;
 
@@ -113,13 +113,13 @@ class ClienteService
              VALUES (:nro, :dni, :nombre, :telefono, :hash, 1, 1, :alta_por)'
         );
 
-        // El correlativo se calcula y se inserta en el mismo intento: si dos
-        // altas simultaneas sacan el mismo numero, el UNIQUE frena a una y
-        // el reintento le da el siguiente.
+        // El numero se genera al azar en cada intento: si dos altas
+        // simultaneas sacan el mismo numero, el UNIQUE de la tabla frena
+        // una y el reintento le genera otro numero distinto a esa.
         for ($intento = 1; $intento <= self::REINTENTOS_NRO; $intento++) {
             try {
                 $stmt->execute([
-                    ':nro'      => $this->siguienteNroCliente(),
+                    ':nro'      => $this->generarNroCliente(),
                     ':dni'      => $dni,
                     ':nombre'   => $nombre,
                     ':telefono' => $telefono !== '' ? $telefono : null,
@@ -134,11 +134,14 @@ class ClienteService
                 if (self::duplicadoEs($e, 'uk_clientes_dni')) {
                     throw ValidacionException::de('Ya hay un cliente cargado con el DNI ' . $dni . '.');
                 }
-                // Colision del correlativo: seguimos al siguiente intento.
+                // Colision del numero de cliente: seguimos al siguiente intento.
             }
         }
 
-        throw ValidacionException::de('No se pudo generar el numero de cliente. Reintentá en unos segundos.');
+        throw ValidacionException::de(
+            'No se pudo generar un número de cliente único después de '
+            . self::REINTENTOS_NRO . ' intentos. Reintentá en unos segundos.'
+        );
     }
 
     /**
@@ -241,24 +244,20 @@ class ClienteService
     }
 
     /**
-     * Proximo correlativo del anio en curso: 2026-0001, 2026-0002...
-     * El contador arranca de cero cada 1 de enero.
+     * Numero de cliente nuevo: anio actual + 6 digitos al azar
+     * (ej. 2026-048372, o 2026-000481 si el azar da un numero chico).
+     *
+     * No es correlativo a proposito: al ser aleatorio, la unicidad no la
+     * garantiza esta funcion sino el indice UNIQUE de la tabla
+     * (uk_clientes_nro); el llamador (crear()) reintenta si el insert
+     * choca con uno ya existente.
      */
-    private function siguienteNroCliente(): string
+    private function generarNroCliente(): string
     {
-        $anio = date('Y');
+        $anio      = date('Y');
+        $aleatorio = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        // SUBSTRING(nro_cliente, 6) recorta el "AAAA-" y deja el correlativo.
-        $stmt = $this->db->prepare(
-            'SELECT COALESCE(MAX(CAST(SUBSTRING(nro_cliente, 6) AS UNSIGNED)), 0)
-               FROM clientes
-              WHERE nro_cliente LIKE :patron'
-        );
-        $stmt->execute([':patron' => $anio . '-%']);
-
-        $siguiente = (int) $stmt->fetchColumn() + 1;
-
-        return $anio . '-' . str_pad((string) $siguiente, 4, '0', STR_PAD_LEFT);
+        return $anio . '-' . $aleatorio;
     }
 
     private function existeDni(string $dni, ?int $excluirId = null): bool

@@ -1,5 +1,5 @@
 -- ============================================================
--- Polla Semanal Los Quevedo - Datos iniciales
+-- Decena de Oro - Datos iniciales
 -- Correr DESPUES de schema.sql
 -- ============================================================
 

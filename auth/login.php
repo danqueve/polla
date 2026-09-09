@@ -40,7 +40,7 @@ require __DIR__ . '/../includes/head.php';
 <main class="login">
     <div class="login__caja">
 
-        <h1 class="login__marca">Polla Semanal<em>Los Quevedo</em></h1>
+        <h1 class="login__marca">Decena<em>de Oro</em></h1>
         <p class="login__bajada">Panel de carga · Quiniela Nocturna de Tucuman</p>
 
         <div class="login__panel">

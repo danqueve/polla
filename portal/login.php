@@ -43,7 +43,7 @@ require __DIR__ . '/../includes/head.php';
 <main class="login">
     <div class="login__caja">
 
-        <h1 class="login__marca">Polla Semanal<em>Los Quevedo</em></h1>
+        <h1 class="login__marca">Decena<em>de Oro</em></h1>
         <p class="login__bajada">Mirá cómo van tus jugadas de la semana</p>
 
         <div class="login__panel">
@@ -95,7 +95,7 @@ require __DIR__ . '/../includes/head.php';
         </div>
 
         <p class="text-center mt-4 mb-0" style="color:rgba(255,255,255,.45);font-size:.8125rem">
-            ¿No podés entrar? Hablá con Los Quevedo.
+            ¿No podés entrar? Hablá con Decena de Oro.
         </p>
     </div>
 </main>

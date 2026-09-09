@@ -1,8 +1,8 @@
 # Especificación funcional y técnica
-## Polla Semanal Los Quevedo
+## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.0
+**Versión:** 1.1 (rebautizado de "Polla Semanal Los Quevedo" a "Decena de Oro")
 
 ---
 
@@ -12,12 +12,12 @@ Plataforma web para gestionar una polla de quiniela sobre la Quiniela Nocturna d
 
 ## 2. Contexto del juego
 
-Este juego es una variante de la modalidad oficial conocida como **Quiniela Poceada** (que usa 8 números de 2 cifras contra los 20 premios del extracto) y de la **Quiniela Plus**, que toma la decena y unidad de los 20 números del extracto de la Nocturna. La variante "Los Quevedo" usa **10 números** y exige que **los 10 estén contenidos en el extracto** para ganar, sin premios por aciertos parciales.
+Este juego es una variante de la modalidad oficial conocida como **Quiniela Poceada** (que usa 8 números de 2 cifras contra los 20 premios del extracto) y de la **Quiniela Plus**, que toma la decena y unidad de los 20 números del extracto de la Nocturna. La variante "Decena de Oro" usa **10 números** y exige que **los 10 estén contenidos en el extracto** para ganar, sin premios por aciertos parciales.
 
 ## 3. Reglas del juego
 
 - Cada jugada cuesta **$2.000**.
-- Reparto de cada jugada pagada: **60% al pozo de premios**, **40% a gastos/ganancias** de Los Quevedo.
+- Reparto de cada jugada pagada: **60% al pozo de premios**, **40% a gastos/ganancias** de Decena de Oro.
 - El cliente elige **10 números distintos entre 00 y 99**.
 - Los 10 números deben salir **todos en un mismo sorteo** de la Quiniela Nocturna de Tucumán (que sortea 20 números de 2 cifras, lunes a viernes).
 - Si los 10 números de una jugada están contenidos entre los 20 del sorteo, esa jugada **gana automáticamente**.
@@ -76,7 +76,7 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 `id, usuario, password_hash, rol (admin | supervisor), activo`
 
 **clientes**
-`id, nro_cliente, dni, nombre, telefono, password_hash, debe_cambiar_clave, fecha_alta`
+`id, nro_cliente (formato AAAA-NNNNNN, año + 6 dígitos aleatorios, UNIQUE), dni, nombre, telefono, password_hash, debe_cambiar_clave, fecha_alta`
 
 **ciclos** *(semana de juego)*
 `id, fecha_inicio, fecha_fin, estado (abierto | cerrado_con_ganador | cerrado_sin_ganador)`
@@ -117,5 +117,5 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 
 ## 10. Puntos abiertos antes de programar
 
-1. Definir el nivel de detalle de reportes que verá el Supervisor (¿recaudación total, o solo sus propias cargas?). No bloquea la Fase 3 — se resuelve en la Fase 4.
-2. Definir si el número de cliente sigue algún formato particular (correlativo, con prefijo, etc.) o alcanza con un correlativo simple.
+1. Definir el nivel de detalle de reportes que verá el Supervisor (¿recaudación total, o solo sus propias cargas?). Resuelto en la Fase 4: admin ve todo, supervisor solo lo que él mismo cargó.
+2. Formato de `nro_cliente` (resuelto): **año + 6 dígitos aleatorios**, sin correlatividad — ejemplo `2026-048372`. Se genera al azar y se valida contra un índice `UNIQUE` en la tabla `clientes`; si choca con uno existente, se regenera y reintenta.

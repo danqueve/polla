@@ -7,8 +7,8 @@ $_iniciales = mb_strtoupper(mb_substr(trim($_u['nombre']) !== '' ? $_u['nombre']
     <div class="d-flex align-items-center justify-content-between gap-3"
          style="max-width:720px;margin:0 auto;">
         <div class="d-flex flex-column">
-            <a class="topbar__marca" href="<?= APP_URL ?>/admin/index.php">Polla Semanal</a>
-            <span class="topbar__sub">Los Quevedo</span>
+            <a class="topbar__marca" href="<?= APP_URL ?>/admin/index.php">Decena</a>
+            <span class="topbar__sub">de Oro</span>
         </div>
 
         <div class="dropdown">

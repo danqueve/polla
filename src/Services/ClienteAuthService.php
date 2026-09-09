@@ -67,7 +67,7 @@ class ClienteAuthService
         }
 
         if ((int) $cliente['activo'] !== 1) {
-            throw ValidacionException::de('Tu acceso esta dado de baja. Hablá con Los Quevedo.');
+            throw ValidacionException::de('Tu acceso esta dado de baja. Hablá con Decena de Oro.');
         }
 
         if (password_needs_rehash($cliente['password_hash'], PASSWORD_DEFAULT)) {

@@ -1,5 +1,5 @@
 -- ============================================================
--- Polla Semanal Los Quevedo - Esquema de base de datos
+-- Decena de Oro - Esquema de base de datos
 -- Motor: MySQL 8.x / MariaDB 11.x . InnoDB . utf8mb4
 -- Fase 1 (nucleo) + tablas de fases 2 y 3 ya previstas
 -- ============================================================
@@ -60,8 +60,9 @@ CREATE TABLE `usuarios` (
 
 -- ------------------------------------------------------------
 -- clientes  (login propio al portal: usuario = DNI)
--- nro_cliente con formato AAAA-NNNN (ej. 2026-0001),
--- correlativo que se reinicia cada anio calendario.
+-- nro_cliente con formato AAAA-NNNNNN (ej. 2026-048372):
+-- anio + 6 digitos al azar. La unicidad la garantiza el UNIQUE
+-- de mas abajo (uk_clientes_nro); no hay correlativo que llevar.
 -- ------------------------------------------------------------
 CREATE TABLE `clientes` (
     `id`                 INT UNSIGNED NOT NULL AUTO_INCREMENT,

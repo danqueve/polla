@@ -48,7 +48,7 @@ $fila = static function (array $campos) use ($salida): void {
 };
 
 // Encabezado con el alcance, para que el archivo diga de que es.
-$fila(['Polla Semanal Los Quevedo - ' . ucfirst($que)]);
+$fila(['Decena de Oro - ' . ucfirst($que)]);
 $fila(['Alcance', $alcance->rotulo()]);
 $fila(['Generado', date('d/m/Y H:i'), 'por', $usuario['nombre']]);
 if ($filtro->desde || $filtro->hasta) {

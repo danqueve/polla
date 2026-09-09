@@ -13,8 +13,8 @@
 // ve la suya. Ninguna pagina incluye este archivo directamente.
 // ============================================================
 
-define('APP_NAME',    'Polla Semanal Los Quevedo');
-define('APP_SHORT',   'Los Quevedo');
+define('APP_NAME',    'Decena de Oro');
+define('APP_SHORT',   'Decena de Oro');
 define('APP_VERSION', '1.1.0');
 define('BASE_PATH',   dirname(__DIR__));
 

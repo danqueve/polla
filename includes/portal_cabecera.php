@@ -9,7 +9,7 @@ $_pila = explode(' ', trim($_cli['nombre']))[0];
         <div class="min-w-0">
             <p class="cabecera-cliente__saludo">Hola, <?= e($_pila) ?></p>
             <span class="cabecera-cliente__nro">
-                Cliente N° <?= e($_cli['nro_cliente']) ?> · Los Quevedo
+                Cliente N° <?= e($_cli['nro_cliente']) ?> · Decena de Oro
             </span>
         </div>
 

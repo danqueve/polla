@@ -15,7 +15,7 @@
     <meta name="theme-color" content="#0d4a2d">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Polla LQ">
+    <meta name="apple-mobile-web-app-title" content="Decena de Oro">
     <meta name="robots" content="noindex, nofollow">
 
     <title><?= e($pageTitle ?? APP_NAME) ?></title>

@@ -79,7 +79,7 @@ function requireCliente(bool $permitirCambioClave = false): void
 
     if (!$estado || (int) $estado['activo'] !== 1) {
         cerrarSesionCliente();
-        setFlash('danger', 'Tu acceso fue dado de baja. Hablá con Los Quevedo.');
+        setFlash('danger', 'Tu acceso fue dado de baja. Hablá con Decena de Oro.');
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }

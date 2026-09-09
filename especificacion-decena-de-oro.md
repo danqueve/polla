@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.5 (clave de cliente fija = DNI sin excepciones; Fase 7 implementada: premio base garantizado y promociones de paquete)
+**Versión:** 1.6 (Fase 7 implementada: premio base garantizado y promociones de paquete; agrega borrador de Fase 8: carga anticipada para la próxima semana, en revisión)
 
 ---
 
@@ -60,7 +60,7 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 
 1. **Alta de cliente**: por dos vías —
    - **Manual**: admin o supervisor carga DNI, nombre y teléfono; queda aprobada al instante. Usuario y clave = DNI, fija.
-   - **Autorregistro**: la propia persona completa el formulario público (sin contraseña: la clave queda fijada como su DNI, igual que en el alta manual), y la cuenta queda **pendiente** hasta que un admin/supervisor la apruebe (ver sección 7.1).
+   - **Autorregistro**: la propia persona completa el formulario público, elige su contraseña, y la cuenta queda **pendiente** hasta que un admin/supervisor la apruebe (ver sección 7.1).
    - En ambos casos el sistema genera un **número de cliente** único (formato año + 6 dígitos aleatorios).
 2. **Carga de jugada**: admin o supervisor selecciona cliente, ingresa uno o **varios sets de 10 números** en la misma operación (ver sección 7.3), registra el pago total y confirma. El sistema suma el 60% de cada jugada al pozo del ciclo activo.
 3. **Carga del sorteo**: al finalizar cada sorteo nocturno, admin o supervisor carga manualmente los 20 números del extracto oficial.
@@ -98,7 +98,7 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 - El pago se sigue gestionando en persona o por transferencia por el staff, que confirma el total cobrado (monto vigente × cantidad de jugadas) al cerrar la carga — no requiere integrar un medio de pago online.
 - Queda registrado a qué operación de carga conjunta pertenece cada jugada, solo a fines de trazabilidad en reportes (no afecta la lógica de premios ni el cotejo).
 
-## 8. Fase 7: premio base garantizado y promociones de paquete (implementada)
+## 8. Fase 7: premio base garantizado y promociones de paquete
 
 ### 8.1 Premio base garantizado
 
@@ -126,7 +126,15 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 - El reparto del precio del paquete entre las jugadas reutiliza el mismo algoritmo centavo-seguro que ya repartía premios entre ganadores empatados (`PozoService::repartirEnPartesIguales()`), así la suma de los importes de un paquete siempre da exactamente el precio total.
 - **Pantallas:** `admin/configuracion/index.php` (premio base), `admin/promociones/` (alta/edición/activar-desactivar), y el widget de sugerencia (`assets/js/promociones.js`) compartido entre `admin/jugadas/nueva.php` y `portal/jugar.php`, enganchado al mismo evento `grupos:cambio` que ya disparaba `assets/js/numeros.js` al agregar o quitar una jugada.
 
-## 9. Modelo de datos (propuesta inicial)
+## 9. Fase 8: carga anticipada para la próxima semana
+
+- El sistema mantiene **siempre un ciclo "programado"** además del ciclo "abierto" (activo): apenas un ciclo pasa a abierto, se crea automáticamente el siguiente en estado `programado`, listo para recibir jugadas por anticipado.
+- Al cargar una jugada (staff, en cualquiera de las pantallas de carga, o el cliente desde el portal), se agrega un selector **"¿Para esta semana o para la próxima?"**. Por defecto es "esta semana" (ciclo abierto); si se elige "próxima semana", la jugada se guarda directamente con el `ciclo_id` del ciclo programado, de forma fija — no se reevalúa después, a diferencia de la regla de la sección 14.2 que sigue aplicando solo cuando el cliente NO elige semana explícitamente.
+- El pozo de un ciclo programado ya **acumula normalmente** con las jugadas que se le van cargando por anticipado (mismo cálculo de 60% y de premio base de la sección 8.1), aunque todavía no sea el ciclo activo para el cotejo.
+- Cuando el ciclo abierto se cierra (con ganador a mitad de semana, según 3.2, o sin ganador el viernes, según 3.3), el ciclo `programado` pasa a `abierto` automáticamente — con todo lo que ya se le cargó por anticipado — y se crea un nuevo ciclo `programado` para la semana siguiente.
+- Esto cubre los dos casos que mencionaste: alguien que quiere anotarse para la semana que viene estando todavía en curso la actual, y alguien que quiere seguir jugando ni bien se corta una semana antes de tiempo, sin esperar a que arranque formalmente la próxima.
+
+## 10. Modelo de datos (propuesta inicial)
 
 **usuarios**
 `id, usuario, password_hash, rol (admin | supervisor), activo`
@@ -135,10 +143,10 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 `id, nro_cliente (formato AAAA-NNNNNN, año + 6 dígitos aleatorios, UNIQUE), dni, nombre, telefono, password_hash (siempre = hash del DNI, se regenera si el DNI se edita), estado (pendiente | aprobado | rechazado), origen_alta (manual | autorregistro), fecha_alta`
 
 **ciclos** *(semana de juego)*
-`id, fecha_inicio, fecha_fin, estado (abierto | cerrado_con_ganador | cerrado_sin_ganador)`
+`id, fecha_inicio, fecha_fin, estado (programado | abierto | cerrado_con_ganador | cerrado_sin_ganador)`
 
 **jugadas**
-`id, cliente_id, ciclo_id (nullable — ver 13.3), importe, pagada, estado_pago (pendiente_pago | confirmada | rechazada — ver 13.3), origen_carga (staff | cliente), solicitud_id (nullable, FK a solicitudes — ver 13.4), grupo_compra (id o UUID, para agrupar jugadas cargadas juntas por el staff), promocion_id (nullable, FK a promociones si el paquete se cargó con descuento — Fase 7), estado (activa | ganadora | perdedora | anulada — veredicto del cotejo, no confundir con estado_pago), fecha_carga, cargado_por (usuario_id, nullable — vacío cuando origen_carga = cliente)`
+`id, cliente_id, ciclo_id (nullable — ver 14.3), importe, pagada, estado_pago (pendiente_pago | confirmada | rechazada — ver 14.3), origen_carga (staff | cliente), solicitud_id (nullable, FK a solicitudes — ver 14.4), grupo_compra (id o UUID, para agrupar jugadas cargadas juntas por el staff), promocion_id (nullable, FK a promociones si el paquete se cargó con descuento — Fase 7), estado (activa | ganadora | perdedora | anulada — veredicto del cotejo, no confundir con estado_pago), fecha_carga, cargado_por (usuario_id, nullable — vacío cuando origen_carga = cliente)`
 
 **jugada_numeros**
 `id, jugada_id, numero (00-99)`
@@ -150,7 +158,7 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 `id, sorteo_id, numero (00-99)`
 
 **pozo_ciclo**
-`ciclo_id, monto_acumulado (suma real del 60% de jugadas confirmadas — no se renombró: ya significaba "lo realmente acumulado" desde la Fase 1), monto_piso_aplicado (premio_base vigente al momento de liquidar, aunque no haya llegado a usarse — Fase 7), monto_pagado (= MAX(monto_acumulado, monto_piso_aplicado) recién al liquidar; mientras el ciclo sigue abierto no se persiste nada, se calcula al vuelo), fecha_liquidacion`
+`ciclo_id, monto_acumulado (suma real del 60% de jugadas confirmadas — no se renombró: ya significaba "lo realmente acumulado" desde la Fase 1), monto_piso_aplicado (premio_base vigente al momento de liquidar, aunque no haya llegado a usarse — Fase 7), monto_pagado (= MAX(monto_acumulado, monto_piso_aplicado) recién al liquidar; mientras el ciclo sigue abierto o programado no se persiste nada, se calcula al vuelo), fecha_liquidacion`
 
 **ganadores**
 `id, jugada_id, sorteo_id, monto_premio`
@@ -158,20 +166,20 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 **parametros**
 `clave (ej. importe_jugada, premio_base — Fase 7), valor, actualizado_por (usuario_id), actualizado_en` — la tabla real se llama `parametros`, no `configuracion`; `ConfiguracionService` es la capa admin-facing que la edita.
 
-**solicitudes** *(Fase 6 — ver sección 13.4)*
+**solicitudes** *(Fase 6 — ver sección 14.4)*
 `id, cliente_id, numero_registro (VARCHAR(6), UNIQUE), cantidad_jugadas, monto_total, estado (pendiente | confirmada | rechazada), fecha_creacion, fecha_resolucion, resuelto_por (usuario_id)`
 
 **promociones** *(Fase 7)*
 `id, cantidad_jugadas, precio_total, activa, fecha_creacion, actualizado_por`
 
-## 10. Stack tecnológico
+## 11. Stack tecnológico
 
 - **Backend:** PHP, mismo criterio que `sas_imperio` y `crm_imperio`.
 - **Base de datos:** MySQL, mismo servidor y flujo de despliegue (git pull) ya usado en el VPS.
 - **Frontend:** Bootstrap 5 vía CDN (sin build tools), con diseño mobile-first: formularios grandes y táctiles para la carga de jugadas y sorteos, vistas simples y legibles en el portal del cliente.
 - **Hosting:** VPS de prueba (Ubuntu 24.04) primero, réplica al VPS de producción una vez validado.
 
-## 11. Fases de desarrollo
+## 12. Fases de desarrollo
 
 | Fase | Contenido | Estimación |
 |---|---|---|
@@ -181,50 +189,49 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 | 4. Administración y reportes | Recaudación, historial de ganadores, exportables | 1 semana |
 | 5. Ampliación | Autorregistro con aprobación, monto configurable, carga múltiple de jugadas | 1 semana |
 | 6. Selección propia de jugadas | Selección propia de jugadas por el cliente, con autorización de pago por staff | Implementada |
-| 7. Premio base y promociones | Piso garantizado de pozo por ciclo, paquetes promocionales de jugadas | A implementar |
+| 7. Premio base y promociones | Piso garantizado de pozo por ciclo, paquetes promocionales de jugadas | Implementada |
+| 8. Carga anticipada | Ciclo "programado" para cargar jugadas de la próxima semana por adelantado | A implementar |
 
-## 12. Puntos abiertos antes de programar
+## 13. Puntos abiertos antes de programar
 
 1. Definir el nivel de detalle de reportes que verá el Supervisor (¿recaudación total, o solo sus propias cargas?). Resuelto en la Fase 4: admin ve todo, supervisor solo lo que él mismo cargó.
 2. Formato de `nro_cliente` (resuelto): **año + 6 dígitos aleatorios**, sin correlatividad — ejemplo `2026-048372`. Se genera al azar y se valida contra un índice `UNIQUE` en la tabla `clientes`; si choca con uno existente, se regenera y reintenta.
 
-## 13. Fase 6: selección propia de jugadas por el cliente (implementada)
+## 14. Fase 6: selección propia de jugadas por el cliente (implementada)
 
-*Documenta el diseño acordado antes de programar (13.1-13.4); las decisiones tomadas durante la implementación quedan en 13.5.*
+*Implementada. Se deja el detalle funcional como referencia.*
 
-### 13.1 Flujo
+### 14.1 Flujo
 
 1. El cliente entra al portal y arma una o varias jugadas (sets de 10 números, con la misma validación de siempre), sin necesidad de que el staff las tipee.
 2. Al guardar, cada jugada queda en estado **pendiente_pago** — todavía no pertenece a ningún ciclo ni suma al pozo.
 3. El portal le muestra el **monto total a abonar** (monto vigente configurado × cantidad de jugadas armadas).
 4. El cliente paga por los medios habituales (en persona o transferencia, sin pasarela online).
-5. Admin o supervisor busca la solicitud por su código y, al recibir el pago, la **confirma** (ver 13.4).
-6. Al confirmarse, cada jugada de la solicitud se asigna al **ciclo activo en ese momento** (no al ciclo vigente cuando el cliente la seleccionó) y recién ahí su 60% se suma al pozo y queda habilitada para el cotejo automático.
+5. Admin o supervisor ve una cola de **"jugadas pendientes de confirmación"** (cliente, números elegidos, monto, fecha de selección) y, al recibir el pago, la **confirma**.
+6. Al confirmarse, la jugada se asigna al **ciclo activo en ese momento** (no al ciclo vigente cuando el cliente la seleccionó) y recién ahí su 60% se suma al pozo y queda habilitada para el cotejo automático.
 
-### 13.2 Reglas acordadas
+### 14.2 Reglas acordadas
 
 - El ciclo se asigna en el momento de la **confirmación del pago**, no en el momento de la selección. Si entre la selección y la confirmación cambió el ciclo activo (por ejemplo, hubo un ganador esa semana), la jugada entra al ciclo que esté abierto al momento de confirmarse.
 - Las jugadas pendientes de pago **no vencen automáticamente**: quedan en la cola indefinidamente hasta que el staff las confirme o las rechace manualmente.
-- Rechazar una solicitud pendiente (por ejemplo, si el cliente nunca pagó) queda reservado a Admin, siguiendo el mismo criterio que el rechazo de autorregistros; Supervisor puede confirmar pagos pero no rechazar.
+- Rechazar una jugada pendiente (por ejemplo, si el cliente nunca pagó) queda reservado a Admin, siguiendo el mismo criterio que el rechazo de autorregistros; Supervisor puede confirmar pagos pero no rechazar.
 
-### 13.3 Cambios de modelo de datos (resuelto)
+### 14.3 Cambios de modelo de datos (resuelto)
 
-- `jugadas`: agrega `origen_carga` (`staff` | `cliente`), análogo a `origen_alta` en `clientes`. La columna `ciclo_id` pasa a admitir `NULL` y se completa recién al confirmar el pago. Se suma también `solicitud_id` (ver 13.4).
-- El estado del pago **no se llama `estado`**: `jugadas` ya tenía desde la Fase 2 una columna `estado` con otro significado (`activa | ganadora | perdedora | anulada`, el veredicto del cotejo, que usa `SorteoService`). Para no pisarla ni tocar el motor de cotejo, el circuito de pago va en una columna nueva y separada, `estado_pago` (`pendiente_pago` | `confirmada` | `rechazada`).
-- La columna `pagada` existente **se mantiene con su significado original** (booleano: se cobró o no): queda en `0` mientras la jugada está pendiente y pasa a `1` recién al confirmarse, junto con `ciclo_id` y `estado_pago`.
-- Al rechazar una solicitud, sus jugadas quedan con `estado_pago = 'rechazada'` y además `estado = 'anulada'` (el mismo valor que ya usaba el sistema para una jugada que no cuenta), para que cualquier consulta que solo mire `estado` sin conocer `estado_pago` las trate igual que a una jugada anulada.
-- El monto (`importe`, y su reparto `aporte_pozo`/`aporte_gastos`) se fija con el monto vigente al **momento de la selección**, igual que en la carga por staff — es solo el `ciclo_id` lo que se difiere hasta la confirmación (ver 13.2).
+- `jugadas` suma `estado_pago` (`pendiente_pago` | `confirmada` | `rechazada`) y `origen_carga` (`staff` | `cliente`), análogo a `origen_alta` en `clientes`. La columna `ciclo_id` pasa a completarse recién al confirmar (nula mientras está `pendiente_pago`). Se suma también `solicitud_id` (ver 14.4).
+- **`estado_pago` no es lo mismo que `estado`.** `estado` ya existía desde la Fase 2 y es el veredicto del cotejo (`activa` | `ganadora` | `perdedora` | `anulada`); `estado_pago` es el ciclo de vida del cobro. Una jugada puede estar `estado_pago = pendiente_pago` y `estado = activa` a la vez — son dos cosas distintas que conviven en la misma fila, y el código las trata por separado (`SorteoService` lee `estado`, `SolicitudService` lee `estado_pago`).
+- La columna `pagada` existente se mantuvo (no se reemplazó por `estado_pago`): sigue funcionando como el flag simple de "se cobró", que usan las pantallas que no necesitan distinguir `rechazada` de `pendiente_pago`.
 
-### 13.4 Número de registro por solicitud
+### 14.4 Número de registro por solicitud
 
 Cuando el cliente arma varias jugadas en una misma sesión, todas comparten **una solicitud** con un código corto que el cliente usa para identificarse al pagar (evita que el staff tenga que buscarlo por nombre).
 
-- Tabla **solicitudes**: `id, cliente_id, numero_registro (UNIQUE), cantidad_jugadas, monto_total, estado (pendiente | confirmada | rechazada), fecha_creacion, fecha_resolucion, resuelto_por`.
+- Nueva tabla **solicitudes**: `id, cliente_id, numero_registro (UNIQUE), cantidad_jugadas, monto_total, estado (pendiente | confirmada | rechazada), fecha_creacion, fecha_resolucion, resuelto_por`.
 - `jugadas` suma la columna `solicitud_id` (nullable — solo se completa para jugadas de origen `cliente`).
 - El `numero_registro` es un código de 6 caracteres (mayúsculas + números, sin `0/O/1/I/L` para evitar confusiones), generado al crear la solicitud y validado como único con reintento, igual criterio que `nro_cliente`.
 - El staff busca la solicitud por ese código en la pantalla de confirmación, y al confirmar se aplica a **todas** las jugadas de esa solicitud a la vez (mismo ciclo activo, mismo momento) en vez de confirmarlas una por una.
 
-### 13.5 Notas de implementación
+### 14.5 Notas de implementación
 
 - **Tope de 20 jugadas por solicitud.** La carga múltiple del staff (7.3) no tiene límite porque la usa personal de confianza; el formulario del portal lo usa un cliente autenticado pero de cara al público, así que tiene un tope contra un envío accidental o abusivo. Para más de 20 de una vez, se genera otra solicitud.
 - **`cargado_por` queda vacío**, incluso después de confirmado el pago: esa columna significa "quién tipeó los números", y el supervisor que confirma verificó un pago, no eligió números. Quién resolvió la solicitud (y cuándo) sí queda registrado, en `solicitudes.resuelto_por` / `fecha_resolucion`.

@@ -43,8 +43,8 @@ require __DIR__ . '/../../includes/topbar.php';
 
     <?php if ($esAlta): ?>
         <p class="pantalla__bajada">
-            El numero de cliente se genera solo. La clave del portal arranca
-            siendo el DNI y el cliente la cambia en su primer ingreso.
+            El numero de cliente se genera solo. La clave del portal es
+            siempre el DNI, fija.
         </p>
     <?php else: ?>
         <p class="pantalla__bajada">
@@ -103,26 +103,24 @@ require __DIR__ . '/../../includes/topbar.php';
     <?php if (!$esAlta): ?>
         <div class="tarjeta p-3 mt-3">
             <span class="rotulo d-block mb-2">Acceso al portal</span>
-
-            <?php if ((int) $cliente['debe_cambiar_clave'] === 1): ?>
-                <p class="fila__meta mb-3">
-                    Todavia tiene la clave inicial (su DNI) y va a tener que cambiarla al entrar.
-                </p>
-            <?php else: ?>
-                <p class="fila__meta mb-3">
-                    Ya cambio su clave.
-                    Ultimo ingreso: <?= e(formatFechaHora($cliente['ultimo_acceso'])) ?>.
-                </p>
-            <?php endif; ?>
+            <p class="fila__meta mb-3">
+                Su clave es siempre su DNI.
+                Ultimo ingreso: <?= e(formatFechaHora($cliente['ultimo_acceso'])) ?>.
+            </p>
 
             <form method="post" action="<?= APP_URL ?>/admin/clientes/resetear_clave.php"
-                  onsubmit="return confirm('Volver la clave del portal al DNI del cliente?')">
+                  onsubmit="return confirm('Resincronizar la clave del portal con el DNI actual del cliente?')">
                 <?= csrfField() ?>
                 <input type="hidden" name="id" value="<?= (int) $cliente['id'] ?>">
                 <button type="submit" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-arrow-counterclockwise"></i> Restablecer clave al DNI
+                    <i class="bi bi-arrow-counterclockwise"></i> Resincronizar clave con el DNI
                 </button>
             </form>
+            <p class="form-text mt-2 mb-0">
+                No debería hacer falta: la clave se actualiza sola si editás
+                el DNI. Es una herramienta manual por si un cliente de antes
+                de este cambio quedó con una clave distinta.
+            </p>
         </div>
 
         <?php if (isAdmin()): ?>

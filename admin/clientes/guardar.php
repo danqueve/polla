@@ -30,7 +30,7 @@ try {
     setFlash(
         'success',
         'Cliente dado de alta con el N° ' . $cliente['nro_cliente'] . ".\n"
-        . 'Su clave del portal es su DNI (' . $cliente['dni'] . ') y la cambia en el primer ingreso.'
+        . 'Su clave del portal es su DNI (' . $cliente['dni'] . '), fija.'
     );
     header('Location: ' . APP_URL . '/admin/clientes/index.php');
     exit;

@@ -10,9 +10,9 @@ use Polla\Support\ValidacionException;
  *
  * La fila en `clientes` la sigue creando ClienteService (mismo
  * nro_cliente al azar, mismo reintento ante colision, misma validacion
- * de DNI/nombre/telefono); esta clase se ocupa de lo que es propio del
- * autorregistro: la clave que elige la persona (no el DNI, como en el
- * alta manual) y el circuito pendiente -> aprobado/rechazado.
+ * de DNI/nombre/telefono, misma clave = DNI); esta clase se ocupa de lo
+ * que es propio del autorregistro: el circuito pendiente ->
+ * aprobado/rechazado.
  */
 class ClienteRegistroService
 {
@@ -33,40 +33,16 @@ class ClienteRegistroService
     /**
      * Autorregistro publico. La cuenta nace `pendiente`: no puede operar
      * (ni cargarle jugadas, ni ver datos en el portal) hasta que un
-     * admin o supervisor la apruebe.
+     * admin o supervisor la apruebe. La clave es el DNI, igual que en
+     * el alta manual.
      *
      * @param array{dni:string,nombre:string,telefono?:string} $datos
      * @return int Id del cliente nuevo.
      * @throws ValidacionException
      */
-    public function registrar(array $datos, string $password, string $repetida): int
+    public function registrar(array $datos): int
     {
-        $dni = ClienteService::normalizarDni($datos['dni'] ?? '');
-        $this->validarPassword($password, $repetida, $dni);
-
-        $hash = password_hash($password, PASSWORD_DEFAULT);
-
-        return $this->clientes->crearAutorregistro($datos, $hash);
-    }
-
-    /** @throws ValidacionException */
-    private function validarPassword(string $password, string $repetida, string $dni): void
-    {
-        $errores = [];
-        $minimo  = ClienteAuthService::PASSWORD_MIN;
-
-        if (mb_strlen($password) < $minimo) {
-            $errores[] = 'La contraseña tiene que tener al menos ' . $minimo . ' caracteres.';
-        }
-        if ($password !== $repetida) {
-            $errores[] = 'Las dos contraseñas no coinciden.';
-        }
-        if ($dni !== '' && $password === $dni) {
-            $errores[] = 'La contraseña no puede ser tu DNI. Elegí otra.';
-        }
-        if ($errores) {
-            throw new ValidacionException($errores);
-        }
+        return $this->clientes->crearAutorregistro($datos);
     }
 
     // ── Cola de aprobacion ──────────────────────────────────

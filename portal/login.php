@@ -83,7 +83,7 @@ require __DIR__ . '/../includes/head.php';
                     <input type="password" class="form-control" id="password" name="password"
                            autocomplete="current-password" required>
                     <div class="form-text">
-                        Si entrás por primera vez, tu contraseña es tu mismo DNI.
+                        Tu contraseña es siempre tu DNI.
                     </div>
                 </div>
 

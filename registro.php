@@ -1,9 +1,10 @@
 <?php
 /**
  * Autorregistro publico de clientes. Sin login: cualquiera entra acá,
- * carga sus datos y elige su propia clave. La cuenta nace pendiente
- * y no puede operar hasta que un admin/supervisor la apruebe desde
- * admin/clientes/solicitudes.php.
+ * carga DNI, nombre y telefono. La clave queda fijada sola como el DNI
+ * (no se pide ni se elige acá, igual que en el alta manual). La cuenta
+ * nace pendiente y no puede operar hasta que un admin/supervisor la
+ * apruebe desde admin/clientes/solicitudes.php.
  *
  * Usa la sesion del portal (config/portal.php) desde el arranque: si el
  * registro sale bien, dejamos al cliente ya logueado en esa misma
@@ -31,8 +32,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $dni      = trim($_POST['dni'] ?? '');
     $nombre   = trim($_POST['nombre'] ?? '');
     $telefono = trim($_POST['telefono'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $password2 = $_POST['password2'] ?? '';
 
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $errores[] = 'La página estuvo abierta demasiado tiempo. Probá de nuevo.';
@@ -41,15 +40,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $db = getPDO();
             $datos = ['dni' => $dni, 'nombre' => $nombre, 'telefono' => $telefono];
 
-            ClienteRegistroService::crearDesde($db)->registrar($datos, $password, $password2);
+            ClienteRegistroService::crearDesde($db)->registrar($datos);
             flushOld();
 
-            // Ya tiene cuenta y clave validas: lo dejamos logueado para
-            // que vea directamente el aviso de "cuenta en revision".
-            (new ClienteAuthService($db))->login(
-                ClienteService::normalizarDni($dni),
-                $password
-            );
+            // Ya tiene cuenta: lo dejamos logueado (clave = su propio DNI)
+            // para que vea directamente el aviso de "cuenta en revision".
+            $dniNormalizado = ClienteService::normalizarDni($dni);
+            (new ClienteAuthService($db))->login($dniNormalizado, $dniNormalizado);
 
             header('Location: ' . APP_URL . '/portal/index.php');
             exit;
@@ -88,7 +85,7 @@ require __DIR__ . '/includes/head.php';
                 <i class="bi bi-info-circle-fill flex-shrink-0" style="margin-top:.15rem"></i>
                 <div>
                     Tu cuenta queda pendiente hasta que un administrador la
-                    apruebe. Vas a poder ver el estado entrando con tu DNI.
+                    apruebe. Tu usuario y tu contraseña van a ser tu DNI.
                 </div>
             </div>
 
@@ -120,19 +117,6 @@ require __DIR__ . '/includes/head.php';
                            value="<?= e($telefono) ?>"
                            inputmode="tel" autocomplete="tel" maxlength="30"
                            placeholder="381 555 1234">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label" for="password">Elegí una contraseña</label>
-                    <input type="password" class="form-control" id="password" name="password"
-                           autocomplete="new-password" minlength="6" required>
-                    <div class="form-text">Al menos 6 caracteres, y que no sea tu DNI.</div>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label" for="password2">Repetila</label>
-                    <input type="password" class="form-control" id="password2" name="password2"
-                           autocomplete="new-password" minlength="6" required>
                 </div>
 
                 <button type="submit" class="btn btn-primary w-100">

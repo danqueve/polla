@@ -98,10 +98,6 @@ require __DIR__ . '/../../includes/topbar.php';
                     <div class="d-flex flex-column align-items-end gap-1 text-nowrap">
                         <?php if ((int) $cliente['activo'] !== 1): ?>
                             <span class="etiqueta etiqueta--gris">Inactivo</span>
-                        <?php elseif ((int) $cliente['debe_cambiar_clave'] === 1): ?>
-                            <span class="etiqueta etiqueta--oro" title="Todavia no entro al portal">
-                                Clave = DNI
-                            </span>
                         <?php endif; ?>
                         <i class="bi bi-chevron-right text-secondary" aria-hidden="true"></i>
                     </div>

@@ -48,26 +48,17 @@ function clienteActual(): array
 /**
  * Guarda de todas las pantallas del portal.
  *
- * Ademas de exigir sesion, relee de la base en cada request dos cosas
- * que el admin puede cambiar mientras el cliente esta navegando:
+ * Ademas de exigir sesion, relee de la base en cada request `activo`:
+ * si lo dieron de baja, la sesion se cierra en el acto en vez de seguir
+ * andando hasta que venza sola. Es una lectura por clave primaria, asi
+ * que el costo es despreciable y evita confiar en un flag guardado en
+ * la sesion que puede quedar viejo.
  *
- *  - `activo`: si lo dieron de baja, la sesion se cierra en el acto en
- *    vez de seguir andando hasta que venza sola.
- *  - `debe_cambiar_clave`: si el admin le reseteo la clave al DNI, el
- *    cambio obligatorio se vuelve a exigir aunque ya la hubiera
- *    cambiado antes.
- *
- * Es una lectura por clave primaria, asi que el costo es despreciable
- * y evita confiar en un flag guardado en la sesion que puede quedar viejo.
- *
- * @param bool $permitirCambioClave true solo en cambiar_clave.php, que es
- *                                  la unica pantalla accesible con el
- *                                  cambio de clave pendiente.
- * @param bool $permitirPendiente  true solo en portal/pendiente.php, que
- *                                  es la unica pantalla accesible con la
- *                                  cuenta todavia sin aprobar.
+ * @param bool $permitirPendiente true solo en portal/pendiente.php, que
+ *                                es la unica pantalla accesible con la
+ *                                cuenta todavia sin aprobar.
  */
-function requireCliente(bool $permitirCambioClave = false, bool $permitirPendiente = false): void
+function requireCliente(bool $permitirPendiente = false): void
 {
     if (!clienteLogueado()) {
         header('Location: ' . APP_URL . '/portal/login.php');
@@ -75,7 +66,7 @@ function requireCliente(bool $permitirCambioClave = false, bool $permitirPendien
     }
 
     $stmt = getPDO()->prepare(
-        'SELECT activo, estado, debe_cambiar_clave FROM clientes WHERE id = :id LIMIT 1'
+        'SELECT activo, estado FROM clientes WHERE id = :id LIMIT 1'
     );
     $stmt->execute([':id' => clienteActualId()]);
     $fila = $stmt->fetch();
@@ -94,16 +85,8 @@ function requireCliente(bool $permitirCambioClave = false, bool $permitirPendien
         exit;
     }
 
-    if ($fila['estado'] === 'pendiente') {
-        if (!$permitirPendiente) {
-            header('Location: ' . APP_URL . '/portal/pendiente.php');
-            exit;
-        }
-        return;
-    }
-
-    if (!$permitirCambioClave && (int) $fila['debe_cambiar_clave'] === 1) {
-        header('Location: ' . APP_URL . '/portal/cambiar_clave.php');
+    if ($fila['estado'] === 'pendiente' && !$permitirPendiente) {
+        header('Location: ' . APP_URL . '/portal/pendiente.php');
         exit;
     }
 }

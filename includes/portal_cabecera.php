@@ -21,12 +21,6 @@ $_pila = explode(' ', trim($_cli['nombre']))[0];
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow">
                 <li>
-                    <a class="dropdown-item py-2" href="<?= APP_URL ?>/portal/cambiar_clave.php">
-                        <i class="bi bi-key me-2"></i>Cambiar mi contraseña
-                    </a>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
                     <a class="dropdown-item py-2 text-danger" href="<?= APP_URL ?>/portal/logout.php">
                         <i class="bi bi-box-arrow-right me-2"></i>Salir
                     </a>

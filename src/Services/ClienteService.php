@@ -10,8 +10,10 @@ use Polla\Support\ValidacionException;
  * ABM de clientes.
  *
  * El alta genera el nro_cliente (AAAA-NNNNNN: anio + 6 digitos al azar) y
- * deja la clave del portal igual al DNI con debe_cambiar_clave = 1, para
- * que el cliente tenga que cambiarla en su primer ingreso.
+ * deja la clave del portal igual al DNI. La clave es siempre el DNI
+ * vigente, sin excepciones ni cambio posible: actualizar() regenera el
+ * hash cada vez que el DNI se edita, asi que las dos columnas nunca
+ * quedan desincronizadas.
  */
 class ClienteService
 {
@@ -50,7 +52,7 @@ class ClienteService
         }
 
         $sql = 'SELECT c.id, c.nro_cliente, c.dni, c.nombre, c.telefono,
-                       c.activo, c.debe_cambiar_clave, c.fecha_alta,
+                       c.activo, c.fecha_alta,
                        COUNT(j.id) AS jugadas_total
                   FROM clientes c
                   LEFT JOIN jugadas j ON j.cliente_id = c.id
@@ -68,7 +70,7 @@ class ClienteService
     {
         $stmt = $this->db->prepare(
             'SELECT id, nro_cliente, dni, nombre, telefono, activo,
-                    debe_cambiar_clave, fecha_alta, ultimo_acceso
+                    fecha_alta, ultimo_acceso
                FROM clientes WHERE id = :id LIMIT 1'
         );
         $stmt->execute([':id' => $id]);
@@ -104,24 +106,20 @@ class ClienteService
             throw ValidacionException::de('Ya hay un cliente cargado con el DNI ' . $dni . '.');
         }
 
-        // La clave inicial es el propio DNI; el flag obliga a cambiarla.
         // Alta manual: aprobada al instante, el staff ya valido los datos.
-        $hash = password_hash($dni, PASSWORD_DEFAULT);
-
-        return $this->insertar($dni, $nombre, $telefono, $hash, true, 'aprobado', 'manual', $altaPor);
+        return $this->insertar($dni, $nombre, $telefono, 'aprobado', 'manual', $altaPor);
     }
 
     /**
-     * Alta por autorregistro publico: la persona elige su propia clave
-     * (no el DNI) y la cuenta nace pendiente de aprobacion. Comparte con
-     * crear() la validacion, el chequeo de DNI duplicado y el reintento
-     * del nro_cliente; lo unico que cambia es el origen, el estado
-     * inicial y que no hay que forzar un cambio de clave.
+     * Alta por autorregistro publico: la cuenta nace pendiente de
+     * aprobacion. Comparte con crear() la validacion, el chequeo de DNI
+     * duplicado, el reintento del nro_cliente y la clave (siempre el
+     * DNI); lo unico que cambia es el origen y el estado inicial.
      *
      * @param array{dni:string,nombre:string,telefono?:string} $datos
      * @throws ValidacionException
      */
-    public function crearAutorregistro(array $datos, string $passwordHash): int
+    public function crearAutorregistro(array $datos): int
     {
         $dni      = self::normalizarDni($datos['dni'] ?? '');
         $nombre   = trim($datos['nombre'] ?? '');
@@ -133,7 +131,7 @@ class ClienteService
             throw ValidacionException::de('Ya hay un cliente cargado con ese DNI.');
         }
 
-        return $this->insertar($dni, $nombre, $telefono, $passwordHash, false, 'pendiente', 'autorregistro', null);
+        return $this->insertar($dni, $nombre, $telefono, 'pendiente', 'autorregistro', null);
     }
 
     /**
@@ -141,36 +139,36 @@ class ClienteService
      * si dos altas simultaneas sacan el mismo numero, el UNIQUE de la
      * tabla frena una y el reintento le genera otro numero distinto.
      *
+     * La clave siempre es el DNI: se hashea aca mismo, no hay otra via
+     * de entrada para el password_hash inicial.
+     *
      * @throws ValidacionException
      */
     private function insertar(
         string $dni,
         string $nombre,
         string $telefono,
-        string $passwordHash,
-        bool $debeCambiarClave,
         string $estado,
         string $origenAlta,
         ?int $altaPor
     ): int {
         $stmt = $this->db->prepare(
             'INSERT INTO clientes (nro_cliente, dni, nombre, telefono, password_hash,
-                                   debe_cambiar_clave, activo, estado, origen_alta, alta_por)
-             VALUES (:nro, :dni, :nombre, :telefono, :hash, :debe_cambiar, 1, :estado, :origen, :alta_por)'
+                                   activo, estado, origen_alta, alta_por)
+             VALUES (:nro, :dni, :nombre, :telefono, :hash, 1, :estado, :origen, :alta_por)'
         );
 
         for ($intento = 1; $intento <= self::REINTENTOS_NRO; $intento++) {
             try {
                 $stmt->execute([
-                    ':nro'          => $this->generarNroCliente(),
-                    ':dni'          => $dni,
-                    ':nombre'       => $nombre,
-                    ':telefono'     => $telefono !== '' ? $telefono : null,
-                    ':hash'         => $passwordHash,
-                    ':debe_cambiar' => $debeCambiarClave ? 1 : 0,
-                    ':estado'       => $estado,
-                    ':origen'       => $origenAlta,
-                    ':alta_por'     => $altaPor,
+                    ':nro'      => $this->generarNroCliente(),
+                    ':dni'      => $dni,
+                    ':nombre'   => $nombre,
+                    ':telefono' => $telefono !== '' ? $telefono : null,
+                    ':hash'     => password_hash($dni, PASSWORD_DEFAULT),
+                    ':estado'   => $estado,
+                    ':origen'   => $origenAlta,
+                    ':alta_por' => $altaPor,
                 ]);
                 return (int) $this->db->lastInsertId();
             } catch (PDOException $e) {
@@ -191,14 +189,17 @@ class ClienteService
     }
 
     /**
-     * Edicion. El DNI se puede corregir (es tambien el usuario del portal),
-     * pero no se resetea la clave: para eso esta resetearClave().
+     * Edicion. El DNI se puede corregir (es tambien el usuario y la
+     * clave del portal): si cambia, el password_hash se regenera acá
+     * mismo a partir del DNI nuevo, para que la clave nunca quede
+     * desincronizada.
      *
      * @throws ValidacionException
      */
     public function actualizar(int $id, array $datos): void
     {
-        if (!$this->buscarPorId($id)) {
+        $cliente = $this->buscarPorId($id);
+        if (!$cliente) {
             throw ValidacionException::de('El cliente no existe.');
         }
 
@@ -212,20 +213,30 @@ class ClienteService
             throw ValidacionException::de('Ya hay otro cliente con el DNI ' . $dni . '.');
         }
 
-        $this->db->prepare(
-            'UPDATE clientes
-                SET dni = :dni, nombre = :nombre, telefono = :telefono, activo = :activo
-              WHERE id = :id'
-        )->execute([
+        $sql    = 'UPDATE clientes SET dni = :dni, nombre = :nombre, telefono = :telefono, activo = :activo';
+        $params = [
             ':dni'      => $dni,
             ':nombre'   => $nombre,
             ':telefono' => $telefono !== '' ? $telefono : null,
             ':activo'   => !empty($datos['activo']) ? 1 : 0,
             ':id'       => $id,
-        ]);
+        ];
+
+        if ($dni !== $cliente['dni']) {
+            $sql .= ', password_hash = :hash';
+            $params[':hash'] = password_hash($dni, PASSWORD_DEFAULT);
+        }
+
+        $this->db->prepare($sql . ' WHERE id = :id')->execute($params);
     }
 
-    /** Vuelve la clave del portal al DNI y exige cambiarla de nuevo. */
+    /**
+     * Resincroniza la clave del portal con el DNI actual. Con la clave
+     * siempre regenerada al editar el DNI (actualizar()), esto no
+     * debería hacer falta nunca — queda como red de seguridad manual
+     * para un cliente cuyo password_hash haya quedado desincronizado
+     * por alguna via anterior a este criterio.
+     */
     public function resetearClave(int $id): string
     {
         $cliente = $this->buscarPorId($id);
@@ -234,7 +245,7 @@ class ClienteService
         }
 
         $this->db->prepare(
-            'UPDATE clientes SET password_hash = :h, debe_cambiar_clave = 1 WHERE id = :id'
+            'UPDATE clientes SET password_hash = :h WHERE id = :id'
         )->execute([':h' => password_hash($cliente['dni'], PASSWORD_DEFAULT), ':id' => $id]);
 
         return $cliente['dni'];

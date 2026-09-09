@@ -6,7 +6,7 @@
  */
 require_once __DIR__ . '/../config/portal.php';
 
-requireCliente(false, true);
+requireCliente(true);
 
 $pageTitle = 'Cuenta en revisión · ' . APP_NAME;
 $bodyClass = 'sin-barra';

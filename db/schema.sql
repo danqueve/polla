@@ -1,7 +1,7 @@
 -- ============================================================
 -- Decena de Oro - Esquema de base de datos
 -- Motor: MySQL 8.x / MariaDB 11.x . InnoDB . utf8mb4
--- Fase 1 (nucleo) + tablas de fases 2 y 3 ya previstas
+-- Instalador limpio con el acumulado de las fases 1 a 6
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS `polla_quevedo`
@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS `sorteo_numeros`;
 DROP TABLE IF EXISTS `sorteos`;
 DROP TABLE IF EXISTS `jugada_numeros`;
 DROP TABLE IF EXISTS `jugadas`;
+DROP TABLE IF EXISTS `solicitudes`;
 DROP TABLE IF EXISTS `pozo_ciclo`;
 DROP TABLE IF EXISTS `ciclos`;
 DROP TABLE IF EXISTS `clientes`;
@@ -147,18 +148,67 @@ CREATE TABLE `pozo_ciclo` (
 
 
 -- ------------------------------------------------------------
+-- solicitudes  [FASE 6]
+-- Agrupa las jugadas que un cliente arma en una misma sesion del
+-- portal (autoservicio), con un codigo corto (numero_registro) que
+-- usa para identificarse al pagar. El staff la busca por ese codigo,
+-- la confirma o la rechaza; ver jugadas.solicitud_id mas abajo.
+-- ------------------------------------------------------------
+CREATE TABLE `solicitudes` (
+    `id`                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+    `cliente_id`        INT UNSIGNED  NOT NULL,
+    `numero_registro`   VARCHAR(6)    NOT NULL,
+    `cantidad_jugadas`  TINYINT UNSIGNED NOT NULL,
+    `monto_total`       DECIMAL(12,2) NOT NULL,
+    `estado`            ENUM('pendiente','confirmada','rechazada')
+                                      NOT NULL DEFAULT 'pendiente',
+    `fecha_creacion`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `fecha_resolucion`  DATETIME          NULL,
+    `resuelto_por`      INT UNSIGNED      NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_solicitudes_numero` (`numero_registro`),
+    KEY `idx_solicitudes_cliente` (`cliente_id`, `fecha_creacion`),
+    KEY `idx_solicitudes_estado`  (`estado`, `fecha_creacion`),
+    CONSTRAINT `fk_solicitudes_cliente`
+        FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT `fk_solicitudes_resuelto_por`
+        FOREIGN KEY (`resuelto_por`) REFERENCES `usuarios` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ------------------------------------------------------------
 -- jugadas
 -- El reparto 60/40 se congela en la fila: si el admin cambia los
 -- porcentajes mas adelante, las jugadas viejas conservan el suyo.
+--
+-- ciclo_id admite NULL [FASE 6]: una jugada armada por el cliente
+-- (origen_carga='cliente') nace sin ciclo y con estado_pago =
+-- 'pendiente_pago'; recien se le asigna el ciclo abierto en ESE
+-- momento cuando el staff confirma el pago (SolicitudService), y
+-- ahi pasa a sumar al pozo y a ser candidata al cotejo. Mientras
+-- ciclo_id es NULL, el resto del sistema la ignora solo: el cotejo
+-- y casi todas las consultas filtran por ciclo_id.
+--
+-- OJO: estado_pago (pendiente_pago | confirmada | rechazada) NO es
+-- lo mismo que `estado` (activa | ganadora | perdedora | anulada):
+-- este ultimo es el veredicto del cotejo de la Fase 2 y SorteoService
+-- lo sigue leyendo tal cual. Son dos circuitos distintos a proposito.
 -- ------------------------------------------------------------
 CREATE TABLE `jugadas` (
     `id`             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     `cliente_id`     INT UNSIGNED  NOT NULL,
-    `ciclo_id`       INT UNSIGNED  NOT NULL,
+    `ciclo_id`       INT UNSIGNED      NULL,
     `importe`        DECIMAL(10,2) NOT NULL,
     `aporte_pozo`    DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `aporte_gastos`  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `pagada`         TINYINT(1)    NOT NULL DEFAULT 1,
+    `estado_pago`    ENUM('pendiente_pago','confirmada','rechazada')
+                                   NOT NULL DEFAULT 'confirmada',
+    `origen_carga`   ENUM('staff','cliente')
+                                   NOT NULL DEFAULT 'staff',
+    `solicitud_id`   INT UNSIGNED      NULL,
     `grupo_compra`   CHAR(36)          NULL,
     `estado`         ENUM('activa','ganadora','perdedora','anulada')
                                    NOT NULL DEFAULT 'activa',
@@ -170,6 +220,8 @@ CREATE TABLE `jugadas` (
     KEY `idx_jugadas_cargado_por`    (`cargado_por`, `fecha_carga`),
     KEY `idx_jugadas_fecha`          (`fecha_carga`),
     KEY `idx_jugadas_grupo_compra`   (`grupo_compra`),
+    KEY `idx_jugadas_solicitud`      (`solicitud_id`),
+    KEY `idx_jugadas_estado_pago`    (`estado_pago`, `fecha_carga`),
     CONSTRAINT `fk_jugadas_cliente`
         FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`)
         ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -178,6 +230,9 @@ CREATE TABLE `jugadas` (
         ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT `fk_jugadas_usuario`
         FOREIGN KEY (`cargado_por`) REFERENCES `usuarios` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `fk_jugadas_solicitud`
+        FOREIGN KEY (`solicitud_id`) REFERENCES `solicitudes` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -1107,3 +1107,83 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     color: var(--tinta-tenue);
     font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================
+   Solicitud de pago (Fase 6)
+
+   El código es lo primero que hay que poder leer y dictar por
+   teléfono, así que se separa letra por letra como un localizador
+   de vuelo. El monto sigue la regla del resto de la app: el oro
+   es sólo para plata, y el código no lo es — va en blanco sobre el
+   mismo verde oscuro que el pozo, para que ambas pantallas se
+   sientan de la misma familia.
+   ============================================================ */
+
+.codigo-solicitud {
+    background: var(--verde-oscuro);
+    border-radius: var(--radio);
+    color: #fff;
+    padding: 1.75rem 1.25rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.codigo-solicitud::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, .05) 0 1px,
+        transparent 1px 12px
+    );
+    pointer-events: none;
+}
+
+.codigo-solicitud__rotulo {
+    position: relative;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .62);
+}
+
+.codigo-solicitud__valor {
+    position: relative;
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: clamp(2.5rem, 15vw, 3.75rem);
+    line-height: 1.15;
+    /* Separado como un localizador: mas facil de leer y dictar */
+    letter-spacing: .3em;
+    /* Compensa el letter-spacing para que el bloque quede centrado */
+    padding-left: .3em;
+    color: #fff;
+    word-break: break-all;
+}
+
+.codigo-solicitud__copiar {
+    position: relative;
+    margin-top: .5rem;
+}
+
+/* Monto a pagar: mismo tratamiento que el premio en portal_jugada,
+   asi las dos pantallas de "plata" se leen igual. */
+.monto-a-pagar {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.monto-a-pagar__valor {
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: clamp(2rem, 11vw, 2.75rem);
+    line-height: 1.1;
+    color: var(--oro);
+    font-variant-numeric: tabular-nums;
+}

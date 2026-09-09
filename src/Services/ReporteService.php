@@ -248,6 +248,12 @@ class ReporteService
      * si manana alguien enlaza este metodo desde otro lado, sigue sin
      * poder ejecutarlo con un alcance acotado.
      *
+     * La rama de jugadas filtra estado_pago = 'confirmada' [Fase 6]:
+     * una jugada que un cliente armo desde el portal y todavia esta
+     * pendiente de pago (o fue rechazada) no tiene cargado_por -nadie
+     * del staff la tipeo- y apareceria acá como "usuario borrado" en
+     * vez de reflejar lo que realmente paso.
+     *
      * @throws ValidacionException
      * @return array<int,array>
      */
@@ -286,7 +292,7 @@ class ReporteService
               FROM jugadas j
               JOIN clientes c      ON c.id = j.cliente_id
               LEFT JOIN usuarios u ON u.id = j.cargado_por
-             WHERE 1 = 1 $rangoJ
+             WHERE j.estado_pago = 'confirmada' $rangoJ
 
             UNION ALL
 

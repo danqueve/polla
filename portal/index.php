@@ -9,6 +9,7 @@ require_once __DIR__ . '/../config/portal.php';
 
 use Polla\Services\CicloService;
 use Polla\Services\PortalService;
+use Polla\Services\SolicitudService;
 
 requireCliente();
 
@@ -24,6 +25,8 @@ $jugadas      = $portal->jugadasDelCiclo($clienteId, $cicloId);
 $sorteos      = $portal->sorteosDelCiclo($cicloId);
 $totalSorteos = count($sorteos);
 $cicloAbierto = true;
+
+$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId);
 
 $pageTitle  = 'Mis jugadas · ' . APP_NAME;
 $navSeccion = 'mis-jugadas';
@@ -44,6 +47,22 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         </div>
     </section>
 
+    <?php if ($pendiente): ?>
+        <a href="<?= APP_URL ?>/portal/solicitud.php?id=<?= (int) $pendiente['id'] ?>"
+           class="tarjeta p-3 mb-3 d-flex align-items-center justify-content-between gap-2"
+           style="border-color:#e8d6a4;text-decoration:none;color:inherit">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-hourglass-split" style="color:var(--oro)"></i>
+                <span>
+                    Tenés una solicitud sin pagar: código
+                    <strong class="cifra"><?= e($pendiente['numero_registro']) ?></strong>
+                    por <?= e(formatPesos($pendiente['monto_total'])) ?>
+                </span>
+            </span>
+            <i class="bi bi-chevron-right text-secondary flex-shrink-0"></i>
+        </a>
+    <?php endif; ?>
+
     <?php if (!$jugadas): ?>
 
         <div class="tarjeta p-4 text-center">
@@ -51,12 +70,15 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                style="font-size:2.5rem;color:var(--borde-fuerte)" aria-hidden="true"></i>
             <p class="fw-semibold mb-2">Esta semana no tenés jugadas</p>
             <p class="fila__meta mb-0">
-                Hablá con Decena de Oro para cargar una y entrar en el pozo
-                de <?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?>.
+                Armá una jugada vos mismo, o hablá con Decena de Oro, y entrá en
+                el pozo de <?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?>.
             </p>
         </div>
 
-        <a href="<?= APP_URL ?>/portal/historial.php" class="btn btn-outline-secondary w-100 mt-3">
+        <a href="<?= APP_URL ?>/portal/jugar.php" class="btn btn-primary w-100 mt-3">
+            <i class="bi bi-plus-lg"></i> Armar una jugada
+        </a>
+        <a href="<?= APP_URL ?>/portal/historial.php" class="btn btn-outline-secondary w-100 mt-2">
             <i class="bi bi-clock-history"></i> Ver mis jugadas anteriores
         </a>
 

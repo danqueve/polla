@@ -5,15 +5,19 @@ require_once __DIR__ . '/../config/app.php';
 use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
+use Polla\Services\SolicitudService;
 use Polla\Services\SorteoService;
 
 requireLogin();
 
-$db         = getPDO();
-$ciclos     = new CicloService($db);
-$parametros = new ParametroService($db);
-$jugadas    = JugadaService::crearDesde($db);
-$sorteos    = SorteoService::crearDesde($db);
+$db          = getPDO();
+$ciclos      = new CicloService($db);
+$parametros  = new ParametroService($db);
+$jugadas     = JugadaService::crearDesde($db);
+$sorteos     = SorteoService::crearDesde($db);
+$solicitudes = SolicitudService::crearDesde($db);
+
+$solicitudesPendientes = $solicitudes->contarPendientes();
 
 $ciclo   = $ciclos->obtenerCicloActivo();
 $cicloId = (int) $ciclo['id'];
@@ -66,6 +70,19 @@ require __DIR__ . '/../includes/topbar.php';
             <?php endif; ?>
         </div>
     </section>
+
+    <?php if ($solicitudesPendientes > 0): ?>
+        <a href="<?= APP_URL ?>/admin/solicitudes/index.php"
+           class="tarjeta p-3 mb-3 d-flex align-items-center justify-content-between gap-2"
+           style="border-color:#e8d6a4;text-decoration:none;color:inherit">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-hourglass-split" style="color:var(--oro)"></i>
+                <?= $solicitudesPendientes ?>
+                <?= $solicitudesPendientes === 1 ? 'solicitud de pago pendiente' : 'solicitudes de pago pendientes' ?>
+            </span>
+            <i class="bi bi-chevron-right text-secondary"></i>
+        </a>
+    <?php endif; ?>
 
     <div class="row g-2 mb-3">
         <div class="col-4">

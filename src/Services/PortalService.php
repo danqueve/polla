@@ -190,12 +190,20 @@ class PortalService
         return (float) $stmt->fetchColumn();
     }
 
-    /** Cantidad de jugadas que el cliente lleva jugadas en total. */
+    /**
+     * Cantidad de jugadas que el cliente lleva jugadas en total.
+     *
+     * estado_pago = 'confirmada' [Fase 6]: sin esto, una jugada armada
+     * desde el portal y todavia sin pagar (o rechazada) inflaria este
+     * numero antes de ser real.
+     */
     public function totalJugadas(int $clienteId): int
     {
         $stmt = $this->db->prepare(
             "SELECT COUNT(*) FROM jugadas
-              WHERE cliente_id = :cliente AND estado <> 'anulada'"
+              WHERE cliente_id = :cliente
+                AND estado <> 'anulada'
+                AND estado_pago = 'confirmada'"
         );
         $stmt->execute([':cliente' => $clienteId]);
 

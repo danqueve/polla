@@ -9,11 +9,17 @@ use Throwable;
 /**
  * Carga y consulta de jugadas.
  *
- * Una jugada son 10 numeros distintos entre 00 y 99 por $2.000. Al
- * confirmarla, el 60% se suma al pozo del ciclo abierto y el 40% queda
- * como gastos/ganancias. Todo eso ocurre en una sola transaccion: o se
- * guardan la jugada, sus 10 numeros y el aporte al pozo, o no se guarda
- * nada.
+ * Una jugada son 10 numeros distintos entre 00 y 99 por el monto
+ * vigente. Al confirmarla, el 60% se suma al pozo del ciclo abierto y
+ * el 40% queda como gastos/ganancias. Todo eso ocurre en una sola
+ * transaccion: o se guardan la jugada, sus 10 numeros y el aporte al
+ * pozo, o no se guarda nada.
+ *
+ * crearVarias() es el camino de siempre: el staff carga, cobra y
+ * confirma en el mismo paso. crearPendientes() es el camino de la
+ * Fase 6: el cliente arma la jugada desde el portal pero queda sin
+ * ciclo y sin sumar al pozo hasta que el staff confirma el pago via
+ * SolicitudService.
  */
 class JugadaService
 {
@@ -99,9 +105,10 @@ class JugadaService
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo,
-                                      aporte_gastos, pagada, grupo_compra, estado, cargado_por)
-                 VALUES (:cliente, :ciclo, :importe, :pozo, :gastos, 1, :grupo, 'activa', :usuario)"
+                "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo, aporte_gastos,
+                                      pagada, estado_pago, origen_carga, grupo_compra, estado, cargado_por)
+                 VALUES (:cliente, :ciclo, :importe, :pozo, :gastos,
+                         1, 'confirmada', 'staff', :grupo, 'activa', :usuario)"
             );
             $stmtNum = $this->db->prepare(
                 'INSERT INTO jugada_numeros (jugada_id, numero) VALUES (:jugada, :numero)'
@@ -127,6 +134,72 @@ class JugadaService
                 }
 
                 $this->pozo->acumular((int) $ciclo['id'], $reparto['pozo']);
+            }
+
+            $this->db->commit();
+            return $ids;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Inserta N jugadas PENDIENTES DE PAGO para una solicitud armada por
+     * el cliente desde el portal (Fase 6). A diferencia de crearVarias():
+     *
+     *  - ciclo_id queda NULL: todavia no pertenecen a ninguna semana.
+     *  - pagada = 0 y estado_pago = 'pendiente_pago': no se cobro nada.
+     *  - no se acumula al pozo aca. Eso ocurre recien cuando el staff
+     *    confirma el pago, en SolicitudService::confirmar(), que le
+     *    asigna el ciclo abierto EN ESE momento.
+     *  - cargado_por queda NULL: nadie del staff tipeo estos numeros.
+     *
+     * El llamador (SolicitudService) ya valido cada set de numeros con
+     * validarNumeros() y calculo el costo con el monto vigente al
+     * momento de la seleccion; por eso $costoJugada se recibe hecho en
+     * vez de volver a leer ParametroService aca, para que no pueda haber
+     * diferencia entre el monto_total de la solicitud y el importe real
+     * de cada jugada si el admin llegara a cambiar el monto en el medio.
+     *
+     * @param array<int,int[]> $numerosPorJugada Ya validados por el llamador.
+     * @param array{importe:float,pozo:float,gastos:float} $costoJugada
+     * @return int[] Ids de las jugadas creadas.
+     */
+    public function crearPendientes(
+        int $clienteId,
+        array $numerosPorJugada,
+        int $solicitudId,
+        array $costoJugada
+    ): array {
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo, aporte_gastos,
+                                      pagada, estado_pago, origen_carga, solicitud_id, estado)
+                 VALUES (:cliente, NULL, :importe, :pozo, :gastos,
+                         0, 'pendiente_pago', 'cliente', :solicitud, 'activa')"
+            );
+            $stmtNum = $this->db->prepare(
+                'INSERT INTO jugada_numeros (jugada_id, numero) VALUES (:jugada, :numero)'
+            );
+
+            $ids = [];
+            foreach ($numerosPorJugada as $numeros) {
+                $stmt->execute([
+                    ':cliente'   => $clienteId,
+                    ':importe'   => $costoJugada['importe'],
+                    ':pozo'      => $costoJugada['pozo'],
+                    ':gastos'    => $costoJugada['gastos'],
+                    ':solicitud' => $solicitudId,
+                ]);
+
+                $jugadaId = (int) $this->db->lastInsertId();
+                $ids[]    = $jugadaId;
+
+                foreach ($numeros as $numero) {
+                    $stmtNum->execute([':jugada' => $jugadaId, ':numero' => $numero]);
+                }
             }
 
             $this->db->commit();
@@ -222,6 +295,7 @@ class JugadaService
         // GROUP_CONCAT ordenado trae los 10 numeros en una sola pasada,
         // sin una consulta extra por jugada.
         $sql = 'SELECT j.id, j.importe, j.aporte_pozo, j.pagada, j.estado, j.fecha_carga,
+                       j.origen_carga,
                        c.id AS cliente_id, c.nombre AS cliente_nombre,
                        c.nro_cliente, c.dni,
                        u.nombre AS cargado_por_nombre,
@@ -274,19 +348,27 @@ class JugadaService
         return $jugada;
     }
 
-    /** Ultimas jugadas cargadas, para el tablero. */
+    /**
+     * Ultimas jugadas cargadas, para el tablero.
+     *
+     * Filtra estado_pago = 'confirmada' [Fase 6]: sin esto, una jugada
+     * que un cliente acaba de armar desde el portal (todavia sin pagar,
+     * sin ciclo asignado) apareceria aca con sus 10 numeros a la vista,
+     * indistinguible de una jugada real ya cobrada.
+     */
     public function ultimas(int $limite = 5): array
     {
         $stmt = $this->db->prepare(
-            'SELECT j.id, j.importe, j.fecha_carga,
+            "SELECT j.id, j.importe, j.fecha_carga,
                     c.nombre AS cliente_nombre, c.nro_cliente,
                     GROUP_CONCAT(n.numero ORDER BY n.numero ASC) AS numeros
                FROM jugadas j
                JOIN clientes c ON c.id = j.cliente_id
                LEFT JOIN jugada_numeros n ON n.jugada_id = j.id
+              WHERE j.estado_pago = 'confirmada'
               GROUP BY j.id
               ORDER BY j.id DESC
-              LIMIT ' . (int) $limite
+              LIMIT " . (int) $limite
         );
         $stmt->execute();
 

@@ -99,6 +99,8 @@ require __DIR__ . '/../../includes/topbar.php';
                             · <?= e(formatFechaHora($jugada['fecha_carga'])) ?>
                             <?php if ($jugada['cargado_por_nombre']): ?>
                                 · por <?= e($jugada['cargado_por_nombre']) ?>
+                            <?php elseif ($jugada['origen_carga'] === 'cliente'): ?>
+                                · <i class="bi bi-phone"></i> autoservicio
                             <?php endif; ?>
                         </p>
                     </div>

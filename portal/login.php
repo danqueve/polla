@@ -94,7 +94,10 @@ require __DIR__ . '/../includes/head.php';
             </form>
         </div>
 
-        <p class="text-center mt-4 mb-0" style="color:rgba(255,255,255,.45);font-size:.8125rem">
+        <p class="text-center mt-4 mb-2" style="color:rgba(255,255,255,.7);font-size:.875rem">
+            ¿Todavía no jugaste? <a href="<?= APP_URL ?>/registro.php" style="color:inherit">Registrate acá</a>.
+        </p>
+        <p class="text-center mb-0" style="color:rgba(255,255,255,.45);font-size:.8125rem">
             ¿No podés entrar? Hablá con Decena de Oro.
         </p>
     </div>

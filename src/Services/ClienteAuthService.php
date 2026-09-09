@@ -19,8 +19,12 @@ class ClienteAuthService
      * Minimo mas corto que el del panel (8). La clave del cliente protege
      * datos de solo lectura sobre sus propias jugadas, y quien la usa es
      * gente tipeando en un celular una vez por semana.
+     *
+     * Publica porque ClienteRegistroService la reutiliza para la clave
+     * que la persona elige al autorregistrarse: es la misma clave del
+     * portal, asi que tiene que cumplir la misma regla.
      */
-    private const PASSWORD_MIN = 6;
+    public const PASSWORD_MIN = 6;
 
     /** Hash senuelo para que el login tarde lo mismo con un DNI inexistente. */
     private const HASH_SENUELO = '$2y$10$eLaF/qM6H2MQXg/7vOD61..P0t.FfMWM/zmaw3FYFLJePAJ2ejNxa';

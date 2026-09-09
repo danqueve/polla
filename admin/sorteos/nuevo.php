@@ -137,7 +137,7 @@ require __DIR__ . '/../../includes/topbar.php';
                         <span class="rotulo">Paso 2</span>
                         <div class="fw-semibold">Los <?= $cantidad ?> numeros</div>
                     </div>
-                    <button type="button" id="btn-limpiar" class="btn btn-sm btn-outline-secondary">
+                    <button type="button" class="js-limpiar btn btn-sm btn-outline-secondary">
                         <i class="bi bi-eraser"></i> Limpiar
                     </button>
                 </div>
@@ -169,7 +169,7 @@ require __DIR__ . '/../../includes/topbar.php';
                 <hr class="my-3">
 
                 <span class="rotulo d-block mb-2">Tablero 00 - 99</span>
-                <div class="tablero" id="tablero-numeros" aria-hidden="true">
+                <div class="tablero js-tablero" aria-hidden="true">
                     <?php for ($n = 0; $n <= 99; $n++): ?>
                         <div class="tablero__celda"><?= num2($n) ?></div>
                     <?php endfor; ?>

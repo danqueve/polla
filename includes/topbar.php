@@ -41,6 +41,11 @@ $_iniciales = mb_strtoupper(mb_substr(trim($_u['nombre']) !== '' ? $_u['nombre']
                             <i class="bi bi-people me-2"></i>Usuarios del sistema
                         </a>
                     </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/configuracion/index.php">
+                            <i class="bi bi-sliders me-2"></i>Configuración
+                        </a>
+                    </li>
                 <?php endif; ?>
                 <li>
                     <a class="dropdown-item py-2" href="<?= APP_URL ?>/auth/cambiar_clave.php">

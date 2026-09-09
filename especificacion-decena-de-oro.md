@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.1 (rebautizado de "Polla Semanal Los Quevedo" a "Decena de Oro")
+**Versión:** 1.2 (agrega autorregistro, monto configurable y carga múltiple de jugadas)
 
 ---
 
@@ -16,7 +16,7 @@ Este juego es una variante de la modalidad oficial conocida como **Quiniela Poce
 
 ## 3. Reglas del juego
 
-- Cada jugada cuesta **$2.000**.
+- Cada jugada cuesta un **monto configurable por el Administrador** (valor inicial: $2.000). Los cambios de monto no afectan jugadas ya cargadas — cada jugada guarda el importe vigente al momento de pagarse.
 - Reparto de cada jugada pagada: **60% al pozo de premios**, **40% a gastos/ganancias** de Decena de Oro.
 - El cliente elige **10 números distintos entre 00 y 99**.
 - Los 10 números deben salir **todos en un mismo sorteo** de la Quiniela Nocturna de Tucumán (que sortea 20 números de 2 cifras, lunes a viernes).
@@ -45,19 +45,24 @@ Si llega el sorteo del viernes sin ganador, el ciclo se cierra como `cerrado_sin
 | Acción | Administrador | Supervisor |
 |---|---|---|
 | Crear y borrar usuarios (admin/supervisor) | ✅ | ❌ |
-| Dar de alta clientes | ✅ | ✅ |
-| Cargar jugadas | ✅ | ✅ |
+| Dar de alta clientes (manual) | ✅ | ✅ |
+| Cargar jugadas (una o varias juntas) | ✅ | ✅ |
 | Cargar los 20 números del sorteo | ✅ | ✅ |
 | Borrar clientes / jugadas / sorteos | ✅ | ❌ |
-| Configurar parámetros (costo de jugada, % pozo/gastos) | ✅ | ❌ |
+| Configurar parámetros (monto de jugada, % pozo/gastos) | ✅ | ❌ |
 | Ver reportes y recaudación | ✅ | ✅ (limitado, a definir) |
+| Aprobar autorregistros de clientes | ✅ | ✅ |
+| Rechazar o eliminar solicitudes de autorregistro | ✅ | ❌ |
 
 El cliente **no es un usuario administrativo**: tiene su propio login de solo lectura (ver punto 6).
 
 ## 5. Flujo funcional
 
-1. **Alta de cliente**: admin o supervisor carga DNI, nombre y teléfono. El sistema genera un **número de cliente** único. Usuario y clave inicial de acceso al portal = DNI; se exige cambio de clave en el primer ingreso.
-2. **Carga de jugada**: admin o supervisor selecciona cliente, ingresa los 10 números (validación: 10 números distintos, entre 00 y 99), registra el pago y confirma. El sistema suma el 60% del importe al pozo del ciclo activo.
+1. **Alta de cliente**: por dos vías —
+   - **Manual**: admin o supervisor carga DNI, nombre y teléfono; queda aprobada al instante. Usuario y clave inicial = DNI, con cambio obligatorio en el primer ingreso.
+   - **Autorregistro**: la propia persona completa el formulario público, elige su contraseña, y la cuenta queda **pendiente** hasta que un admin/supervisor la apruebe (ver sección 7.1).
+   - En ambos casos el sistema genera un **número de cliente** único (formato año + 6 dígitos aleatorios).
+2. **Carga de jugada**: admin o supervisor selecciona cliente, ingresa uno o **varios sets de 10 números** en la misma operación (ver sección 7.3), registra el pago total y confirma. El sistema suma el 60% de cada jugada al pozo del ciclo activo.
 3. **Carga del sorteo**: al finalizar cada sorteo nocturno, admin o supervisor carga manualmente los 20 números del extracto oficial.
 4. **Cotejo automático**: al guardar el sorteo, el sistema compara los 10 números de cada jugada activa del ciclo contra los 20 cargados. Si hay intersección de 10, marca la jugada como ganadora.
 5. **Cierre de ciclo**: si hay uno o más ganadores, el sistema liquida el pozo (dividido en partes iguales si hay más de uno), marca el ciclo como cerrado y abre uno nuevo en $0.
@@ -65,24 +70,47 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 
 ## 6. Portal del cliente
 
-- Login con usuario = DNI y clave = DNI, con cambio obligatorio de clave en el primer acceso.
+- Login: usuario = DNI; clave = DNI con cambio obligatorio en el primer ingreso (clientes de alta manual), o la contraseña elegida al autorregistrarse (clientes de autorregistro).
+- Un cliente con cuenta en estado **pendiente** puede iniciar sesión pero solo ve un aviso de que su cuenta está en revisión — no puede ver jugadas ni se le pueden cargar hasta que se apruebe.
 - Vista de jugadas activas del ciclo en curso, con los 10 números y cuáles ya salieron en los sorteos corridos de la semana.
 - Historial de jugadas y resultados de ciclos anteriores.
 - Estado del pozo acumulado del ciclo actual (opcional, para generar expectativa).
 
-## 7. Modelo de datos (propuesta inicial)
+## 7. Ampliación post Fase 4 (nuevas funcionalidades)
+
+### 7.1 Autorregistro de clientes
+
+- Formulario público (sin login) donde cualquier persona carga DNI, nombre, teléfono y **elige su propia contraseña** (con confirmación) — a diferencia del alta manual, acá no se usa el flujo de clave inicial = DNI.
+- Validación de DNI: formato numérico (7-8 dígitos) y no duplicado contra clientes existentes.
+- La cuenta queda con estado **pendiente** y no puede operar (ni cargarle jugadas ni ver datos) hasta que un admin o supervisor la **apruebe** desde un listado de solicitudes pendientes.
+- Al aprobarse, pasa a estado **aprobado** y el cliente ya puede operar con normalidad.
+- El alta manual por staff sigue existiendo en paralelo y queda **aprobada automáticamente**, sin pasar por la cola de aprobación, porque ahí el staff ya validó los datos en persona.
+
+### 7.2 Monto de jugada configurable
+
+- El Administrador puede cambiar el monto de la jugada desde una pantalla de configuración (ver fila "Configurar parámetros" en la sección 4).
+- El sistema toma el monto vigente al momento de cargar cada jugada nueva y lo guarda en `jugadas.importe` — los cambios de monto no alteran jugadas ya cargadas ni el cálculo del pozo de ciclos anteriores.
+
+### 7.3 Carga múltiple de jugadas en una sola operación
+
+- En la pantalla de carga de jugada, admin/supervisor pueden agregar **varios sets de 10 números para el mismo cliente en una sola operación** (por ejemplo, 3 jugadas si el cliente paga por 3 de una vez), en vez de repetir el formulario completo cada vez.
+- Cada set se guarda como una **jugada independiente** (con su propio importe, tomado del monto vigente), todas asociadas al mismo cliente y al ciclo activo, y todas aportan su 60% por separado al pozo.
+- El pago se sigue gestionando en persona o por transferencia por el staff, que confirma el total cobrado (monto vigente × cantidad de jugadas) al cerrar la carga — no requiere integrar un medio de pago online.
+- Queda registrado a qué operación de carga conjunta pertenece cada jugada, solo a fines de trazabilidad en reportes (no afecta la lógica de premios ni el cotejo).
+
+## 8. Modelo de datos (propuesta inicial)
 
 **usuarios**
 `id, usuario, password_hash, rol (admin | supervisor), activo`
 
 **clientes**
-`id, nro_cliente (formato AAAA-NNNNNN, año + 6 dígitos aleatorios, UNIQUE), dni, nombre, telefono, password_hash, debe_cambiar_clave, fecha_alta`
+`id, nro_cliente (formato AAAA-NNNNNN, año + 6 dígitos aleatorios, UNIQUE), dni, nombre, telefono, password_hash, debe_cambiar_clave, estado (pendiente | aprobado | rechazado), origen_alta (manual | autorregistro), fecha_alta`
 
 **ciclos** *(semana de juego)*
 `id, fecha_inicio, fecha_fin, estado (abierto | cerrado_con_ganador | cerrado_sin_ganador)`
 
 **jugadas**
-`id, cliente_id, ciclo_id, importe, pagada, fecha_carga, cargado_por (usuario_id)`
+`id, cliente_id, ciclo_id, importe, pagada, grupo_compra (id o UUID, para agrupar jugadas cargadas juntas), fecha_carga, cargado_por (usuario_id)`
 
 **jugada_numeros**
 `id, jugada_id, numero (00-99)`
@@ -99,14 +127,17 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 **ganadores**
 `id, jugada_id, sorteo_id, monto_premio`
 
-## 8. Stack tecnológico
+**configuracion**
+`clave (ej. monto_jugada), valor, actualizado_por (usuario_id), fecha_actualizacion`
+
+## 9. Stack tecnológico
 
 - **Backend:** PHP, mismo criterio que `sas_imperio` y `crm_imperio`.
 - **Base de datos:** MySQL, mismo servidor y flujo de despliegue (git pull) ya usado en el VPS.
 - **Frontend:** Bootstrap 5 vía CDN (sin build tools), con diseño mobile-first: formularios grandes y táctiles para la carga de jugadas y sorteos, vistas simples y legibles en el portal del cliente.
 - **Hosting:** VPS de prueba (Ubuntu 24.04) primero, réplica al VPS de producción una vez validado.
 
-## 9. Fases de desarrollo
+## 10. Fases de desarrollo
 
 | Fase | Contenido | Estimación |
 |---|---|---|
@@ -114,8 +145,9 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 | 2. Sorteos y cotejo | Carga manual del extracto, motor de cotejo automático, cierre de ciclo y liquidación de pozo | 1 semana |
 | 3. Portal del cliente | Login DNI/DNI, vista de jugadas y resultados, estado del pozo | 1 semana |
 | 4. Administración y reportes | Recaudación, historial de ganadores, exportables | 1 semana |
+| 5. Ampliación | Autorregistro con aprobación, monto configurable, carga múltiple de jugadas | 1 semana |
 
-## 10. Puntos abiertos antes de programar
+## 11. Puntos abiertos antes de programar
 
 1. Definir el nivel de detalle de reportes que verá el Supervisor (¿recaudación total, o solo sus propias cargas?). Resuelto en la Fase 4: admin ve todo, supervisor solo lo que él mismo cargó.
 2. Formato de `nro_cliente` (resuelto): **año + 6 dígitos aleatorios**, sin correlatividad — ejemplo `2026-048372`. Se genera al azar y se valida contra un índice `UNIQUE` en la tabla `clientes`; si choca con uno existente, se regenera y reintenta.

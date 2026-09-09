@@ -105,26 +105,72 @@ class ClienteService
         }
 
         // La clave inicial es el propio DNI; el flag obliga a cambiarla.
+        // Alta manual: aprobada al instante, el staff ya valido los datos.
         $hash = password_hash($dni, PASSWORD_DEFAULT);
 
+        return $this->insertar($dni, $nombre, $telefono, $hash, true, 'aprobado', 'manual', $altaPor);
+    }
+
+    /**
+     * Alta por autorregistro publico: la persona elige su propia clave
+     * (no el DNI) y la cuenta nace pendiente de aprobacion. Comparte con
+     * crear() la validacion, el chequeo de DNI duplicado y el reintento
+     * del nro_cliente; lo unico que cambia es el origen, el estado
+     * inicial y que no hay que forzar un cambio de clave.
+     *
+     * @param array{dni:string,nombre:string,telefono?:string} $datos
+     * @throws ValidacionException
+     */
+    public function crearAutorregistro(array $datos, string $passwordHash): int
+    {
+        $dni      = self::normalizarDni($datos['dni'] ?? '');
+        $nombre   = trim($datos['nombre'] ?? '');
+        $telefono = self::normalizarTelefono($datos['telefono'] ?? '');
+
+        $this->validarDatos($dni, $nombre, $telefono);
+
+        if ($this->existeDni($dni)) {
+            throw ValidacionException::de('Ya hay un cliente cargado con ese DNI.');
+        }
+
+        return $this->insertar($dni, $nombre, $telefono, $passwordHash, false, 'pendiente', 'autorregistro', null);
+    }
+
+    /**
+     * Inserta la fila con reintento ante colision del nro_cliente al azar:
+     * si dos altas simultaneas sacan el mismo numero, el UNIQUE de la
+     * tabla frena una y el reintento le genera otro numero distinto.
+     *
+     * @throws ValidacionException
+     */
+    private function insertar(
+        string $dni,
+        string $nombre,
+        string $telefono,
+        string $passwordHash,
+        bool $debeCambiarClave,
+        string $estado,
+        string $origenAlta,
+        ?int $altaPor
+    ): int {
         $stmt = $this->db->prepare(
             'INSERT INTO clientes (nro_cliente, dni, nombre, telefono, password_hash,
-                                   debe_cambiar_clave, activo, alta_por)
-             VALUES (:nro, :dni, :nombre, :telefono, :hash, 1, 1, :alta_por)'
+                                   debe_cambiar_clave, activo, estado, origen_alta, alta_por)
+             VALUES (:nro, :dni, :nombre, :telefono, :hash, :debe_cambiar, 1, :estado, :origen, :alta_por)'
         );
 
-        // El numero se genera al azar en cada intento: si dos altas
-        // simultaneas sacan el mismo numero, el UNIQUE de la tabla frena
-        // una y el reintento le genera otro numero distinto a esa.
         for ($intento = 1; $intento <= self::REINTENTOS_NRO; $intento++) {
             try {
                 $stmt->execute([
-                    ':nro'      => $this->generarNroCliente(),
-                    ':dni'      => $dni,
-                    ':nombre'   => $nombre,
-                    ':telefono' => $telefono !== '' ? $telefono : null,
-                    ':hash'     => $hash,
-                    ':alta_por' => $altaPor,
+                    ':nro'          => $this->generarNroCliente(),
+                    ':dni'          => $dni,
+                    ':nombre'       => $nombre,
+                    ':telefono'     => $telefono !== '' ? $telefono : null,
+                    ':hash'         => $passwordHash,
+                    ':debe_cambiar' => $debeCambiarClave ? 1 : 0,
+                    ':estado'       => $estado,
+                    ':origen'       => $origenAlta,
+                    ':alta_por'     => $altaPor,
                 ]);
                 return (int) $this->db->lastInsertId();
             } catch (PDOException $e) {

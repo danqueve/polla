@@ -92,7 +92,7 @@ class ParametroService
      * @param array<string,string> $valores
      * @throws ValidacionException
      */
-    public function actualizar(array $valores): void
+    public function actualizar(array $valores, ?int $actualizadoPor = null): void
     {
         $errores = [];
 
@@ -111,11 +111,15 @@ class ParametroService
             throw new ValidacionException($errores);
         }
 
-        $sql = 'INSERT INTO parametros (clave, valor) VALUES (:clave, :valor)
-                ON DUPLICATE KEY UPDATE valor = VALUES(valor)';
+        $sql = 'INSERT INTO parametros (clave, valor, actualizado_por) VALUES (:clave, :valor, :actualizado_por)
+                ON DUPLICATE KEY UPDATE valor = VALUES(valor), actualizado_por = VALUES(actualizado_por)';
         $stmt = $this->db->prepare($sql);
         foreach ($valores as $clave => $valor) {
-            $stmt->execute([':clave' => $clave, ':valor' => (string) $valor]);
+            $stmt->execute([
+                ':clave'           => $clave,
+                ':valor'           => (string) $valor,
+                ':actualizado_por' => $actualizadoPor,
+            ]);
         }
 
         $this->cache = null;

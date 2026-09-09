@@ -50,42 +50,87 @@ class JugadaService
      */
     public function crear(int $clienteId, array $numerosCrudos, ?int $cargadoPor): int
     {
+        return $this->crearVarias($clienteId, [$numerosCrudos], $cargadoPor)[0];
+    }
+
+    /**
+     * Registra varias jugadas para el mismo cliente en una sola operacion
+     * (compra conjunta): todas con el monto vigente, todas al ciclo activo,
+     * y todas marcadas con el mismo grupo_compra para trazabilidad en
+     * reportes (no afecta el cotejo ni el calculo del pozo, que siguen
+     * siendo por jugada individual).
+     *
+     * Valida los N sets completos antes de grabar cualquiera: una jugada
+     * mal cargada no debe dejar a las otras ya cobradas.
+     *
+     * @param array<int,string[]> $listasDeNumeros Un set de numeros crudos por jugada.
+     * @return int[] Ids de las jugadas creadas, en el mismo orden que $listasDeNumeros.
+     * @throws ValidacionException
+     */
+    public function crearVarias(int $clienteId, array $listasDeNumeros, ?int $cargadoPor): array
+    {
+        if (!$listasDeNumeros) {
+            throw ValidacionException::de('Cargá al menos una jugada.');
+        }
+
         $cliente = $this->buscarClienteActivo($clienteId);
-        $numeros = $this->validarNumeros($numerosCrudos);
+
+        $numerosPorJugada = [];
+        $errores          = [];
+        foreach (array_values($listasDeNumeros) as $i => $crudos) {
+            try {
+                $numerosPorJugada[] = $this->validarNumeros($crudos);
+            } catch (ValidacionException $e) {
+                $prefijo = count($listasDeNumeros) > 1 ? 'Jugada ' . ($i + 1) . ': ' : '';
+                foreach ($e->errores() as $error) {
+                    $errores[] = $prefijo . $error;
+                }
+            }
+        }
+        if ($errores) {
+            throw new ValidacionException($errores);
+        }
 
         $ciclo   = $this->ciclos->obtenerCicloActivo();
         $importe = $this->parametros->importeJugada();
         $reparto = $this->parametros->repartir($importe);
+        $grupo   = self::uuid4();
 
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo,
-                                      aporte_gastos, pagada, estado, cargado_por)
-                 VALUES (:cliente, :ciclo, :importe, :pozo, :gastos, 1, 'activa', :usuario)"
+                                      aporte_gastos, pagada, grupo_compra, estado, cargado_por)
+                 VALUES (:cliente, :ciclo, :importe, :pozo, :gastos, 1, :grupo, 'activa', :usuario)"
             );
-            $stmt->execute([
-                ':cliente' => $cliente['id'],
-                ':ciclo'   => $ciclo['id'],
-                ':importe' => $importe,
-                ':pozo'    => $reparto['pozo'],
-                ':gastos'  => $reparto['gastos'],
-                ':usuario' => $cargadoPor,
-            ]);
-
-            $jugadaId = (int) $this->db->lastInsertId();
-
             $stmtNum = $this->db->prepare(
                 'INSERT INTO jugada_numeros (jugada_id, numero) VALUES (:jugada, :numero)'
             );
-            foreach ($numeros as $numero) {
-                $stmtNum->execute([':jugada' => $jugadaId, ':numero' => $numero]);
+
+            $ids = [];
+            foreach ($numerosPorJugada as $numeros) {
+                $stmt->execute([
+                    ':cliente' => $cliente['id'],
+                    ':ciclo'   => $ciclo['id'],
+                    ':importe' => $importe,
+                    ':pozo'    => $reparto['pozo'],
+                    ':gastos'  => $reparto['gastos'],
+                    ':grupo'   => $grupo,
+                    ':usuario' => $cargadoPor,
+                ]);
+
+                $jugadaId = (int) $this->db->lastInsertId();
+                $ids[]    = $jugadaId;
+
+                foreach ($numeros as $numero) {
+                    $stmtNum->execute([':jugada' => $jugadaId, ':numero' => $numero]);
+                }
+
+                $this->pozo->acumular((int) $ciclo['id'], $reparto['pozo']);
             }
 
-            $this->pozo->acumular((int) $ciclo['id'], $reparto['pozo']);
-
             $this->db->commit();
-            return $jugadaId;
+            return $ids;
         } catch (Throwable $e) {
             $this->db->rollBack();
             throw $e;
@@ -314,5 +359,15 @@ class JugadaService
             return [];
         }
         return array_map('intval', explode(',', $concatenado));
+    }
+
+    /** UUIDv4 para agrupar las jugadas de una misma carga conjunta. */
+    private static function uuid4(): string
+    {
+        $datos = random_bytes(16);
+        $datos[6] = chr((ord($datos[6]) & 0x0f) | 0x40);
+        $datos[8] = chr((ord($datos[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($datos), 4));
     }
 }

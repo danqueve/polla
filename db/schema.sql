@@ -21,27 +21,13 @@ DROP TABLE IF EXISTS `jugadas`;
 DROP TABLE IF EXISTS `pozo_ciclo`;
 DROP TABLE IF EXISTS `ciclos`;
 DROP TABLE IF EXISTS `clientes`;
-DROP TABLE IF EXISTS `usuarios`;
 DROP TABLE IF EXISTS `parametros`;
-
-
--- ------------------------------------------------------------
--- parametros
--- Configuracion editable por el admin (importe, % de reparto...).
--- Se guarda como clave/valor de texto y cada Service castea.
--- ------------------------------------------------------------
-CREATE TABLE `parametros` (
-    `clave`          VARCHAR(50)  NOT NULL,
-    `valor`          VARCHAR(255) NOT NULL,
-    `descripcion`    VARCHAR(255)     NULL,
-    `actualizado_en` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                  ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`clave`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+DROP TABLE IF EXISTS `usuarios`;
 
 
 -- ------------------------------------------------------------
 -- usuarios  (panel administrativo: admin | supervisor)
+-- Va primero: parametros y clientes tienen FK hacia esta tabla.
 -- ------------------------------------------------------------
 CREATE TABLE `usuarios` (
     `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -55,6 +41,25 @@ CREATE TABLE `usuarios` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_usuarios_usuario` (`usuario`),
     KEY `idx_usuarios_rol_activo` (`rol`, `activo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ------------------------------------------------------------
+-- parametros
+-- Configuracion editable por el admin (importe, % de reparto...).
+-- Se guarda como clave/valor de texto y cada Service castea.
+-- ------------------------------------------------------------
+CREATE TABLE `parametros` (
+    `clave`           VARCHAR(50)  NOT NULL,
+    `valor`           VARCHAR(255) NOT NULL,
+    `descripcion`     VARCHAR(255)     NULL,
+    `actualizado_por` INT UNSIGNED     NULL,
+    `actualizado_en`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                   ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`clave`),
+    CONSTRAINT `fk_parametros_usuario`
+        FOREIGN KEY (`actualizado_por`) REFERENCES `usuarios` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -73,6 +78,10 @@ CREATE TABLE `clientes` (
     `password_hash`      VARCHAR(255) NOT NULL,
     `debe_cambiar_clave` TINYINT(1)   NOT NULL DEFAULT 1,
     `activo`             TINYINT(1)   NOT NULL DEFAULT 1,
+    `estado`             ENUM('pendiente','aprobado','rechazado')
+                                      NOT NULL DEFAULT 'aprobado',
+    `origen_alta`        ENUM('manual','autorregistro')
+                                      NOT NULL DEFAULT 'manual',
     `fecha_alta`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `alta_por`           INT UNSIGNED     NULL,
     `ultimo_acceso`      DATETIME         NULL,
@@ -81,6 +90,7 @@ CREATE TABLE `clientes` (
     UNIQUE KEY `uk_clientes_dni`  (`dni`),
     KEY `idx_clientes_nombre`     (`nombre`),
     KEY `idx_clientes_activo`     (`activo`, `nombre`),
+    KEY `idx_clientes_estado`     (`estado`, `fecha_alta`),
     KEY `idx_clientes_alta_por`   (`alta_por`),
     CONSTRAINT `fk_clientes_alta_por`
         FOREIGN KEY (`alta_por`) REFERENCES `usuarios` (`id`)
@@ -149,15 +159,17 @@ CREATE TABLE `jugadas` (
     `aporte_pozo`    DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `aporte_gastos`  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     `pagada`         TINYINT(1)    NOT NULL DEFAULT 1,
+    `grupo_compra`   CHAR(36)          NULL,
     `estado`         ENUM('activa','ganadora','perdedora','anulada')
                                    NOT NULL DEFAULT 'activa',
     `fecha_carga`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `cargado_por`    INT UNSIGNED      NULL,
     PRIMARY KEY (`id`),
-    KEY `idx_jugadas_ciclo_estado` (`ciclo_id`, `estado`),
-    KEY `idx_jugadas_cliente`      (`cliente_id`, `fecha_carga`),
-    KEY `idx_jugadas_cargado_por`  (`cargado_por`, `fecha_carga`),
-    KEY `idx_jugadas_fecha`        (`fecha_carga`),
+    KEY `idx_jugadas_ciclo_estado`   (`ciclo_id`, `estado`),
+    KEY `idx_jugadas_cliente`        (`cliente_id`, `fecha_carga`),
+    KEY `idx_jugadas_cargado_por`    (`cargado_por`, `fecha_carga`),
+    KEY `idx_jugadas_fecha`          (`fecha_carga`),
+    KEY `idx_jugadas_grupo_compra`   (`grupo_compra`),
     CONSTRAINT `fk_jugadas_cliente`
         FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`)
         ON DELETE RESTRICT ON UPDATE CASCADE,

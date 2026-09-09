@@ -63,8 +63,11 @@ function clienteActual(): array
  * @param bool $permitirCambioClave true solo en cambiar_clave.php, que es
  *                                  la unica pantalla accesible con el
  *                                  cambio de clave pendiente.
+ * @param bool $permitirPendiente  true solo en portal/pendiente.php, que
+ *                                  es la unica pantalla accesible con la
+ *                                  cuenta todavia sin aprobar.
  */
-function requireCliente(bool $permitirCambioClave = false): void
+function requireCliente(bool $permitirCambioClave = false, bool $permitirPendiente = false): void
 {
     if (!clienteLogueado()) {
         header('Location: ' . APP_URL . '/portal/login.php');
@@ -72,19 +75,34 @@ function requireCliente(bool $permitirCambioClave = false): void
     }
 
     $stmt = getPDO()->prepare(
-        'SELECT activo, debe_cambiar_clave FROM clientes WHERE id = :id LIMIT 1'
+        'SELECT activo, estado, debe_cambiar_clave FROM clientes WHERE id = :id LIMIT 1'
     );
     $stmt->execute([':id' => clienteActualId()]);
-    $estado = $stmt->fetch();
+    $fila = $stmt->fetch();
 
-    if (!$estado || (int) $estado['activo'] !== 1) {
+    if (!$fila || (int) $fila['activo'] !== 1) {
         cerrarSesionCliente();
         setFlash('danger', 'Tu acceso fue dado de baja. Hablá con Decena de Oro.');
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }
 
-    if (!$permitirCambioClave && (int) $estado['debe_cambiar_clave'] === 1) {
+    if ($fila['estado'] === 'rechazado') {
+        cerrarSesionCliente();
+        setFlash('danger', 'Tu solicitud de alta fue rechazada. Hablá con Decena de Oro.');
+        header('Location: ' . APP_URL . '/portal/login.php');
+        exit;
+    }
+
+    if ($fila['estado'] === 'pendiente') {
+        if (!$permitirPendiente) {
+            header('Location: ' . APP_URL . '/portal/pendiente.php');
+            exit;
+        }
+        return;
+    }
+
+    if (!$permitirCambioClave && (int) $fila['debe_cambiar_clave'] === 1) {
         header('Location: ' . APP_URL . '/portal/cambiar_clave.php');
         exit;
     }

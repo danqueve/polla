@@ -2,12 +2,14 @@
 /** Listado y busqueda de clientes. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\ClienteRegistroService;
 use Polla\Services\ClienteService;
 
 requireLogin();
 
-$busqueda = trim($_GET['q'] ?? '');
-$clientes = (new ClienteService(getPDO()))->listar($busqueda);
+$busqueda   = trim($_GET['q'] ?? '');
+$clientes   = (new ClienteService(getPDO()))->listar($busqueda);
+$pendientes = ClienteRegistroService::crearDesde(getPDO())->contarPendientes();
 
 $pageTitle  = 'Clientes · ' . APP_NAME;
 $navSeccion = 'clientes';
@@ -28,6 +30,19 @@ require __DIR__ . '/../../includes/topbar.php';
             <i class="bi bi-person-plus"></i> Nuevo
         </a>
     </div>
+
+    <?php if ($pendientes > 0): ?>
+        <a href="<?= APP_URL ?>/admin/clientes/solicitudes.php"
+           class="tarjeta p-3 mb-3 d-flex align-items-center justify-content-between gap-2"
+           style="border-color:#e8d6a4;text-decoration:none;color:inherit">
+            <span class="d-flex align-items-center gap-2">
+                <i class="bi bi-inbox" style="color:var(--oro)"></i>
+                <?= $pendientes ?> <?= $pendientes === 1 ? 'solicitud pendiente' : 'solicitudes pendientes' ?>
+                de autorregistro
+            </span>
+            <i class="bi bi-chevron-right text-secondary"></i>
+        </a>
+    <?php endif; ?>
 
     <form method="get" class="mb-3" role="search">
         <div class="position-relative">

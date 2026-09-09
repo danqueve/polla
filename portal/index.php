@@ -8,7 +8,9 @@
 require_once __DIR__ . '/../config/portal.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\ParametroService;
 use Polla\Services\PortalService;
+use Polla\Services\PozoService;
 use Polla\Services\SolicitudService;
 
 requireCliente();
@@ -28,6 +30,11 @@ $cicloAbierto = true;
 
 $pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId);
 
+// Fase 7: el pozo que ve el cliente nunca baja del premio base
+// garantizado, aunque lo acumulado real esta semana sea menor.
+$premioBase   = (new ParametroService($db))->premioBase();
+$pozoMostrado = PozoService::montoAMostrar((float) ($ciclo['monto_acumulado'] ?? 0), $premioBase);
+
 $pageTitle  = 'Mis jugadas · ' . APP_NAME;
 $navSeccion = 'mis-jugadas';
 require __DIR__ . '/../includes/head.php';
@@ -41,7 +48,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
     <!-- Pozo de la semana -->
     <section class="pozo pozo-cliente mb-4 text-center">
         <div class="pozo__rotulo mb-2">Pozo de esta semana</div>
-        <div class="pozo__monto"><?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?></div>
+        <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
         <div class="mt-3" style="color:rgba(255,255,255,.72);font-size:.8125rem">
             Semana del <?= e(CicloService::rotulo($ciclo)) ?>
         </div>
@@ -71,7 +78,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             <p class="fw-semibold mb-2">Esta semana no tenés jugadas</p>
             <p class="fila__meta mb-0">
                 Armá una jugada vos mismo, o hablá con Decena de Oro, y entrá en
-                el pozo de <?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?>.
+                el pozo de <?= e(formatPesos($pozoMostrado)) ?>.
             </p>
         </div>
 

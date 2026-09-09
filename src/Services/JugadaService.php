@@ -61,19 +61,23 @@ class JugadaService
 
     /**
      * Registra varias jugadas para el mismo cliente en una sola operacion
-     * (compra conjunta): todas con el monto vigente, todas al ciclo activo,
-     * y todas marcadas con el mismo grupo_compra para trazabilidad en
-     * reportes (no afecta el cotejo ni el calculo del pozo, que siguen
-     * siendo por jugada individual).
+     * (compra conjunta): todas al ciclo activo y todas marcadas con el
+     * mismo grupo_compra para trazabilidad en reportes (no afecta el
+     * cotejo ni el calculo del pozo, que siguen siendo por jugada
+     * individual). El importe de cada una es el monto vigente, o -si se
+     * aplica una promocion (Fase 7)- el precio del paquete dividido la
+     * cantidad (ver resolverImportes()).
      *
      * Valida los N sets completos antes de grabar cualquiera: una jugada
      * mal cargada no debe dejar a las otras ya cobradas.
      *
      * @param array<int,string[]> $listasDeNumeros Un set de numeros crudos por jugada.
+     * @param int|null $promocionId Promocion activa a aplicar, o null para
+     *                              cobrar precio de lista (el de siempre).
      * @return int[] Ids de las jugadas creadas, en el mismo orden que $listasDeNumeros.
      * @throws ValidacionException
      */
-    public function crearVarias(int $clienteId, array $listasDeNumeros, ?int $cargadoPor): array
+    public function crearVarias(int $clienteId, array $listasDeNumeros, ?int $cargadoPor, ?int $promocionId = null): array
     {
         if (!$listasDeNumeros) {
             throw ValidacionException::de('Cargá al menos una jugada.');
@@ -97,33 +101,36 @@ class JugadaService
             throw new ValidacionException($errores);
         }
 
-        $ciclo   = $this->ciclos->obtenerCicloActivo();
-        $importe = $this->parametros->importeJugada();
-        $reparto = $this->parametros->repartir($importe);
-        $grupo   = self::uuid4();
+        $ciclo    = $this->ciclos->obtenerCicloActivo();
+        $importes = $this->resolverImportes(count($numerosPorJugada), $promocionId);
+        $grupo    = self::uuid4();
 
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo, aporte_gastos,
-                                      pagada, estado_pago, origen_carga, grupo_compra, estado, cargado_por)
+                                      pagada, estado_pago, origen_carga, grupo_compra, promocion_id,
+                                      estado, cargado_por)
                  VALUES (:cliente, :ciclo, :importe, :pozo, :gastos,
-                         1, 'confirmada', 'staff', :grupo, 'activa', :usuario)"
+                         1, 'confirmada', 'staff', :grupo, :promocion, 'activa', :usuario)"
             );
             $stmtNum = $this->db->prepare(
                 'INSERT INTO jugada_numeros (jugada_id, numero) VALUES (:jugada, :numero)'
             );
 
             $ids = [];
-            foreach ($numerosPorJugada as $numeros) {
+            foreach ($numerosPorJugada as $i => $numeros) {
+                $reparto = $this->parametros->repartir($importes[$i]);
+
                 $stmt->execute([
-                    ':cliente' => $cliente['id'],
-                    ':ciclo'   => $ciclo['id'],
-                    ':importe' => $importe,
-                    ':pozo'    => $reparto['pozo'],
-                    ':gastos'  => $reparto['gastos'],
-                    ':grupo'   => $grupo,
-                    ':usuario' => $cargadoPor,
+                    ':cliente'   => $cliente['id'],
+                    ':ciclo'     => $ciclo['id'],
+                    ':importe'   => $importes[$i],
+                    ':pozo'      => $reparto['pozo'],
+                    ':gastos'    => $reparto['gastos'],
+                    ':grupo'     => $grupo,
+                    ':promocion' => $promocionId,
+                    ':usuario'   => $cargadoPor,
                 ]);
 
                 $jugadaId = (int) $this->db->lastInsertId();
@@ -145,6 +152,41 @@ class JugadaService
     }
 
     /**
+     * Resuelve el importe de cada jugada de un lote de $cantidad
+     * [Fase 7]: el monto vigente para todas, o -si se pasa el id de
+     * una promocion- el precio total del paquete dividido la cantidad,
+     * repartido sin perder ni inventar centavos (mismo mecanismo que
+     * el reparto de premios entre ganadores).
+     *
+     * La promocion tiene que estar activa y su cantidad_jugadas tiene
+     * que coincidir EXACTAMENTE con $cantidad: si el cliente agrego o
+     * saco una jugada despues de que se le sugirio la promo sin
+     * actualizar cual aplica, esto lo frena en vez de cobrar mal.
+     *
+     * @throws ValidacionException
+     * @return float[]
+     */
+    public function resolverImportes(int $cantidad, ?int $promocionId): array
+    {
+        if ($promocionId === null) {
+            return array_fill(0, $cantidad, $this->parametros->importeJugada());
+        }
+
+        $promo = (new PromocionService($this->db))->buscarPorId($promocionId);
+        if (!$promo || (int) $promo['activa'] !== 1) {
+            throw ValidacionException::de('Esa promoción ya no está disponible. Recargá la página e intentá de nuevo.');
+        }
+        if ((int) $promo['cantidad_jugadas'] !== $cantidad) {
+            throw ValidacionException::de(
+                'La promoción es para ' . $promo['cantidad_jugadas'] . ' jugadas, pero se están cargando '
+                . $cantidad . '. Ajustá la cantidad o no apliques la promo.'
+            );
+        }
+
+        return PromocionService::importesPorJugada((float) $promo['precio_total'], $cantidad);
+    }
+
+    /**
      * Inserta N jugadas PENDIENTES DE PAGO para una solicitud armada por
      * el cliente desde el portal (Fase 6). A diferencia de crearVarias():
      *
@@ -156,42 +198,51 @@ class JugadaService
      *  - cargado_por queda NULL: nadie del staff tipeo estos numeros.
      *
      * El llamador (SolicitudService) ya valido cada set de numeros con
-     * validarNumeros() y calculo el costo con el monto vigente al
-     * momento de la seleccion; por eso $costoJugada se recibe hecho en
-     * vez de volver a leer ParametroService aca, para que no pueda haber
+     * validarNumeros() y calculo el costo de cada jugada con
+     * resolverImportes() al momento de la seleccion; por eso
+     * $costosPorJugada se recibe hecho en vez de volver a leer
+     * ParametroService/PromocionService aca, para que no pueda haber
      * diferencia entre el monto_total de la solicitud y el importe real
-     * de cada jugada si el admin llegara a cambiar el monto en el medio.
+     * de cada jugada si algo cambiara en el medio.
      *
      * @param array<int,int[]> $numerosPorJugada Ya validados por el llamador.
-     * @param array{importe:float,pozo:float,gastos:float} $costoJugada
+     * @param array<int,array{importe:float,pozo:float,gastos:float}> $costosPorJugada
+     *        Mismo orden e indice que $numerosPorJugada -con promocion,
+     *        el importe puede variar en centavos de una jugada a otra
+     *        por el redondeo del reparto.
+     * @param int|null $promocionId Promocion aplicada a todo el lote, o null.
      * @return int[] Ids de las jugadas creadas.
      */
     public function crearPendientes(
         int $clienteId,
         array $numerosPorJugada,
         int $solicitudId,
-        array $costoJugada
+        array $costosPorJugada,
+        ?int $promocionId = null
     ): array {
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo, aporte_gastos,
-                                      pagada, estado_pago, origen_carga, solicitud_id, estado)
+                                      pagada, estado_pago, origen_carga, solicitud_id, promocion_id, estado)
                  VALUES (:cliente, NULL, :importe, :pozo, :gastos,
-                         0, 'pendiente_pago', 'cliente', :solicitud, 'activa')"
+                         0, 'pendiente_pago', 'cliente', :solicitud, :promocion, 'activa')"
             );
             $stmtNum = $this->db->prepare(
                 'INSERT INTO jugada_numeros (jugada_id, numero) VALUES (:jugada, :numero)'
             );
 
             $ids = [];
-            foreach ($numerosPorJugada as $numeros) {
+            foreach ($numerosPorJugada as $i => $numeros) {
+                $costo = $costosPorJugada[$i];
+
                 $stmt->execute([
                     ':cliente'   => $clienteId,
-                    ':importe'   => $costoJugada['importe'],
-                    ':pozo'      => $costoJugada['pozo'],
-                    ':gastos'    => $costoJugada['gastos'],
+                    ':importe'   => $costo['importe'],
+                    ':pozo'      => $costo['pozo'],
+                    ':gastos'    => $costo['gastos'],
                     ':solicitud' => $solicitudId,
+                    ':promocion' => $promocionId,
                 ]);
 
                 $jugadaId = (int) $this->db->lastInsertId();

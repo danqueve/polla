@@ -1187,3 +1187,51 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     color: var(--oro);
     font-variant-numeric: tabular-nums;
 }
+
+/* ============================================================
+   Premio base garantizado (Fase 7)
+
+   El desglose "real vs. subsidiado" es exclusivamente para el
+   admin: un aviso chico, discreto, dentro de la misma tarjeta del
+   pozo — no compite con la cifra grande, que sigue siendo lo
+   primero que se lee.
+   ============================================================ */
+
+.pozo__desglose {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: .375rem;
+    padding-top: .75rem;
+    border-top: 1px solid rgba(255, 255, 255, .16);
+    color: rgba(255, 255, 255, .8);
+    font-size: .75rem;
+    line-height: 1.4;
+}
+
+.pozo__desglose i { margin-top: .0625rem; color: #f2d382; flex-shrink: 0; }
+
+/* Tabla de desglose del detalle de ciclo: real / piso / pagado /
+   subsidiado, en una tarjeta clara — distinto contexto visual del
+   pozo (que va sobre fondo oscuro), aca es sobre superficie blanca. */
+.desglose-pozo__fila {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--borde);
+}
+
+.desglose-pozo__fila:last-child { border-bottom: 0; }
+
+.desglose-pozo__fila--total {
+    font-weight: 700;
+    border-top: 2px solid var(--tinta);
+    margin-top: .25rem;
+    padding-top: .75rem;
+}
+
+.desglose-pozo__fila--subsidio {
+    color: var(--oro);
+    font-weight: 600;
+}

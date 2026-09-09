@@ -108,7 +108,8 @@ class CicloService
     public function buscarPorId(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT c.*, p.monto_arrastrado, p.monto_acumulado, p.monto_pagado, p.fecha_liquidacion
+            'SELECT c.*, p.monto_arrastrado, p.monto_acumulado, p.monto_pagado,
+                    p.monto_piso_aplicado, p.fecha_liquidacion
                FROM ciclos c
                LEFT JOIN pozo_ciclo p ON p.ciclo_id = c.id
               WHERE c.id = :id LIMIT 1'

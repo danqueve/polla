@@ -158,7 +158,10 @@ class SorteoService
         if ($ganadoras) {
             $this->marcarEstado($ganadoras, 'ganadora');
 
-            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras);
+            // Fase 7: el piso garantizado se aplica en cada ciclo, sin
+            // excepcion. Se lee el premio_base VIGENTE justo en este
+            // momento, no el que estaba cuando se abrio el ciclo.
+            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras, $this->parametros->premioBase());
             $repartido = array_sum($premios);
 
             // Las que no ganaron quedan cerradas junto con el ciclo.

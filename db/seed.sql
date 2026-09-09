@@ -11,11 +11,12 @@ SET NAMES utf8mb4;
 -- Parametros del juego (editables desde el panel por el admin)
 -- ------------------------------------------------------------
 INSERT INTO `parametros` (`clave`, `valor`, `descripcion`) VALUES
-    ('importe_jugada',    '2000', 'Costo de cada jugada, en pesos'),
-    ('porcentaje_pozo',   '60',   'Porcentaje de cada jugada pagada que va al pozo'),
-    ('porcentaje_gastos', '40',   'Porcentaje de cada jugada que va a gastos/ganancias'),
-    ('numeros_por_jugada','10',   'Cantidad de numeros que elige el cliente'),
-    ('numeros_por_sorteo','20',   'Cantidad de numeros del extracto de la Nocturna')
+    ('importe_jugada',    '2000',  'Costo de cada jugada, en pesos'),
+    ('porcentaje_pozo',   '60',    'Porcentaje de cada jugada pagada que va al pozo'),
+    ('porcentaje_gastos', '40',    'Porcentaje de cada jugada que va a gastos/ganancias'),
+    ('numeros_por_jugada','10',    'Cantidad de numeros que elige el cliente'),
+    ('numeros_por_sorteo','20',    'Cantidad de numeros del extracto de la Nocturna'),
+    ('premio_base',       '25000', 'Piso garantizado del pozo: si lo acumulado no llega a este monto, la diferencia la cubre la empresa')
 ON DUPLICATE KEY UPDATE `valor` = VALUES(`valor`);
 
 

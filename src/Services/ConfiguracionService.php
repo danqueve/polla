@@ -6,13 +6,15 @@ use PDO;
 use Polla\Support\ValidacionException;
 
 /**
- * Pantalla de configuracion del admin: por ahora, el monto de la jugada.
+ * Pantalla de configuracion del admin: monto de la jugada y, desde la
+ * Fase 7, el premio base garantizado.
  *
- * No es una tabla nueva: usa `parametros`, la misma que ya lee
- * ParametroService en toda la carga de jugadas (no estaba hardcodeado,
- * solo faltaba una pantalla para editarlo). Esta clase es la capa
- * admin-facing con auditoria (quien y cuando); ParametroService sigue
- * siendo la lectura interna que usa el resto del sistema.
+ * No son tablas nuevas: usa `parametros`, la misma que ya lee
+ * ParametroService en toda la carga de jugadas y en la liquidacion del
+ * pozo (no estaba hardcodeado, solo faltaba una pantalla para editarlo).
+ * Esta clase es la capa admin-facing con auditoria (quien y cuando);
+ * ParametroService sigue siendo la lectura interna que usa el resto
+ * del sistema.
  */
 class ConfiguracionService
 {
@@ -30,11 +32,16 @@ class ConfiguracionService
         return $this->parametros->importeJugada();
     }
 
+    public function premioBase(): float
+    {
+        return $this->parametros->premioBase();
+    }
+
     /**
-     * Quien cambio el monto por ultima vez y cuando, para mostrarlo en
-     * la pantalla. Null si nunca se toco desde que existe la columna.
+     * Quien cambio un parametro por ultima vez y cuando, para mostrarlo
+     * en la pantalla. Null si nunca se toco desde que existe la columna.
      */
-    public function ultimaActualizacion(): ?array
+    public function ultimaActualizacion(string $clave): ?array
     {
         $stmt = $this->db->prepare(
             'SELECT p.actualizado_en, u.nombre AS actualizado_por
@@ -43,7 +50,7 @@ class ConfiguracionService
               WHERE p.clave = :clave AND p.actualizado_por IS NOT NULL
               LIMIT 1'
         );
-        $stmt->execute([':clave' => 'importe_jugada']);
+        $stmt->execute([':clave' => $clave]);
 
         return $stmt->fetch() ?: null;
     }
@@ -52,5 +59,11 @@ class ConfiguracionService
     public function actualizarMontoJugada(string $monto, int $actualizadoPor): void
     {
         $this->parametros->actualizar(['importe_jugada' => $monto], $actualizadoPor);
+    }
+
+    /** @throws ValidacionException */
+    public function actualizarPremioBase(string $premioBase, int $actualizadoPor): void
+    {
+        $this->parametros->actualizar(['premio_base' => $premioBase], $actualizadoPor);
     }
 }

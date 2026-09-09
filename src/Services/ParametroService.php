@@ -24,6 +24,7 @@ class ParametroService
         'porcentaje_gastos'  => '40',
         'numeros_por_jugada' => '10',
         'numeros_por_sorteo' => '20',
+        'premio_base'        => '25000',
     ];
 
     public function __construct(PDO $db)
@@ -76,6 +77,16 @@ class ParametroService
     }
 
     /**
+     * Piso garantizado del pozo [Fase 7]. El pozo que se muestra y que
+     * efectivamente se paga es siempre MAX(premioBase(), monto real
+     * acumulado) — nunca el monto real solo.
+     */
+    public function premioBase(): float
+    {
+        return $this->getFloat('premio_base');
+    }
+
+    /**
      * Parte un importe en la porcion que va al pozo y la que va a gastos.
      * Redondea el pozo a 2 decimales y le da el resto a gastos, para que
      * pozo + gastos sea siempre exactamente el importe.
@@ -98,6 +109,9 @@ class ParametroService
 
         if (isset($valores['importe_jugada']) && (float) $valores['importe_jugada'] <= 0) {
             $errores[] = 'El importe de la jugada tiene que ser mayor a cero.';
+        }
+        if (isset($valores['premio_base']) && (float) $valores['premio_base'] < 0) {
+            $errores[] = 'El premio base no puede ser negativo.';
         }
         if (isset($valores['porcentaje_pozo'])) {
             $pozo = (float) $valores['porcentaje_pozo'];

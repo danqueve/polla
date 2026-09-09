@@ -8,13 +8,22 @@ use Polla\Support\ValidacionException;
 requireAdmin();
 requirePost();
 
-$monto = trim($_POST['monto_jugada'] ?? '');
+$monto      = trim($_POST['monto_jugada'] ?? '');
+$premioBase = trim($_POST['premio_base'] ?? '');
 
 try {
-    (new ConfiguracionService(getPDO()))->actualizarMontoJugada($monto, currentUserId());
-    setFlash('success', 'Monto de la jugada actualizado a ' . formatPesos($monto) . '.');
+    $configuracion = new ConfiguracionService(getPDO());
+    $usuarioId     = currentUserId();
+
+    $configuracion->actualizarMontoJugada($monto, $usuarioId);
+    $configuracion->actualizarPremioBase($premioBase, $usuarioId);
+
+    setFlash('success',
+        'Configuración actualizada: monto de jugada ' . formatPesos($monto)
+        . ' · premio base ' . formatPesos($premioBase) . '.'
+    );
 } catch (ValidacionException $e) {
-    setOld(['monto_jugada' => $monto]);
+    setOld(['monto_jugada' => $monto, 'premio_base' => $premioBase]);
     setFlash('danger', implode("\n", $e->errores()));
 }
 

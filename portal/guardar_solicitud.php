@@ -8,8 +8,9 @@ use Polla\Support\ValidacionException;
 requireCliente();
 requirePost();
 
-$clienteId  = (int) clienteActualId();
-$gruposPost = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
+$clienteId   = (int) clienteActualId();
+$gruposPost  = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
+$promocionId = !empty($_POST['promocion_id']) ? (int) $_POST['promocion_id'] : null;
 
 $listasDeNumeros = [];
 foreach ($gruposPost as $grupo) {
@@ -17,7 +18,7 @@ foreach ($gruposPost as $grupo) {
 }
 
 try {
-    $resultado = SolicitudService::crearDesde(getPDO())->crear($clienteId, $listasDeNumeros);
+    $resultado = SolicitudService::crearDesde(getPDO())->crear($clienteId, $listasDeNumeros, $promocionId);
 
     flushOld();
 

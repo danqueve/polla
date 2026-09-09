@@ -62,16 +62,41 @@ class PozoService
         $stmt->execute([':id' => $cicloId]);
 
         return $stmt->fetch() ?: [
-            'ciclo_id'          => $cicloId,
-            'monto_arrastrado'  => 0.0,
-            'monto_acumulado'   => 0.0,
-            'monto_pagado'      => 0.0,
-            'fecha_liquidacion' => null,
+            'ciclo_id'             => $cicloId,
+            'monto_arrastrado'     => 0.0,
+            'monto_acumulado'      => 0.0,
+            'monto_piso_aplicado'  => null,
+            'monto_pagado'         => 0.0,
+            'fecha_liquidacion'    => null,
         ];
     }
 
     /**
+     * El pozo que corresponde MOSTRAR para un ciclo todavia abierto (o
+     * cerrado sin ganador, cuyo saldo real esta por arrastrar) [Fase 7]:
+     * nunca por debajo del premio base, aunque lo acumulado realmente
+     * sea menor. No escribe nada en la base — es un calculo en caliente
+     * contra el parametro vigente, para que cambiar el premio base rija
+     * de inmediato en cualquier pantalla sin tener que tocar filas viejas.
+     *
+     * Para un ciclo YA LIQUIDADO (cerrado con ganador), no se usa esto:
+     * se muestra pozo_ciclo.monto_pagado tal cual, que ya quedo fijado
+     * con el piso vigente en el momento exacto de liquidar (ver liquidar()).
+     */
+    public static function montoAMostrar(float $montoAcumuladoReal, float $premioBase): float
+    {
+        return max($montoAcumuladoReal, $premioBase);
+    }
+
+    /**
      * Reparte el pozo entre las jugadas ganadoras y deja el ciclo liquidado.
+     *
+     * monto_pagado = MAX(monto acumulado real, premio base vigente en
+     * este momento) [Fase 7]: si las ventas reales no llegaron al piso
+     * garantizado, la diferencia sale de la empresa, no de mas jugadas.
+     * monto_piso_aplicado guarda el premio_base tal como estaba en este
+     * instante, se haya terminado usando o no, para poder reconstruir
+     * despues cuanto se subsidio en cada ciclo.
      *
      * Escribe una fila en `ganadores` por jugada con su monto_premio, y marca
      * el pozo con lo pagado y la fecha. Corre dentro de la transaccion de
@@ -80,14 +105,15 @@ class PozoService
      * @param int[] $jugadaIds Jugadas ganadoras de este sorteo.
      * @return array<int,float> jugada_id => premio
      */
-    public function liquidar(int $cicloId, int $sorteoId, array $jugadaIds): array
+    public function liquidar(int $cicloId, int $sorteoId, array $jugadaIds, float $premioBase): array
     {
         $jugadaIds = array_values($jugadaIds);
         if (!$jugadaIds) {
             return [];
         }
 
-        $monto   = $this->montoAcumulado($cicloId);
+        $real    = $this->montoAcumulado($cicloId);
+        $monto   = self::montoAMostrar($real, $premioBase);
         $premios = self::repartirEnPartesIguales($monto, count($jugadaIds));
 
         $stmt = $this->db->prepare(
@@ -108,9 +134,9 @@ class PozoService
 
         $this->db->prepare(
             'UPDATE pozo_ciclo
-                SET monto_pagado = :pagado, fecha_liquidacion = NOW()
+                SET monto_piso_aplicado = :piso, monto_pagado = :pagado, fecha_liquidacion = NOW()
               WHERE ciclo_id = :ciclo'
-        )->execute([':pagado' => $monto, ':ciclo' => $cicloId]);
+        )->execute([':piso' => $premioBase, ':pagado' => $monto, ':ciclo' => $cicloId]);
 
         return $asignados;
     }

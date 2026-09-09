@@ -101,11 +101,16 @@ class SolicitudService
      * criterio que JugadaService::crearVarias): una jugada mal cargada
      * no debe dejar a las otras a mitad de camino.
      *
+     * Si $promocionId viene cargado, JugadaService::resolverImportes()
+     * valida que la promo siga activa y que su cantidad_jugadas coincida
+     * exactamente con la cantidad de jugadas de esta solicitud -si no,
+     * tira ValidacionException y no se escribe nada.
+     *
      * @param array<int,string[]> $listasDeNumeros Un set de numeros crudos por jugada.
      * @return array{solicitud_id:int, numero_registro:string, cantidad:int, monto_total:float}
      * @throws ValidacionException
      */
-    public function crear(int $clienteId, array $listasDeNumeros): array
+    public function crear(int $clienteId, array $listasDeNumeros, ?int $promocionId = null): array
     {
         if (!$listasDeNumeros) {
             throw ValidacionException::de('Armá al menos una jugada.');
@@ -135,10 +140,21 @@ class SolicitudService
 
         $cliente = $this->buscarClienteAprobado($clienteId);
 
-        $importe  = $this->parametros->importeJugada();
-        $reparto  = $this->parametros->repartir($importe);
         $cantidad = count($numerosPorJugada);
-        $montoTotal = round($importe * $cantidad, 2);
+        $importes = $this->jugadas->resolverImportes($cantidad, $promocionId);
+
+        $costosPorJugada = [];
+        $montoTotal      = 0.0;
+        foreach ($importes as $importe) {
+            $reparto           = $this->parametros->repartir($importe);
+            $costosPorJugada[] = [
+                'importe' => $importe,
+                'pozo'    => $reparto['pozo'],
+                'gastos'  => $reparto['gastos'],
+            ];
+            $montoTotal += $importe;
+        }
+        $montoTotal = round($montoTotal, 2);
 
         [$solicitudId, $codigo] = $this->insertarSolicitudConReintento(
             (int) $cliente['id'],
@@ -147,11 +163,13 @@ class SolicitudService
         );
 
         try {
-            $this->jugadas->crearPendientes($clienteId, $numerosPorJugada, $solicitudId, [
-                'importe' => $importe,
-                'pozo'    => $reparto['pozo'],
-                'gastos'  => $reparto['gastos'],
-            ]);
+            $this->jugadas->crearPendientes(
+                $clienteId,
+                $numerosPorJugada,
+                $solicitudId,
+                $costosPorJugada,
+                $promocionId
+            );
         } catch (Throwable $e) {
             // No dejar la solicitud huerfana: si las jugadas no se
             // pudieron grabar, tampoco tiene que quedar el encabezado.

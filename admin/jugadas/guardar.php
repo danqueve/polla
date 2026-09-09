@@ -8,8 +8,9 @@ use Polla\Support\ValidacionException;
 requireLogin();
 requirePost();
 
-$clienteId  = (int) ($_POST['cliente_id'] ?? 0);
-$gruposPost = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
+$clienteId    = (int) ($_POST['cliente_id'] ?? 0);
+$gruposPost   = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
+$promocionId  = !empty($_POST['promocion_id']) ? (int) $_POST['promocion_id'] : null;
 
 $listasDeNumeros = [];
 foreach ($gruposPost as $grupo) {
@@ -18,12 +19,19 @@ foreach ($gruposPost as $grupo) {
 
 try {
     $jugadas = JugadaService::crearDesde(getPDO());
-    $ids     = $jugadas->crearVarias($clienteId, $listasDeNumeros, currentUserId());
+    $ids     = $jugadas->crearVarias($clienteId, $listasDeNumeros, currentUserId(), $promocionId);
 
     flushOld();
 
-    $primero      = $jugadas->buscarPorId($ids[0]);
-    $totalCobrado = (float) $primero['importe'] * count($ids);
+    $primero = $jugadas->buscarPorId($ids[0]);
+
+    // Con promo, el importe puede variar en centavos entre jugadas del
+    // mismo lote (repartirEnPartesIguales): sumamos cada una en vez de
+    // multiplicar la primera por la cantidad.
+    $totalCobrado = (float) $primero['importe'];
+    for ($i = 1; $i < count($ids); $i++) {
+        $totalCobrado += (float) $jugadas->buscarPorId($ids[$i])['importe'];
+    }
 
     if (count($ids) === 1) {
         $listaNumeros = implode(' ', array_map('num2', $primero['numeros']));

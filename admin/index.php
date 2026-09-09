@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/app.php';
 use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
+use Polla\Services\PozoService;
 use Polla\Services\SolicitudService;
 use Polla\Services\SorteoService;
 
@@ -26,6 +27,14 @@ $ultimas = $jugadas->ultimas(5);
 
 $extractos = $sorteos->listarPorCiclo($cicloId);
 $arrastre  = (float) ($ciclo['monto_arrastrado'] ?? 0);
+
+// Fase 7: el pozo que se muestra nunca baja del premio base, aunque lo
+// acumulado real sea menor. El desglose (cuanto es real y cuanto se
+// estaria subsidiando) es exclusivo del admin.
+$pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
+$premioBase   = $parametros->premioBase();
+$pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
+$subsidio     = max(0.0, $premioBase - $pozoReal);
 
 // Dias habiles del ciclo ya pasados que todavia no tienen extracto.
 $sinCargar = 0;
@@ -61,7 +70,7 @@ require __DIR__ . '/../includes/topbar.php';
     <!-- Pozo: la cifra que todos quieren ver primero -->
     <section class="pozo mb-3">
         <div class="pozo__rotulo mb-1">Pozo acumulado</div>
-        <div class="pozo__monto"><?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?></div>
+        <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
         <div class="mt-2" style="color:rgba(255,255,255,.72);font-size:.8125rem">
             <?php if ($arrastre > 0): ?>
                 Incluye <?= e(formatPesos($arrastre)) ?> que arrastro de la semana anterior
@@ -69,6 +78,14 @@ require __DIR__ . '/../includes/topbar.php';
                 <?= (int) $parametros->porcentajePozo() ?>% de cada jugada pagada de esta semana
             <?php endif; ?>
         </div>
+
+        <?php if (isAdmin() && $subsidio > 0): ?>
+            <div class="pozo__desglose mt-3">
+                <i class="bi bi-info-circle-fill"></i>
+                De los cuales <?= e(formatPesos($pozoReal)) ?> son reales ·
+                Decena de Oro está cubriendo <?= e(formatPesos($subsidio)) ?>
+            </div>
+        <?php endif; ?>
     </section>
 
     <?php if ($solicitudesPendientes > 0): ?>

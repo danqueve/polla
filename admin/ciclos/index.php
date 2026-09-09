@@ -3,15 +3,22 @@
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\ParametroService;
+use Polla\Services\PozoService;
 
 requireLogin();
 
-$ciclos = new CicloService(getPDO());
+$db     = getPDO();
+$ciclos = new CicloService($db);
 
 // Abre el de la semana si todavia no existe, para que la lista nunca
 // aparezca vacia en una instalacion nueva.
 $ciclos->obtenerCicloActivo();
 $lista = $ciclos->listar(52);
+
+// Fase 7: el pozo del ciclo abierto se muestra con el piso aplicado en
+// caliente; uno cerrado sin ganador no pago nada, se muestra el real.
+$premioBase = (new ParametroService($db))->premioBase();
 
 $pageTitle  = 'Ciclos · ' . APP_NAME;
 $navSeccion = 'ciclos';
@@ -62,15 +69,20 @@ require __DIR__ . '/../../includes/topbar.php';
                             <span class="etiqueta etiqueta--gris">Sin ganador</span>
                         <?php endif; ?>
 
+                        <?php
+                        $pagado = (float) $ciclo['monto_pagado'];
+                        $real   = (float) $ciclo['monto_acumulado'];
+                        $mostrado = $pagado > 0
+                            ? $pagado
+                            : ($ciclo['estado'] === CicloService::ESTADO_ABIERTO
+                                ? PozoService::montoAMostrar($real, $premioBase)
+                                : $real);
+                        ?>
                         <div class="cifra fw-bold mt-1">
-                            <?= e(formatPesos(
-                                (float) $ciclo['monto_pagado'] > 0
-                                    ? $ciclo['monto_pagado']
-                                    : $ciclo['monto_acumulado']
-                            )) ?>
+                            <?= e(formatPesos($mostrado)) ?>
                         </div>
                         <div class="fila__meta">
-                            <?= (float) $ciclo['monto_pagado'] > 0 ? 'repartido' : 'en el pozo' ?>
+                            <?= $pagado > 0 ? 'repartido' : 'en el pozo' ?>
                         </div>
                     </div>
                 </div>

@@ -14,6 +14,7 @@ require_once __DIR__ . '/../../config/app.php';
 use Polla\Services\CicloService;
 use Polla\Services\ClienteService;
 use Polla\Services\ParametroService;
+use Polla\Services\PromocionService;
 
 requireLogin();
 
@@ -27,6 +28,18 @@ $clientes = (new ClienteService($db))->listarActivosParaSelect();
 $importe  = $parametros->importeJugada();
 $reparto  = $parametros->repartir($importe);
 $cantidad = $parametros->numerosPorJugada();
+
+// Promociones activas indexadas por cantidad_jugadas, para que
+// promociones.js sugiera el paquete sin ninguna consulta extra al
+// cambiar la cantidad de jugadas. Solo lo que la vista necesita.
+$promosPorCantidad = [];
+foreach ((new PromocionService($db))->activasPorCantidad() as $cantidadPromo => $promo) {
+    $promosPorCantidad[$cantidadPromo] = [
+        'id'               => (int) $promo['id'],
+        'precio_total'     => (float) $promo['precio_total'],
+        'cantidad_jugadas' => (int) $promo['cantidad_jugadas'],
+    ];
+}
 
 // Repoblar tras un error de validacion del servidor. Un grupo vacio por
 // defecto: lo normal es cargar una sola jugada.
@@ -81,7 +94,7 @@ $dibujarGrupo = static function ($indice, array $numeros) use ($cantidad): void 
 $pageTitle    = 'Cargar jugada · ' . APP_NAME;
 $navSeccion   = 'nueva';
 $bodyClass    = 'con-accion-fija';
-$pageScripts  = ['numeros.js'];
+$pageScripts  = ['promociones.js', 'numeros.js'];
 require __DIR__ . '/../../includes/head.php';
 require __DIR__ . '/../../includes/topbar.php';
 ?>
@@ -155,6 +168,19 @@ require __DIR__ . '/../../includes/topbar.php';
                 <i class="bi bi-plus-lg"></i> Agregar otra jugada
             </button>
 
+            <div id="promo-sugerida" class="alert alert-success d-flex align-items-start gap-2 mb-3" hidden
+                 data-promos="<?= e(json_encode($promosPorCantidad, JSON_UNESCAPED_UNICODE)) ?>">
+                <i class="bi bi-tag-fill flex-shrink-0" style="margin-top:.15rem" aria-hidden="true"></i>
+                <div class="flex-grow-1">
+                    <div id="promo-sugerida-texto" class="fw-semibold"></div>
+                    <div class="form-check form-switch mt-2 mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="promo-aplicar">
+                        <label class="form-check-label" for="promo-aplicar">Aplicar la promo</label>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="promocion_id" id="promocion_id" value="">
+
             <!-- 3. Pago -->
             <section class="tarjeta p-3 mb-3">
                 <span class="rotulo">Paso 3</span>
@@ -207,23 +233,10 @@ require __DIR__ . '/../../includes/topbar.php';
                 <button type="submit" form="form-jugada" id="btn-confirmar"
                         class="btn btn-primary flex-grow-1" disabled>
                     <i class="bi bi-check-lg"></i>
-                    <span id="btn-confirmar-texto">Confirmar y cobrar <?= e(formatPesos($importe)) ?></span>
+                    <span id="btn-confirmar-texto" data-plantilla="Confirmar y cobrar">Confirmar y cobrar <?= e(formatPesos($importe)) ?></span>
                 </button>
             </div>
         </div>
-
-        <script>
-            document.addEventListener('grupos:cambio', function (ev) {
-                var cantidad = ev.detail.cantidad;
-                var monto    = parseFloat(document.getElementById('total-a-cobrar').dataset.monto);
-                var total    = monto * cantidad;
-                var texto    = '$' + total.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-
-                document.getElementById('cantidad-jugadas').textContent = cantidad;
-                document.getElementById('total-a-cobrar').textContent = texto;
-                document.getElementById('btn-confirmar-texto').textContent = 'Confirmar y cobrar ' + texto;
-            });
-        </script>
 
     <?php endif; ?>
 </main>

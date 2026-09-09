@@ -7,6 +7,8 @@ require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
+use Polla\Services\ParametroService;
+use Polla\Services\PozoService;
 use Polla\Services\SorteoService;
 
 requireLogin();
@@ -30,8 +32,28 @@ $lista     = $sorteos->listarPorCiclo($cicloId);
 $ganadores = $sorteos->ganadoresDeCiclo($cicloId);
 $jugadas   = JugadaService::crearDesde($db)->listarPorCiclo($cicloId);
 
-$abierto   = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
-$arrastre  = (float) ($ciclo['monto_arrastrado'] ?? 0);
+$abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
+$conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
+$arrastre     = (float) ($ciclo['monto_arrastrado'] ?? 0);
+$pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
+
+// Fase 7: que cifra es "el pozo" depende de si el ciclo sigue abierto
+// (se calcula en caliente contra el premio base vigente) o ya se
+// liquido (monto_pagado ya quedo fijado con el piso vigente en ese
+// momento — ver PozoService::liquidar()). Un ciclo cerrado SIN
+// ganador no pago nada: se muestra el real tal cual, sin ningun piso.
+if ($abierto) {
+    $premioBase   = (new ParametroService($db))->premioBase();
+    $pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
+    $pisoAplicado = $premioBase;
+} elseif ($conGanador) {
+    $pozoMostrado = (float) ($ciclo['monto_pagado'] ?? 0);
+    $pisoAplicado = $ciclo['monto_piso_aplicado'] !== null ? (float) $ciclo['monto_piso_aplicado'] : 0.0;
+} else {
+    $pozoMostrado = $pozoReal;
+    $pisoAplicado = 0.0;
+}
+$subsidio = max(0.0, $pisoAplicado - $pozoReal);
 
 // Numeros que ya salieron en la semana, para marcar los aciertos parciales
 // de cada jugada en el listado.
@@ -75,7 +97,7 @@ require __DIR__ . '/../../includes/topbar.php';
         <div class="pozo__rotulo mb-1">
             <?= $abierto ? 'Pozo acumulado' : 'Pozo al cierre' ?>
         </div>
-        <div class="pozo__monto"><?= e(formatPesos($ciclo['monto_acumulado'] ?? 0)) ?></div>
+        <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
 
         <?php if ($arrastre > 0): ?>
             <div class="mt-2" style="color:rgba(255,255,255,.72);font-size:.8125rem">
@@ -89,7 +111,40 @@ require __DIR__ . '/../../includes/topbar.php';
                 Liquidado el <?= e(formatFechaHora($ciclo['fecha_liquidacion'])) ?>
             </div>
         <?php endif; ?>
+
+        <?php if (isAdmin() && $subsidio > 0): ?>
+            <div class="pozo__desglose mt-3">
+                <i class="bi bi-info-circle-fill"></i>
+                De los cuales <?= e(formatPesos($pozoReal)) ?> son reales ·
+                Decena de Oro <?= $conGanador ? 'cubrió' : 'está cubriendo' ?>
+                <?= e(formatPesos($subsidio)) ?>
+            </div>
+        <?php endif; ?>
     </section>
+
+    <?php if (isAdmin() && ($abierto || $conGanador)): ?>
+        <div class="tarjeta p-3 mb-4">
+            <span class="rotulo d-block mb-2">Desglose del pozo</span>
+            <div class="desglose-pozo__fila">
+                <span>Acumulado real (ventas de la semana)</span>
+                <span class="cifra"><?= e(formatPesos($pozoReal)) ?></span>
+            </div>
+            <div class="desglose-pozo__fila">
+                <span>Piso garantizado<?= $abierto ? ' (vigente)' : ' (aplicado al liquidar)' ?></span>
+                <span class="cifra"><?= e(formatPesos($pisoAplicado)) ?></span>
+            </div>
+            <div class="desglose-pozo__fila desglose-pozo__fila--total">
+                <span><?= $conGanador ? 'Pagado' : 'A pagar si hay ganador' ?></span>
+                <span class="cifra"><?= e(formatPesos($pozoMostrado)) ?></span>
+            </div>
+            <?php if ($subsidio > 0): ?>
+                <div class="desglose-pozo__fila desglose-pozo__fila--subsidio">
+                    <span>Subsidiado por Decena de Oro</span>
+                    <span class="cifra"><?= e(formatPesos($subsidio)) ?></span>
+                </div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="row g-2 mb-4">
         <div class="col-4">

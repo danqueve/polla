@@ -18,6 +18,7 @@ DROP TABLE IF EXISTS `sorteo_numeros`;
 DROP TABLE IF EXISTS `sorteos`;
 DROP TABLE IF EXISTS `jugada_numeros`;
 DROP TABLE IF EXISTS `jugadas`;
+DROP TABLE IF EXISTS `promociones`;
 DROP TABLE IF EXISTS `solicitudes`;
 DROP TABLE IF EXISTS `pozo_ciclo`;
 DROP TABLE IF EXISTS `ciclos`;
@@ -69,6 +70,11 @@ CREATE TABLE `parametros` (
 -- nro_cliente con formato AAAA-NNNNNN (ej. 2026-048372):
 -- anio + 6 digitos al azar. La unicidad la garantiza el UNIQUE
 -- de mas abajo (uk_clientes_nro); no hay correlativo que llevar.
+--
+-- password_hash es siempre el hash del DNI vigente: no hay clave
+-- propia ni cambio de clave. ClienteService la regenera sola cada
+-- vez que el DNI se edita, asi que las dos columnas nunca se
+-- desincronizan.
 -- ------------------------------------------------------------
 CREATE TABLE `clientes` (
     `id`                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -77,7 +83,6 @@ CREATE TABLE `clientes` (
     `nombre`             VARCHAR(120) NOT NULL,
     `telefono`           VARCHAR(30)      NULL,
     `password_hash`      VARCHAR(255) NOT NULL,
-    `debe_cambiar_clave` TINYINT(1)   NOT NULL DEFAULT 1,
     `activo`             TINYINT(1)   NOT NULL DEFAULT 1,
     `estado`             ENUM('pendiente','aprobado','rechazado')
                                       NOT NULL DEFAULT 'aprobado',
@@ -133,13 +138,23 @@ CREATE TABLE `ciclos` (
 -- arranca en monto_arrastrado: cero si el ciclo anterior se
 -- cerro con ganador (el pozo se repartio entero), o el sobrante
 -- del ciclo anterior si esa semana no gano nadie.
+--
+-- monto_piso_aplicado [FASE 7]: snapshot del premio_base vigente en
+-- el momento exacto de liquidar. Queda NULL mientras el ciclo sigue
+-- abierto o se cierra sin ganador (no se pago nada, no hubo piso que
+-- aplicar); se completa solo cuando hay un ganador, junto con
+-- monto_pagado = MAX(monto_acumulado, premio_base). El pozo que se
+-- MUESTRA en un ciclo abierto (portal, dashboard) tambien aplica ese
+-- MAX, pero en caliente contra el parametro vigente: no se guarda
+-- nada en la base hasta que efectivamente se liquida.
 -- ------------------------------------------------------------
 CREATE TABLE `pozo_ciclo` (
-    `ciclo_id`           INT UNSIGNED  NOT NULL,
-    `monto_arrastrado`   DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `monto_acumulado`    DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `monto_pagado`       DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-    `fecha_liquidacion`  DATETIME          NULL,
+    `ciclo_id`             INT UNSIGNED  NOT NULL,
+    `monto_arrastrado`     DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    `monto_acumulado`      DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    `monto_piso_aplicado`  DECIMAL(12,2)     NULL,
+    `monto_pagado`         DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    `fecha_liquidacion`    DATETIME          NULL,
     PRIMARY KEY (`ciclo_id`),
     CONSTRAINT `fk_pozo_ciclo`
         FOREIGN KEY (`ciclo_id`) REFERENCES `ciclos` (`id`)
@@ -179,6 +194,35 @@ CREATE TABLE `solicitudes` (
 
 
 -- ------------------------------------------------------------
+-- promociones  [FASE 7]
+-- Paquetes de N jugadas por un precio total con descuento.
+--
+-- cantidad_si_activa es el mismo patron que ciclos.abierto_flag: una
+-- columna generada que vale cantidad_jugadas solo si activa=1 y NULL
+-- en cualquier otro caso. Como los NULL no colisionan en un indice
+-- UNIQUE, el motor garantiza que nunca haya dos promociones ACTIVAS
+-- con la misma cantidad a la vez; promociones viejas desactivadas
+-- con esa misma cantidad no molestan.
+-- ------------------------------------------------------------
+CREATE TABLE `promociones` (
+    `id`                 INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+    `cantidad_jugadas`   TINYINT UNSIGNED NOT NULL,
+    `precio_total`       DECIMAL(12,2)    NOT NULL,
+    `activa`             TINYINT(1)       NOT NULL DEFAULT 1,
+    `fecha_creacion`     DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `actualizado_por`    INT UNSIGNED         NULL,
+    `cantidad_si_activa` TINYINT UNSIGNED GENERATED ALWAYS AS
+                         (CASE WHEN `activa` = 1 THEN `cantidad_jugadas` ELSE NULL END) STORED,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_promociones_cantidad_activa` (`cantidad_si_activa`),
+    KEY `idx_promociones_activa` (`activa`, `cantidad_jugadas`),
+    CONSTRAINT `fk_promociones_usuario`
+        FOREIGN KEY (`actualizado_por`) REFERENCES `usuarios` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ------------------------------------------------------------
 -- jugadas
 -- El reparto 60/40 se congela en la fila: si el admin cambia los
 -- porcentajes mas adelante, las jugadas viejas conservan el suyo.
@@ -210,6 +254,7 @@ CREATE TABLE `jugadas` (
                                    NOT NULL DEFAULT 'staff',
     `solicitud_id`   INT UNSIGNED      NULL,
     `grupo_compra`   CHAR(36)          NULL,
+    `promocion_id`   INT UNSIGNED      NULL,
     `estado`         ENUM('activa','ganadora','perdedora','anulada')
                                    NOT NULL DEFAULT 'activa',
     `fecha_carga`    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -222,6 +267,7 @@ CREATE TABLE `jugadas` (
     KEY `idx_jugadas_grupo_compra`   (`grupo_compra`),
     KEY `idx_jugadas_solicitud`      (`solicitud_id`),
     KEY `idx_jugadas_estado_pago`    (`estado_pago`, `fecha_carga`),
+    KEY `idx_jugadas_promocion`      (`promocion_id`),
     CONSTRAINT `fk_jugadas_cliente`
         FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`)
         ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -233,6 +279,9 @@ CREATE TABLE `jugadas` (
         ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT `fk_jugadas_solicitud`
         FOREIGN KEY (`solicitud_id`) REFERENCES `solicitudes` (`id`)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT `fk_jugadas_promocion`
+        FOREIGN KEY (`promocion_id`) REFERENCES `promociones` (`id`)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

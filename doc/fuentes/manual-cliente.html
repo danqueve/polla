@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Manual del Cliente — Decena de Oro</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+@page { size: A4; margin: 0; }
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: 'Sora', Arial, sans-serif;
+    color: #10201a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+h1, h2, h3, .display { font-family: 'Bricolage Grotesque', Arial, sans-serif; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+
+.cifra { font-family: 'Space Grotesk', Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+.hoja {
+    width: 210mm;
+    height: 297mm;
+    padding: 16mm 15mm;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+}
+.hoja:last-child { page-break-after: avoid; }
+
+.rotulo {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #8b9a93;
+}
+
+/* ── Tapa / bloques oscuros ─────────────────────────────── */
+.tapa {
+    background: #0d4a2d;
+    color: #fff;
+    border-radius: 16px;
+    padding: 34px 30px;
+    position: relative;
+    overflow: hidden;
+}
+.tapa::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.05) 0 1px, transparent 1px 11px);
+    pointer-events: none;
+}
+.tapa > * { position: relative; }
+.tapa .rotulo { color: rgba(255,255,255,.72); text-align: center; }
+.tapa h1 { font-size: 44px; text-align: center; margin: 10px 0 14px; }
+.tapa p.bajada { text-align: center; color: rgba(255,255,255,.85); font-size: 15px; max-width: 480px; margin: 0 auto 22px; line-height: 1.5; }
+
+.bolilla {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #f2d382; color: #0d4a2d; font-weight: 700;
+    font-family: 'Space Grotesk', Consolas, monospace;
+    min-width: 34px; height: 34px; padding: 0 6px; border-radius: 8px;
+    margin: 2px; font-size: 15px;
+}
+.fila-bolillas { text-align: center; }
+.fila-bolillas .rotulo { margin-bottom: 10px; }
+
+.pozo-caja {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px;
+    padding: 14px 20px;
+    text-align: center;
+    margin: 20px auto 0;
+    max-width: 380px;
+}
+.pozo-caja .num { color: #f2d382; font-size: 26px; font-weight: 700; font-family: 'Space Grotesk', monospace; }
+
+/* ── Cuerpo de pagina clara ─────────────────────────────── */
+h2.titulo { font-size: 26px; margin-top: 6px; margin-bottom: 20px; }
+
+.paso { display: flex; gap: 14px; margin-bottom: 20px; align-items: flex-start; }
+.paso .num {
+    flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%;
+    background: #14663f; color: #fff; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+.paso h3 { font-size: 17px; margin-bottom: 4px; }
+.paso p { margin: 0; color: #4b5b54; font-size: 14px; line-height: 1.5; }
+
+ul.reglas { list-style: none; margin: 0; padding: 0; }
+ul.reglas li {
+    padding: 12px 0; border-bottom: 1px solid #e2e0d8; font-size: 14px; color: #4b5b54; line-height: 1.5;
+}
+ul.reglas li:last-child { border-bottom: none; }
+ul.reglas b { color: #10201a; }
+ul.reglas li::before { content: '●'; color: #14663f; margin-right: 8px; font-size: 9px; vertical-align: middle; }
+
+.tarjeta {
+    border: 1px solid #e2e0d8; border-radius: 12px; padding: 18px 20px; margin: 18px 0;
+}
+.tarjeta-oro { border-color: #e8d6a4; background: #fbf3dd; }
+
+.pregunta { margin-bottom: 18px; }
+.pregunta h3 { font-size: 15px; margin-bottom: 4px; }
+.pregunta p { margin: 0; color: #4b5b54; font-size: 13.5px; line-height: 1.5; }
+
+.wp-caja {
+    background: #e6f1eb; border: 1px solid #c6ded1; border-radius: 12px;
+    padding: 18px 20px; display: flex; align-items: center; gap: 14px; margin-top: 22px;
+}
+.wp-caja .num-wp { font-family: 'Space Grotesk', monospace; font-weight: 700; font-size: 19px; color: #0d4a2d; }
+.wp-icono {
+    width: 42px; height: 42px; border-radius: 50%; background: #14663f; color: #fff;
+    display:flex; align-items:center; justify-content:center; font-size: 20px; flex-shrink: 0;
+}
+
+.alias-caja {
+    display: inline-block; background: #fff; border: 1.5px dashed #a67c12; border-radius: 10px;
+    padding: 8px 18px; font-family: 'Space Grotesk', monospace; font-weight: 700; font-size: 19px; color: #10201a;
+}
+
+.pie {
+    position: absolute; left: 15mm; right: 15mm; bottom: 12mm;
+    display: flex; justify-content: space-between; font-size: 11px; color: #8b9a93;
+    border-top: 1px solid #e2e0d8; padding-top: 10px;
+}
+
+table.cuenta { width: 100%; border-collapse: collapse; margin: 16px 0; }
+table.cuenta td { padding: 10px 0; border-bottom: 1px solid #e2e0d8; font-size: 14px; }
+table.cuenta td:last-child { text-align: right; font-weight: 700; color: #14663f; font-family: 'Space Grotesk', monospace; }
+
+.check { color: #14663f; font-weight: 700; margin-right: 8px; }
+.item-check { margin: 8px 0; font-size: 14px; color: #10201a; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGINA 1: TAPA ============ -->
+<section class="hoja">
+    <div class="tapa" style="margin-top:60px">
+        <div class="rotulo">MANUAL DEL CLIENTE</div>
+        <h1>Decena de Oro</h1>
+        <p class="bajada">
+            Elegís 10 números. Si salen los 10 en el mismo sorteo de la
+            Quiniela Nocturna de Tucumán, te llevás el pozo de la semana.
+        </p>
+        <div class="fila-bolillas">
+            <div class="rotulo">Así se ve tu jugada (ejemplo)</div>
+            <div style="margin-top:8px">
+                <span class="bolilla">03</span><span class="bolilla">07</span><span class="bolilla">15</span>
+                <span class="bolilla">22</span><span class="bolilla">28</span><span class="bolilla">34</span>
+                <span class="bolilla">46</span><span class="bolilla">58</span><span class="bolilla">67</span>
+                <span class="bolilla">79</span>
+            </div>
+        </div>
+        <div class="pozo-caja">
+            <div class="rotulo">Pozo mínimo garantizado</div>
+            <div class="num">$25.000</div>
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>Manual del cliente</span></div>
+</section>
+
+<!-- ============ PAGINA 2: COMO JUGAR ============ -->
+<section class="hoja">
+    <div class="rotulo">CÓMO JUGAR</div>
+    <h2 class="titulo">De punta a punta</h2>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div>
+            <h3>Registrate</h3>
+            <p>Te anotás vos mismo por la web (opción "Registrate" en la pantalla de
+            entrada), o te da de alta quien te vende la jugada. Tu usuario y tu clave
+            para entrar al portal son siempre tu DNI.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">2</div>
+        <div>
+            <h3>Si te registraste vos mismo, esperá la aprobación</h3>
+            <p>Tu cuenta queda <b>en revisión</b> hasta que un supervisor la apruebe.
+            Mientras tanto podés entrar, pero no vas a poder cargar jugadas todavía.
+            Si diste tus datos en persona a quien te vende, este paso no aplica: tu
+            cuenta arranca aprobada.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">3</div>
+        <div>
+            <h3>Elegí tus números</h3>
+            <p>Del 00 al 99, sin repetir ninguno, 10 por jugada. Los podés armar vos
+            desde el portal (¡y cargar varias jugadas juntas en una sola operación
+            si querés jugar más de una vez!) o pedirle a quien te vende que te los
+            cargue en el momento.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">4</div>
+        <div>
+            <h3>Pagá tu jugada</h3>
+            <p>En efectivo, o por transferencia al alias <b>decenadeoro</b>. Si la
+            armaste vos por el portal, te queda un código corto: compartiselo a quien
+            te vende junto con el comprobante para que confirme el pago. Hasta que no
+            se confirma, tu jugada no entra en el sorteo.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">5</div>
+        <div>
+            <h3>Esperá el sorteo</h3>
+            <p>De lunes a viernes se sortean 20 números en la Quiniela Nocturna de
+            Tucumán.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">6</div>
+        <div>
+            <h3>Mirá si ganaste</h3>
+            <p>Entrá al portal cuando quieras y fijate qué números ya salieron. Si tus
+            10 están entre los 20 del sorteo, ¡ganaste!</p>
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>2 · Cómo jugar</span></div>
+</section>
+
+<!-- ============ PAGINA 3: LAS REGLAS ============ -->
+<section class="hoja">
+    <div class="rotulo">LAS REGLAS</div>
+    <h2 class="titulo">Cómo se gana</h2>
+
+    <ul class="reglas">
+        <li><b>Tienen que salir los 10.</b> No hay premio por acertar 9 de 10 — es todo o nada.</li>
+        <li><b>Cuentan en un mismo sorteo.</b> Los 20 números de una sola noche, no la suma de varios días.</li>
+        <li><b>Si ganás, se corta la semana.</b> Se reparte el pozo entero y arranca una jugada nueva desde cero.</li>
+        <li><b>¿Empate?</b> Si más de una persona gana el mismo sorteo, el pozo se reparte en partes iguales entre todos los ganadores.</li>
+        <li><b>Si nadie gana en la semana,</b> el pozo no se pierde: sigue acumulando para la semana que viene.</li>
+        <li><b>Números repetidos:</b> los 10 números de una misma jugada tienen que ser todos distintos entre sí.</li>
+    </ul>
+
+    <div class="tarjeta">
+        <div class="rotulo" style="margin-bottom:10px">Tu jugada</div>
+        <div>
+            <span class="bolilla" style="background:#14663f;color:#fff">03</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">07</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">15</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">22</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">28</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">34</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">46</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">58</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">67</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">79</span>
+        </div>
+        <div class="rotulo" style="margin:16px 0 10px">El sorteo salió así (20 números)</div>
+        <div>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">41</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">03</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">88</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">22</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">61</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">07</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">33</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">46</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">19</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">58</span><br>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">11</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">79</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">49</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">15</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">73</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">25</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">34</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">52</span>
+            <span class="bolilla" style="background:#14663f;color:#fff">67</span>
+            <span class="bolilla" style="background:#eceae3;color:#8b9a93">28</span>
+        </div>
+        <div style="margin-top:14px;font-weight:700;font-size:14px">
+            10 / 10 marcados → ganaste el pozo entero de esa semana.
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>3 · Las reglas</span></div>
+</section>
+
+<!-- ============ PAGINA 4: EL POZO Y TU CUENTA ============ -->
+<section class="hoja">
+    <div class="rotulo">EL POZO</div>
+    <h2 class="titulo">Un mínimo garantizado, todas las semanas</h2>
+    <p style="color:#4b5b54;font-size:14px;line-height:1.6;margin-bottom:14px">
+        El pozo crece con el 60% de cada jugada que se paga en la semana. Pero nunca
+        arrancás de menos:
+    </p>
+    <div class="tarjeta tarjeta-oro">
+        <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:30px;color:#a67c12">$25.000</div>
+        <p style="margin:8px 0 0;font-size:13.5px;color:#7a5a0d;line-height:1.5">
+            Aunque las jugadas de la semana todavía no lleguen a ese monto, si salís
+            ganador cobrás como mínimo esto. La diferencia la pone Decena de Oro.
+            (Este mínimo puede actualizarse — preguntá el valor vigente en tu punto
+            de venta.)
+        </p>
+    </div>
+
+    <div class="rotulo" style="margin-top:26px">TU CUENTA</div>
+    <h2 class="titulo" style="margin-top:6px">El portal del jugador</h2>
+    <p style="color:#4b5b54;font-size:14px;margin-bottom:6px">
+        Entrá cuando quieras, desde el celular, para armar una jugada nueva o ver
+        cómo te fue.
+    </p>
+
+    <table class="cuenta">
+        <tr><td>Usuario</td><td>Tu DNI</td></tr>
+        <tr><td>Clave</td><td>Tu DNI</td></tr>
+    </table>
+
+    <div class="item-check"><span class="check">✓</span>Armar una o varias jugadas nuevas juntas y conseguir el código para pagarlas.</div>
+    <div class="item-check"><span class="check">✓</span>Ver tus jugadas de la semana, con los números que ya salieron marcados.</div>
+    <div class="item-check"><span class="check">✓</span>Revisar el historial de semanas anteriores.</div>
+    <div class="item-check"><span class="check">✓</span>Ver el pozo acumulado de la semana en curso.</div>
+
+    <div class="tarjeta" style="margin-top:20px;background:#fbeae9;border-color:#eec9c7">
+        <b style="font-size:14px">¿Tu cuenta dice "en revisión"?</b>
+        <p style="margin:6px 0 0;font-size:13.5px;color:#4b5b54;line-height:1.5">
+            Pasa cuando te registraste vos mismo por la web: un supervisor tiene que
+            aprobar tu alta antes de que puedas cargar o ver jugadas. No hace falta
+            que hagas nada más — solo esperar.
+        </p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>4 · El pozo y tu cuenta</span></div>
+</section>
+
+<!-- ============ PAGINA 5: COMO PAGAR POR TRANSFERENCIA ============ -->
+<section class="hoja">
+    <div class="rotulo">CÓMO PAGAR</div>
+    <h2 class="titulo">Por transferencia</h2>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div>
+            <h3>Armá tu jugada desde el portal</h3>
+            <p>Al confirmar, te queda un código corto (por ejemplo <span class="cifra">E2V8JQ</span>)
+            y el monto total a pagar, arriba de tu pantalla.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">2</div>
+        <div>
+            <h3>Transferí al alias</h3>
+            <div style="margin: 8px 0 4px"><span class="alias-caja">decenadeoro</span></div>
+            <p>Por el monto exacto que te muestra el portal.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">3</div>
+        <div>
+            <h3>Compartí el código con quien te vende</h3>
+            <p>Mandale el código de tu solicitud junto con el comprobante de la
+            transferencia, por WhatsApp o en persona. Con eso confirma tu pago.</p>
+        </div>
+    </div>
+
+    <div class="paso">
+        <div class="num">4</div>
+        <div>
+            <h3>Esperá la confirmación</h3>
+            <p>Recién cuando el pago queda confirmado tu jugada entra en el sorteo de
+            esa semana. Si pasó un buen rato y no te confirmaron, escribí por
+            WhatsApp para consultar.</p>
+        </div>
+    </div>
+
+    <div class="tarjeta" style="margin-top:10px">
+        <b style="font-size:14px">¿Sabías que podés jugar en paquete?</b>
+        <p style="margin:6px 0 0;font-size:13.5px;color:#4b5b54;line-height:1.5">
+            De vez en cuando hay promociones de varias jugadas juntas a un precio con
+            descuento (por ejemplo, 4 jugadas por menos de lo que saldrían por
+            separado). Preguntá si hay alguna promoción activa antes de pagar.
+        </p>
+    </div>
+
+    <div class="wp-caja">
+        <div class="wp-icono">✆</div>
+        <div>
+            <div style="font-size:13px;color:#4b5b54">¿Dudas con tu pago?</div>
+            <div class="num-wp">WhatsApp 381 344-4178</div>
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>5 · Cómo pagar por transferencia</span></div>
+</section>
+
+<!-- ============ PAGINA 6: DUDAS FRECUENTES ============ -->
+<section class="hoja">
+    <div class="rotulo">DUDAS FRECUENTES</div>
+    <h2 class="titulo">Preguntas y respuestas</h2>
+
+    <div class="pregunta">
+        <h3>¿Puedo jugar más de una vez por semana?</h3>
+        <p>Sí, las veces que quieras. Podés cargar varias jugadas juntas en una sola
+        operación desde el portal, y todas entran al mismo pozo.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Puedo repetir un número dentro de la misma jugada?</h3>
+        <p>No. Los 10 números de una jugada tienen que ser todos distintos entre sí.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Me tengo que acordar de mi clave?</h3>
+        <p>No — tu clave es siempre tu DNI, no se cambia. Para entrar solo necesitás
+        tu número de documento.</p>
+    </div>
+    <div class="pregunta">
+        <h3>Me registré yo mismo, ¿ya puedo jugar?</h3>
+        <p>Todavía no: tu cuenta queda "en revisión" hasta que un supervisor la
+        apruebe. Una vez aprobada, entrás normalmente con tu DNI y podés cargar
+        jugadas.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Cómo pago si armé la jugada yo mismo?</h3>
+        <p>Por transferencia al alias <b>decenadeoro</b>, compartiendo después tu
+        código con quien te vende para que confirme el pago (ver página 5).</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Cuándo se cargan los resultados?</h3>
+        <p>Apenas termina cada sorteo de la Nocturna, de lunes a viernes. Podés
+        revisar tus números en el portal ni bien salen.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Cómo cobro si gano?</h3>
+        <p>Te contactamos apenas se confirma la jugada ganadora, para coordinar el
+        pago del premio.</p>
+    </div>
+
+    <div class="wp-caja">
+        <div class="wp-icono">✆</div>
+        <div>
+            <div style="font-size:13px;color:#4b5b54">¿Tenés otra duda? Escribinos</div>
+            <div class="num-wp">WhatsApp 381 344-4178</div>
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>10 de septiembre de 2026</span></div>
+</section>
+
+</body>
+</html>

@@ -2,6 +2,7 @@
 /** Handler POST de la carga de jugada (una o varias juntas). */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
 use Polla\Support\ValidacionException;
 
@@ -11,6 +12,10 @@ requirePost();
 $clienteId    = (int) ($_POST['cliente_id'] ?? 0);
 $gruposPost   = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
 $promocionId  = !empty($_POST['promocion_id']) ? (int) $_POST['promocion_id'] : null;
+$tipoJuego    = array_key_exists($_POST['tipo_juego'] ?? '', CicloService::TIPOS)
+    ? $_POST['tipo_juego']
+    : CicloService::TIPO_SEMANAL;
+$volver       = APP_URL . '/admin/jugadas/nueva.php?tipo=' . $tipoJuego;
 
 $listasDeNumeros = [];
 foreach ($gruposPost as $grupo) {
@@ -19,7 +24,7 @@ foreach ($gruposPost as $grupo) {
 
 try {
     $jugadas = JugadaService::crearDesde(getPDO());
-    $ids     = $jugadas->crearVarias($clienteId, $listasDeNumeros, currentUserId(), $promocionId);
+    $ids     = $jugadas->crearVarias($clienteId, $listasDeNumeros, currentUserId(), $promocionId, $tipoJuego);
 
     flushOld();
 
@@ -46,12 +51,12 @@ try {
     setFlash('success', $mensaje);
 
     // Volvemos al formulario vacio: lo normal es cargar varias tandas seguidas.
-    header('Location: ' . APP_URL . '/admin/jugadas/nueva.php');
+    header('Location: ' . $volver);
     exit;
 
 } catch (ValidacionException $e) {
     setOld(['cliente_id' => $clienteId, 'grupos' => $gruposPost]);
     setFlash('danger', implode("\n", $e->errores()));
-    header('Location: ' . APP_URL . '/admin/jugadas/nueva.php');
+    header('Location: ' . $volver);
     exit;
 }

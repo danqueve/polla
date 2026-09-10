@@ -3,20 +3,31 @@
 namespace Polla\Support;
 
 use DateTimeImmutable;
+use Polla\Services\CicloService;
 
 /**
- * Filtros de las pantallas de reportes: rango de fechas, cliente, ciclo
- * y usuario que cargo.
+ * Filtros de las pantallas de reportes: rango de fechas, cliente, ciclo,
+ * tipo de juego y usuario que cargo.
  *
  * Se arma desde $_GET y sanea todo ahi mismo, asi que a ReporteService
  * le llegan enteros y fechas ya validadas y nunca texto del navegador.
  */
 final class FiltroReporte
 {
+    /** Ambos juegos a la vez, sin distinguir caja. Solo valido para tipoJuego. */
+    public const TIPO_JUEGO_TODOS = 'todos';
+
     public ?string $desde     = null;   // Y-m-d
     public ?string $hasta     = null;   // Y-m-d
     public ?int    $clienteId = null;
     public ?int    $cicloId   = null;
+
+    /**
+     * Caja del negocio a reportar: 'semanal' (default, preserva el
+     * comportamiento de siempre), 'sabado', o 'todos' para sumar las
+     * dos. Nunca queda ambiguo entre las dos cajas separadas.
+     */
+    public string $tipoJuego = CicloService::TIPO_SEMANAL;
 
     /**
      * Filtro "cargado por" que elige el admin en la interfaz. No tiene
@@ -34,6 +45,11 @@ final class FiltroReporte
         $filtro->hasta     = self::fecha($get['hasta'] ?? null);
         $filtro->clienteId = self::entero($get['cliente'] ?? null);
         $filtro->cicloId   = self::entero($get['ciclo'] ?? null);
+
+        $tipoValido = CicloService::TIPOS + [self::TIPO_JUEGO_TODOS => 'Todos'];
+        $filtro->tipoJuego = array_key_exists($get['tipo_juego'] ?? '', $tipoValido)
+            ? $get['tipo_juego']
+            : CicloService::TIPO_SEMANAL;
 
         // Solo el admin puede filtrar por autor; para un supervisor el
         // unico autor posible ya es el mismo, via el alcance.
@@ -58,11 +74,12 @@ final class FiltroReporte
     public function comoQueryString(array $extra = []): string
     {
         $params = array_filter([
-            'desde'   => $this->desde,
-            'hasta'   => $this->hasta,
-            'cliente' => $this->clienteId,
-            'ciclo'   => $this->cicloId,
-            'usuario' => $this->usuarioId,
+            'desde'     => $this->desde,
+            'hasta'     => $this->hasta,
+            'cliente'   => $this->clienteId,
+            'ciclo'     => $this->cicloId,
+            'tipo_juego' => $this->tipoJuego,
+            'usuario'   => $this->usuarioId,
         ]);
 
         return http_build_query($params + $extra);

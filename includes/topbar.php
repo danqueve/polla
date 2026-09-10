@@ -40,6 +40,11 @@ $_iniciales = mb_strtoupper(mb_substr(trim($_u['nombre']) !== '' ? $_u['nombre']
                         <i class="bi bi-calendar-week me-2"></i>Historial de ciclos
                     </a>
                 </li>
+                <li>
+                    <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/sabados/index.php">
+                        <i class="bi bi-star me-2"></i>Sábados
+                    </a>
+                </li>
                 <?php if (isAdmin()): ?>
                     <li>
                         <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/usuarios/index.php">

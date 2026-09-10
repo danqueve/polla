@@ -15,6 +15,16 @@ $premioBase    = old('premio_base', (string) $configuracion->premioBase());
 $ultimaMonto   = $configuracion->ultimaActualizacion('importe_jugada');
 $ultimaPremio  = $configuracion->ultimaActualizacion('premio_base');
 
+$montoSabado        = old('monto_jugada_sabado', (string) $configuracion->montoJugadaSabado());
+$premioBaseSabado   = old('premio_base_sabado', (string) $configuracion->premioBaseSabado());
+$ultimaMontoSabado  = $configuracion->ultimaActualizacion('importe_jugada_sabado');
+$ultimaPremioSabado = $configuracion->ultimaActualizacion('premio_base_sabado');
+
+$horarioSemanal      = old('horario_limite_semanal', $configuracion->horarioLimiteSemanal());
+$horarioSabado       = old('horario_limite_sabado', $configuracion->horarioLimiteSabado());
+$ultimoHorarioSemanal = $configuracion->ultimaActualizacion('horario_limite_semanal');
+$ultimoHorarioSabado  = $configuracion->ultimaActualizacion('horario_limite_sabado');
+
 $pageTitle  = 'Configuración · ' . APP_NAME;
 $navSeccion = 'configuracion';
 $bodyClass  = 'con-accion-fija';
@@ -94,6 +104,95 @@ require __DIR__ . '/../../includes/topbar.php';
                     <?php endif; ?>
                 </p>
             <?php endif; ?>
+        </div>
+
+        <div class="tarjeta p-3 mb-3">
+            <span class="rotulo d-block mb-2">Monto de jugada — Sábados</span>
+            <p class="fila__meta mt-0 mb-3">
+                Caja separada del juego semanal. Rige para las jugadas de sábados
+                que se carguen de ahora en más.
+            </p>
+
+            <div class="mb-2">
+                <label class="form-label" for="monto_jugada_sabado">Monto por jugada</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control cifra" id="monto_jugada_sabado" name="monto_jugada_sabado"
+                           value="<?= e($montoSabado) ?>"
+                           inputmode="decimal" min="1" step="1" required>
+                </div>
+            </div>
+
+            <?php if ($ultimaMontoSabado): ?>
+                <p class="fila__meta mb-0">
+                    Último cambio: <?= e(formatFechaHora($ultimaMontoSabado['actualizado_en'])) ?>
+                    <?php if ($ultimaMontoSabado['actualizado_por']): ?>
+                        · por <?= e($ultimaMontoSabado['actualizado_por']) ?>
+                    <?php endif; ?>
+                </p>
+            <?php endif; ?>
+        </div>
+
+        <div class="tarjeta p-3 mb-3">
+            <span class="rotulo d-block mb-2">Premio base garantizado — Sábados</span>
+            <p class="fila__meta mt-0 mb-3">
+                Piso del pozo de sábados, independiente del piso semanal.
+            </p>
+
+            <div class="mb-2">
+                <label class="form-label" for="premio_base_sabado">Piso del pozo</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" class="form-control cifra" id="premio_base_sabado" name="premio_base_sabado"
+                           value="<?= e($premioBaseSabado) ?>"
+                           inputmode="decimal" min="0" step="1" required>
+                </div>
+            </div>
+
+            <?php if ($ultimaPremioSabado): ?>
+                <p class="fila__meta mb-0">
+                    Último cambio: <?= e(formatFechaHora($ultimaPremioSabado['actualizado_en'])) ?>
+                    <?php if ($ultimaPremioSabado['actualizado_por']): ?>
+                        · por <?= e($ultimaPremioSabado['actualizado_por']) ?>
+                    <?php endif; ?>
+                </p>
+            <?php endif; ?>
+        </div>
+
+        <div class="tarjeta p-3 mb-3">
+            <span class="rotulo d-block mb-2">Horarios límite de carga</span>
+            <p class="fila__meta mt-0 mb-3">
+                Después de este horario, clientes y staff no pueden cargar más
+                jugadas de ese juego hasta el otro día.
+            </p>
+
+            <div class="mb-3">
+                <label class="form-label" for="horario_limite_semanal">Semanal (lunes a viernes)</label>
+                <input type="time" class="form-control cifra" id="horario_limite_semanal" name="horario_limite_semanal"
+                       value="<?= e($horarioSemanal) ?>" required>
+                <?php if ($ultimoHorarioSemanal): ?>
+                    <p class="fila__meta mb-0 mt-1">
+                        Último cambio: <?= e(formatFechaHora($ultimoHorarioSemanal['actualizado_en'])) ?>
+                        <?php if ($ultimoHorarioSemanal['actualizado_por']): ?>
+                            · por <?= e($ultimoHorarioSemanal['actualizado_por']) ?>
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label" for="horario_limite_sabado">Sábados</label>
+                <input type="time" class="form-control cifra" id="horario_limite_sabado" name="horario_limite_sabado"
+                       value="<?= e($horarioSabado) ?>" required>
+                <?php if ($ultimoHorarioSabado): ?>
+                    <p class="fila__meta mb-0 mt-1">
+                        Último cambio: <?= e(formatFechaHora($ultimoHorarioSabado['actualizado_en'])) ?>
+                        <?php if ($ultimoHorarioSabado['actualizado_por']): ?>
+                            · por <?= e($ultimoHorarioSabado['actualizado_por']) ?>
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
+            </div>
         </div>
     </form>
 

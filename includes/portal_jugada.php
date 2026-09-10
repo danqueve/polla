@@ -55,7 +55,7 @@ $marcados = $mejor['acertados'] ?? [];
             <div class="min-w-0">
                 <p class="estado-jugada__titulo">Jugada cargada</p>
                 <p class="estado-jugada__detalle">
-                    Todavía no salió ningún sorteo de esta semana
+                    Todavía no salió ningún sorteo de este ciclo
                 </p>
             </div>
         </div>

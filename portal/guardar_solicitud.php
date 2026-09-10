@@ -2,6 +2,7 @@
 /** Handler POST de "armar jugada". Genera la solicitud pendiente de pago. */
 require_once __DIR__ . '/../config/portal.php';
 
+use Polla\Services\CicloService;
 use Polla\Services\SolicitudService;
 use Polla\Support\ValidacionException;
 
@@ -11,6 +12,10 @@ requirePost();
 $clienteId   = (int) clienteActualId();
 $gruposPost  = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
 $promocionId = !empty($_POST['promocion_id']) ? (int) $_POST['promocion_id'] : null;
+$tipoJuego   = array_key_exists($_POST['tipo_juego'] ?? '', CicloService::TIPOS)
+    ? $_POST['tipo_juego']
+    : CicloService::TIPO_SEMANAL;
+$volver      = APP_URL . '/portal/jugar.php?tipo=' . $tipoJuego;
 
 $listasDeNumeros = [];
 foreach ($gruposPost as $grupo) {
@@ -18,7 +23,7 @@ foreach ($gruposPost as $grupo) {
 }
 
 try {
-    $resultado = SolicitudService::crearDesde(getPDO())->crear($clienteId, $listasDeNumeros, $promocionId);
+    $resultado = SolicitudService::crearDesde(getPDO())->crear($clienteId, $listasDeNumeros, $promocionId, $tipoJuego);
 
     flushOld();
 
@@ -28,6 +33,6 @@ try {
 } catch (ValidacionException $e) {
     setOld(['grupos' => $gruposPost]);
     setFlash('danger', implode("\n", $e->errores()));
-    header('Location: ' . APP_URL . '/portal/jugar.php');
+    header('Location: ' . $volver);
     exit;
 }

@@ -20,7 +20,12 @@ $portal    = new PortalService($db);
 $ciclos    = new CicloService($db);
 $clienteId = (int) clienteActualId();
 
-$ciclo   = $ciclos->obtenerCicloActivo();
+$tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
+    ? $_GET['tipo']
+    : CicloService::TIPO_SEMANAL;
+$esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
+
+$ciclo   = $ciclos->obtenerCicloActivo($tipoJuego);
 $cicloId = (int) $ciclo['id'];
 
 $jugadas      = $portal->jugadasDelCiclo($clienteId, $cicloId);
@@ -28,11 +33,14 @@ $sorteos      = $portal->sorteosDelCiclo($cicloId);
 $totalSorteos = count($sorteos);
 $cicloAbierto = true;
 
-$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId);
+$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId, $tipoJuego);
 
 // Fase 7: el pozo que ve el cliente nunca baja del premio base
-// garantizado, aunque lo acumulado real esta semana sea menor.
-$premioBase   = (new ParametroService($db))->premioBase();
+// garantizado, aunque lo acumulado real esta semana (o este sabado)
+// sea menor. Caja separada: cada juego tiene su propio premio base.
+$premioBase   = $esSabado
+    ? (new ParametroService($db))->premioBaseSabado()
+    : (new ParametroService($db))->premioBase();
 $pozoMostrado = PozoService::montoAMostrar((float) ($ciclo['monto_acumulado'] ?? 0), $premioBase);
 
 $pageTitle  = 'Mis jugadas · ' . APP_NAME;
@@ -47,12 +55,23 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
     <h1 class="visually-hidden">Mis jugadas</h1>
 
-    <!-- Pozo de la semana -->
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link <?= !$esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/portal/index.php?tipo=<?= CicloService::TIPO_SEMANAL ?>">Semana</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/portal/index.php?tipo=<?= CicloService::TIPO_SABADO ?>">Sábado</a>
+        </li>
+    </ul>
+
+    <!-- Pozo del ciclo -->
     <section class="pozo pozo-cliente mb-4 text-center">
-        <div class="pozo__rotulo mb-2">Pozo de esta semana</div>
+        <div class="pozo__rotulo mb-2"><?= $esSabado ? 'Pozo de este sábado' : 'Pozo de esta semana' ?></div>
         <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
         <div class="mt-3" style="color:rgba(255,255,255,.72);font-size:.8125rem">
-            Semana del <?= e(CicloService::rotulo($ciclo)) ?>
+            <?= $esSabado ? '' : 'Semana del ' ?><?= e(CicloService::rotulo($ciclo)) ?>
         </div>
     </section>
 
@@ -76,7 +95,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
         <div class="vacio tarjeta">
             <i class="bi bi-ticket-perforated" aria-hidden="true"></i>
-            <p class="fw-semibold mb-2">Esta semana no tenés jugadas</p>
+            <p class="fw-semibold mb-2"><?= $esSabado ? 'Este sábado no tenés jugadas' : 'Esta semana no tenés jugadas' ?></p>
             <p class="fila__meta mb-0">
                 Armá una jugada vos mismo, o
                 <a href="<?= e(whatsappUrl()) ?>" target="_blank" rel="noopener">hablá con Decena de Oro</a>,
@@ -84,10 +103,10 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             </p>
         </div>
 
-        <a href="<?= APP_URL ?>/portal/jugar.php" class="btn btn-primary w-100 mt-3">
+        <a href="<?= APP_URL ?>/portal/jugar.php?tipo=<?= $tipoJuego ?>" class="btn btn-primary w-100 mt-3">
             <i class="bi bi-plus-lg"></i> Armar una jugada
         </a>
-        <a href="<?= APP_URL ?>/portal/historial.php" class="btn btn-outline-secondary w-100 mt-2">
+        <a href="<?= APP_URL ?>/portal/historial.php?tipo=<?= $tipoJuego ?>" class="btn btn-outline-secondary w-100 mt-2">
             <i class="bi bi-clock-history"></i> Ver mis jugadas anteriores
         </a>
 
@@ -98,7 +117,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                 <?= count($jugadas) === 1 ? 'Tu jugada' : 'Tus ' . count($jugadas) . ' jugadas' ?>
             </span>
             <span class="fila__meta">
-                <?= $totalSorteos ?> de 5 sorteos
+                <?= $totalSorteos ?> de 5 <?= $esSabado ? 'turnos' : 'sorteos' ?>
             </span>
         </div>
 

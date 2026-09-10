@@ -62,19 +62,28 @@ class PortalService
 
     /**
      * Ciclos ya cerrados en los que este cliente jugo, del mas nuevo al
-     * mas viejo. El EXISTS con cliente_id es lo que impide que aparezca
-     * una semana en la que no participo.
+     * mas viejo, para un tipo de juego dado. El EXISTS con cliente_id es
+     * lo que impide que aparezca un ciclo en el que no participo.
+     *
+     * El filtro de tipo no es cosmetico: `numero` se repite entre
+     * semanal y sabado (cada uno tiene su propia secuencia), asi que
+     * mezclarlos en un mismo listado mostraria "Ciclo 5" dos veces con
+     * fechas y montos distintos.
      *
      * @return array<int,array>
      */
-    public function ciclosJugados(int $clienteId, int $limite = self::CICLOS_HISTORIAL): array
-    {
+    public function ciclosJugados(
+        int $clienteId,
+        string $tipoJuego = CicloService::TIPO_SEMANAL,
+        int $limite = self::CICLOS_HISTORIAL
+    ): array {
         $stmt = $this->db->prepare(
             "SELECT c.id, c.numero, c.fecha_inicio, c.fecha_fin, c.estado,
                     p.monto_acumulado, p.monto_pagado
                FROM ciclos c
                LEFT JOIN pozo_ciclo p ON p.ciclo_id = c.id
               WHERE c.estado <> 'abierto'
+                AND c.tipo = :tipo
                 AND EXISTS (
                         SELECT 1 FROM jugadas j
                          WHERE j.ciclo_id   = c.id
@@ -83,7 +92,7 @@ class PortalService
               ORDER BY c.numero DESC
               LIMIT " . (int) $limite
         );
-        $stmt->execute([':cliente' => $clienteId]);
+        $stmt->execute([':cliente' => $clienteId, ':tipo' => $tipoJuego]);
 
         return $stmt->fetchAll();
     }

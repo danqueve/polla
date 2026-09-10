@@ -9,6 +9,7 @@
  */
 require_once __DIR__ . '/../config/portal.php';
 
+use Polla\Services\CicloService;
 use Polla\Services\SolicitudService;
 
 requireCliente();
@@ -59,7 +60,9 @@ require __DIR__ . '/../includes/portal_cabecera.php';
     <?php endif; ?>
 
     <section class="codigo-solicitud mt-3">
-        <div class="codigo-solicitud__rotulo mb-2">Tu código</div>
+        <div class="codigo-solicitud__rotulo mb-2">
+            Tu código · <?= e(CicloService::TIPOS[$solicitud['tipo_juego']] ?? $solicitud['tipo_juego']) ?>
+        </div>
         <div class="codigo-solicitud__valor"><?= e($solicitud['numero_registro']) ?></div>
         <button type="button" class="btn btn-sm btn-outline-light codigo-solicitud__copiar"
                 data-copiar="<?= e($solicitud['numero_registro']) ?>">

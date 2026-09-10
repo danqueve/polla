@@ -60,19 +60,22 @@ class SolicitudService
     private ParametroService $parametros;
     private CicloService $ciclos;
     private PozoService $pozo;
+    private HorarioCargaService $horario;
 
     public function __construct(
         PDO $db,
         JugadaService $jugadas,
         ParametroService $parametros,
         CicloService $ciclos,
-        PozoService $pozo
+        PozoService $pozo,
+        HorarioCargaService $horario
     ) {
         $this->db         = $db;
         $this->jugadas     = $jugadas;
         $this->parametros = $parametros;
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
+        $this->horario     = $horario;
     }
 
     /**
@@ -87,9 +90,10 @@ class SolicitudService
         $parametros = new ParametroService($db);
         $ciclos     = new CicloService($db);
         $pozo       = new PozoService($db);
-        $jugadas    = new JugadaService($db, $parametros, $ciclos, $pozo);
+        $horario    = new HorarioCargaService($parametros);
+        $jugadas    = new JugadaService($db, $parametros, $ciclos, $pozo, $horario);
 
-        return new self($db, $jugadas, $parametros, $ciclos, $pozo);
+        return new self($db, $jugadas, $parametros, $ciclos, $pozo, $horario);
     }
 
     // ── El cliente arma su jugada ───────────────────────────
@@ -110,8 +114,12 @@ class SolicitudService
      * @return array{solicitud_id:int, numero_registro:string, cantidad:int, monto_total:float}
      * @throws ValidacionException
      */
-    public function crear(int $clienteId, array $listasDeNumeros, ?int $promocionId = null): array
-    {
+    public function crear(
+        int $clienteId,
+        array $listasDeNumeros,
+        ?int $promocionId = null,
+        string $tipoJuego = CicloService::TIPO_SEMANAL
+    ): array {
         if (!$listasDeNumeros) {
             throw ValidacionException::de('Armá al menos una jugada.');
         }
@@ -121,6 +129,8 @@ class SolicitudService
                 . ' jugadas en una misma solicitud. Para más, generá otra.'
             );
         }
+
+        $this->horario->exigirAbierto($tipoJuego);
 
         $numerosPorJugada = [];
         $errores          = [];
@@ -141,7 +151,7 @@ class SolicitudService
         $cliente = $this->buscarClienteAprobado($clienteId);
 
         $cantidad = count($numerosPorJugada);
-        $importes = $this->jugadas->resolverImportes($cantidad, $promocionId);
+        $importes = $this->jugadas->resolverImportes($cantidad, $promocionId, $tipoJuego);
 
         $costosPorJugada = [];
         $montoTotal      = 0.0;
@@ -159,7 +169,8 @@ class SolicitudService
         [$solicitudId, $codigo] = $this->insertarSolicitudConReintento(
             (int) $cliente['id'],
             $cantidad,
-            $montoTotal
+            $montoTotal,
+            $tipoJuego
         );
 
         try {
@@ -168,7 +179,8 @@ class SolicitudService
                 $numerosPorJugada,
                 $solicitudId,
                 $costosPorJugada,
-                $promocionId
+                $promocionId,
+                $tipoJuego
             );
         } catch (Throwable $e) {
             // No dejar la solicitud huerfana: si las jugadas no se
@@ -194,21 +206,26 @@ class SolicitudService
      * @return array{0:int, 1:string} [solicitud_id, numero_registro]
      * @throws ValidacionException
      */
-    private function insertarSolicitudConReintento(int $clienteId, int $cantidad, float $montoTotal): array
-    {
+    private function insertarSolicitudConReintento(
+        int $clienteId,
+        int $cantidad,
+        float $montoTotal,
+        string $tipoJuego = CicloService::TIPO_SEMANAL
+    ): array {
         $stmt = $this->db->prepare(
-            'INSERT INTO solicitudes (cliente_id, numero_registro, cantidad_jugadas, monto_total)
-             VALUES (:cliente, :codigo, :cantidad, :monto)'
+            'INSERT INTO solicitudes (cliente_id, tipo_juego, numero_registro, cantidad_jugadas, monto_total)
+             VALUES (:cliente, :tipo_juego, :codigo, :cantidad, :monto)'
         );
 
         for ($intento = 1; $intento <= self::REINTENTOS_CODIGO; $intento++) {
             $codigo = $this->generarCodigo();
             try {
                 $stmt->execute([
-                    ':cliente'  => $clienteId,
-                    ':codigo'   => $codigo,
-                    ':cantidad' => $cantidad,
-                    ':monto'    => $montoTotal,
+                    ':cliente'    => $clienteId,
+                    ':tipo_juego' => $tipoJuego,
+                    ':codigo'     => $codigo,
+                    ':cantidad'   => $cantidad,
+                    ':monto'      => $montoTotal,
                 ]);
                 return [(int) $this->db->lastInsertId(), $codigo];
             } catch (PDOException $e) {
@@ -305,17 +322,21 @@ class SolicitudService
         return $solicitud;
     }
 
-    /** Ultima solicitud pendiente de un cliente, para el aviso en el portal. */
-    public function pendientePara(int $clienteId): ?array
+    /**
+     * Ultima solicitud pendiente de un cliente para un tipo de juego, para
+     * el aviso en el portal. Un cliente puede tener a la vez una pendiente
+     * semanal y otra de sábado sin que se pisen.
+     */
+    public function pendientePara(int $clienteId, string $tipoJuego = CicloService::TIPO_SEMANAL): ?array
     {
         $stmt = $this->db->prepare(
             "SELECT id, numero_registro, cantidad_jugadas, monto_total, fecha_creacion
                FROM solicitudes
-              WHERE cliente_id = :cliente AND estado = 'pendiente'
+              WHERE cliente_id = :cliente AND estado = 'pendiente' AND tipo_juego = :tipo_juego
               ORDER BY fecha_creacion DESC
               LIMIT 1"
         );
-        $stmt->execute([':cliente' => $clienteId]);
+        $stmt->execute([':cliente' => $clienteId, ':tipo_juego' => $tipoJuego]);
         return $stmt->fetch() ?: null;
     }
 
@@ -327,7 +348,7 @@ class SolicitudService
     public function listarPendientes(int $limite = 50): array
     {
         $stmt = $this->db->prepare(
-            "SELECT s.id, s.numero_registro, s.cantidad_jugadas, s.monto_total, s.fecha_creacion,
+            "SELECT s.id, s.tipo_juego, s.numero_registro, s.cantidad_jugadas, s.monto_total, s.fecha_creacion,
                     c.nombre AS cliente_nombre, c.nro_cliente
                FROM solicitudes s
                JOIN clientes c ON c.id = s.cliente_id
@@ -360,7 +381,10 @@ class SolicitudService
         try {
             $solicitud = $this->bloquearPendiente($solicitudId);
 
-            $ciclo = $this->ciclos->bloquearAbierto();
+            // Bloquear el ciclo abierto DEL TIPO DE LA SOLICITUD -- si no,
+            // confirmar una solicitud de sabado asignaria sus jugadas al
+            // ciclo semanal abierto.
+            $ciclo = $this->ciclos->bloquearAbierto($solicitud['tipo_juego']);
             if (!$ciclo) {
                 throw ValidacionException::de(
                     'No hay ningún ciclo abierto. Entrá al tablero para que se abra el de esta semana.'

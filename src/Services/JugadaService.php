@@ -27,24 +27,27 @@ class JugadaService
     private ParametroService $parametros;
     private CicloService $ciclos;
     private PozoService $pozo;
+    private HorarioCargaService $horario;
 
     public function __construct(
         PDO $db,
         ParametroService $parametros,
         CicloService $ciclos,
-        PozoService $pozo
+        PozoService $pozo,
+        HorarioCargaService $horario
     ) {
         $this->db         = $db;
         $this->parametros = $parametros;
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
+        $this->horario    = $horario;
     }
 
     /** Fabrica: arma el service con sus dependencias ya cableadas. */
     public static function crearDesde(PDO $db): self
     {
         $parametros = new ParametroService($db);
-        return new self($db, $parametros, new CicloService($db), new PozoService($db));
+        return new self($db, $parametros, new CicloService($db), new PozoService($db), new HorarioCargaService($parametros));
     }
 
     /**
@@ -54,9 +57,13 @@ class JugadaService
      * @return int Id de la jugada nueva.
      * @throws ValidacionException
      */
-    public function crear(int $clienteId, array $numerosCrudos, ?int $cargadoPor): int
-    {
-        return $this->crearVarias($clienteId, [$numerosCrudos], $cargadoPor)[0];
+    public function crear(
+        int $clienteId,
+        array $numerosCrudos,
+        ?int $cargadoPor,
+        string $tipoJuego = CicloService::TIPO_SEMANAL
+    ): int {
+        return $this->crearVarias($clienteId, [$numerosCrudos], $cargadoPor, null, $tipoJuego)[0];
     }
 
     /**
@@ -74,14 +81,22 @@ class JugadaService
      * @param array<int,string[]> $listasDeNumeros Un set de numeros crudos por jugada.
      * @param int|null $promocionId Promocion activa a aplicar, o null para
      *                              cobrar precio de lista (el de siempre).
+     *                              Exclusiva del juego semanal.
      * @return int[] Ids de las jugadas creadas, en el mismo orden que $listasDeNumeros.
      * @throws ValidacionException
      */
-    public function crearVarias(int $clienteId, array $listasDeNumeros, ?int $cargadoPor, ?int $promocionId = null): array
-    {
+    public function crearVarias(
+        int $clienteId,
+        array $listasDeNumeros,
+        ?int $cargadoPor,
+        ?int $promocionId = null,
+        string $tipoJuego = CicloService::TIPO_SEMANAL
+    ): array {
         if (!$listasDeNumeros) {
             throw ValidacionException::de('Cargá al menos una jugada.');
         }
+
+        $this->horario->exigirAbierto($tipoJuego);
 
         $cliente = $this->buscarClienteActivo($clienteId);
 
@@ -101,17 +116,17 @@ class JugadaService
             throw new ValidacionException($errores);
         }
 
-        $ciclo    = $this->ciclos->obtenerCicloActivo();
-        $importes = $this->resolverImportes(count($numerosPorJugada), $promocionId);
+        $ciclo    = $this->ciclos->obtenerCicloActivo($tipoJuego);
+        $importes = $this->resolverImportes(count($numerosPorJugada), $promocionId, $tipoJuego);
         $grupo    = self::uuid4();
 
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo, aporte_gastos,
+                "INSERT INTO jugadas (cliente_id, tipo_juego, ciclo_id, importe, aporte_pozo, aporte_gastos,
                                       pagada, estado_pago, origen_carga, grupo_compra, promocion_id,
                                       estado, cargado_por)
-                 VALUES (:cliente, :ciclo, :importe, :pozo, :gastos,
+                 VALUES (:cliente, :tipo_juego, :ciclo, :importe, :pozo, :gastos,
                          1, 'confirmada', 'staff', :grupo, :promocion, 'activa', :usuario)"
             );
             $stmtNum = $this->db->prepare(
@@ -123,14 +138,15 @@ class JugadaService
                 $reparto = $this->parametros->repartir($importes[$i]);
 
                 $stmt->execute([
-                    ':cliente'   => $cliente['id'],
-                    ':ciclo'     => $ciclo['id'],
-                    ':importe'   => $importes[$i],
-                    ':pozo'      => $reparto['pozo'],
-                    ':gastos'    => $reparto['gastos'],
-                    ':grupo'     => $grupo,
-                    ':promocion' => $promocionId,
-                    ':usuario'   => $cargadoPor,
+                    ':cliente'    => $cliente['id'],
+                    ':tipo_juego' => $tipoJuego,
+                    ':ciclo'      => $ciclo['id'],
+                    ':importe'    => $importes[$i],
+                    ':pozo'       => $reparto['pozo'],
+                    ':gastos'     => $reparto['gastos'],
+                    ':grupo'      => $grupo,
+                    ':promocion'  => $promocionId,
+                    ':usuario'    => $cargadoPor,
                 ]);
 
                 $jugadaId = (int) $this->db->lastInsertId();
@@ -163,11 +179,24 @@ class JugadaService
      * saco una jugada despues de que se le sugirio la promo sin
      * actualizar cual aplica, esto lo frena en vez de cobrar mal.
      *
+     * Las promociones son exclusivas del juego semanal: el juego de
+     * sabados siempre cobra precio de lista (importeJugadaSabado()).
+     *
      * @throws ValidacionException
      * @return float[]
      */
-    public function resolverImportes(int $cantidad, ?int $promocionId): array
-    {
+    public function resolverImportes(
+        int $cantidad,
+        ?int $promocionId,
+        string $tipoJuego = CicloService::TIPO_SEMANAL
+    ): array {
+        if ($tipoJuego === CicloService::TIPO_SABADO) {
+            if ($promocionId !== null) {
+                throw ValidacionException::de('Las promociones no aplican al juego de sábados.');
+            }
+            return array_fill(0, $cantidad, $this->parametros->importeJugadaSabado());
+        }
+
         if ($promocionId === null) {
             return array_fill(0, $cantidad, $this->parametros->importeJugada());
         }
@@ -218,14 +247,15 @@ class JugadaService
         array $numerosPorJugada,
         int $solicitudId,
         array $costosPorJugada,
-        ?int $promocionId = null
+        ?int $promocionId = null,
+        string $tipoJuego = CicloService::TIPO_SEMANAL
     ): array {
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare(
-                "INSERT INTO jugadas (cliente_id, ciclo_id, importe, aporte_pozo, aporte_gastos,
+                "INSERT INTO jugadas (cliente_id, tipo_juego, ciclo_id, importe, aporte_pozo, aporte_gastos,
                                       pagada, estado_pago, origen_carga, solicitud_id, promocion_id, estado)
-                 VALUES (:cliente, NULL, :importe, :pozo, :gastos,
+                 VALUES (:cliente, :tipo_juego, NULL, :importe, :pozo, :gastos,
                          0, 'pendiente_pago', 'cliente', :solicitud, :promocion, 'activa')"
             );
             $stmtNum = $this->db->prepare(
@@ -237,12 +267,13 @@ class JugadaService
                 $costo = $costosPorJugada[$i];
 
                 $stmt->execute([
-                    ':cliente'   => $clienteId,
-                    ':importe'   => $costo['importe'],
-                    ':pozo'      => $costo['pozo'],
-                    ':gastos'    => $costo['gastos'],
-                    ':solicitud' => $solicitudId,
-                    ':promocion' => $promocionId,
+                    ':cliente'    => $clienteId,
+                    ':tipo_juego' => $tipoJuego,
+                    ':importe'    => $costo['importe'],
+                    ':pozo'       => $costo['pozo'],
+                    ':gastos'     => $costo['gastos'],
+                    ':solicitud'  => $solicitudId,
+                    ':promocion'  => $promocionId,
                 ]);
 
                 $jugadaId = (int) $this->db->lastInsertId();
@@ -407,7 +438,7 @@ class JugadaService
      * sin ciclo asignado) apareceria aca con sus 10 numeros a la vista,
      * indistinguible de una jugada real ya cobrada.
      */
-    public function ultimas(int $limite = 5): array
+    public function ultimas(int $limite = 5, string $tipoJuego = CicloService::TIPO_SEMANAL): array
     {
         $stmt = $this->db->prepare(
             "SELECT j.id, j.importe, j.fecha_carga,
@@ -416,12 +447,12 @@ class JugadaService
                FROM jugadas j
                JOIN clientes c ON c.id = j.cliente_id
                LEFT JOIN jugada_numeros n ON n.jugada_id = j.id
-              WHERE j.estado_pago = 'confirmada'
+              WHERE j.estado_pago = 'confirmada' AND j.tipo_juego = :tipo_juego
               GROUP BY j.id
               ORDER BY j.id DESC
               LIMIT " . (int) $limite
         );
-        $stmt->execute();
+        $stmt->execute([':tipo_juego' => $tipoJuego]);
 
         $filas = $stmt->fetchAll();
         foreach ($filas as &$fila) {

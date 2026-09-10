@@ -13,6 +13,7 @@ require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
 use Polla\Services\ClienteService;
+use Polla\Services\HorarioCargaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PromocionService;
 
@@ -21,24 +22,33 @@ requireLogin();
 $db         = getPDO();
 $parametros = new ParametroService($db);
 $ciclos     = new CicloService($db);
+$horario    = new HorarioCargaService($parametros);
 
-$ciclo    = $ciclos->obtenerCicloActivo();
-$clientes = (new ClienteService($db))->listarActivosParaSelect();
+$tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
+    ? $_GET['tipo']
+    : CicloService::TIPO_SEMANAL;
+$esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
 
-$importe  = $parametros->importeJugada();
+$ciclo      = $ciclos->obtenerCicloActivo($tipoJuego);
+$clientes   = (new ClienteService($db))->listarActivosParaSelect();
+$horaAbierto = $horario->abierto($tipoJuego);
+
+$importe  = $esSabado ? $parametros->importeJugadaSabado() : $parametros->importeJugada();
 $reparto  = $parametros->repartir($importe);
 $cantidad = $parametros->numerosPorJugada();
 
-// Promociones activas indexadas por cantidad_jugadas, para que
-// promociones.js sugiera el paquete sin ninguna consulta extra al
-// cambiar la cantidad de jugadas. Solo lo que la vista necesita.
+// Promociones exclusivas del juego semanal: en sabados ni se calculan.
+// Indexadas por cantidad_jugadas, para que promociones.js sugiera el
+// paquete sin ninguna consulta extra al cambiar la cantidad de jugadas.
 $promosPorCantidad = [];
-foreach ((new PromocionService($db))->activasPorCantidad() as $cantidadPromo => $promo) {
-    $promosPorCantidad[$cantidadPromo] = [
-        'id'               => (int) $promo['id'],
-        'precio_total'     => (float) $promo['precio_total'],
-        'cantidad_jugadas' => (int) $promo['cantidad_jugadas'],
-    ];
+if (!$esSabado) {
+    foreach ((new PromocionService($db))->activasPorCantidad() as $cantidadPromo => $promo) {
+        $promosPorCantidad[$cantidadPromo] = [
+            'id'               => (int) $promo['id'],
+            'precio_total'     => (float) $promo['precio_total'],
+            'cantidad_jugadas' => (int) $promo['cantidad_jugadas'],
+        ];
+    }
 }
 
 // Repoblar tras un error de validacion del servidor. Un grupo vacio por
@@ -109,10 +119,28 @@ require __DIR__ . '/../../includes/topbar.php';
         <span class="rotulo text-nowrap">Ciclo <?= (int) $ciclo['numero'] ?></span>
     </div>
     <p class="pantalla__bajada">
-        Semana del <?= e(CicloService::rotulo($ciclo)) ?>
+        <?= $esSabado ? '' : 'Semana del ' ?><?= e(CicloService::rotulo($ciclo)) ?>
     </p>
 
-    <?php if (!$clientes): ?>
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link <?= !$esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/admin/jugadas/nueva.php?tipo=<?= CicloService::TIPO_SEMANAL ?>">Semanal</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/admin/jugadas/nueva.php?tipo=<?= CicloService::TIPO_SABADO ?>">Sábados</a>
+        </li>
+    </ul>
+
+    <?php if (!$horaAbierto): ?>
+
+        <div class="vacio tarjeta mt-3">
+            <i class="bi bi-clock-history" aria-hidden="true"></i>
+            <?= e($horario->motivoCerrado($tipoJuego)) ?>
+        </div>
+
+    <?php elseif (!$clientes): ?>
 
         <div class="vacio tarjeta mt-3">
             <i class="bi bi-person-plus" aria-hidden="true"></i>
@@ -129,6 +157,7 @@ require __DIR__ . '/../../includes/topbar.php';
         <form method="post" id="form-jugada"
               action="<?= APP_URL ?>/admin/jugadas/guardar.php" novalidate>
             <?= csrfField() ?>
+            <input type="hidden" name="tipo_juego" value="<?= e($tipoJuego) ?>">
 
             <!-- 1. Cliente -->
             <section class="tarjeta p-3 mt-3">
@@ -169,17 +198,19 @@ require __DIR__ . '/../../includes/topbar.php';
                 <i class="bi bi-plus-lg"></i> Agregar otra jugada
             </button>
 
-            <div id="promo-sugerida" class="alert alert-success d-flex align-items-start gap-2 mb-3" hidden
-                 data-promos="<?= e(json_encode($promosPorCantidad, JSON_UNESCAPED_UNICODE)) ?>">
-                <i class="bi bi-tag-fill flex-shrink-0" style="margin-top:.15rem" aria-hidden="true"></i>
-                <div class="flex-grow-1">
-                    <div id="promo-sugerida-texto" class="fw-semibold"></div>
-                    <div class="form-check form-switch mt-2 mb-0">
-                        <input class="form-check-input" type="checkbox" role="switch" id="promo-aplicar">
-                        <label class="form-check-label" for="promo-aplicar">Aplicar la promo</label>
+            <?php if (!$esSabado): ?>
+                <div id="promo-sugerida" class="alert alert-success d-flex align-items-start gap-2 mb-3" hidden
+                     data-promos="<?= e(json_encode($promosPorCantidad, JSON_UNESCAPED_UNICODE)) ?>">
+                    <i class="bi bi-tag-fill flex-shrink-0" style="margin-top:.15rem" aria-hidden="true"></i>
+                    <div class="flex-grow-1">
+                        <div id="promo-sugerida-texto" class="fw-semibold"></div>
+                        <div class="form-check form-switch mt-2 mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="promo-aplicar">
+                            <label class="form-check-label" for="promo-aplicar">Aplicar la promo</label>
+                        </div>
                     </div>
                 </div>
-            </div>
+            <?php endif; ?>
             <input type="hidden" name="promocion_id" id="promocion_id" value="">
 
             <!-- 3. Pago -->

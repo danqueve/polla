@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.6 (Fase 7 implementada: premio base garantizado y promociones de paquete; agrega borrador de Fase 8: carga anticipada para la próxima semana, en revisión)
+**Versión:** 1.7 (agrega Fase 9: horario límite de carga, y Fase 10: juego de sábados — ambas implementadas. Sigue el borrador de Fase 8: carga anticipada para la próxima semana, en revisión, sin dependencia con las dos fases nuevas)
 
 ---
 
@@ -142,17 +142,17 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 **clientes**
 `id, nro_cliente (formato AAAA-NNNNNN, año + 6 dígitos aleatorios, UNIQUE), dni, nombre, telefono, password_hash (siempre = hash del DNI, se regenera si el DNI se edita), estado (pendiente | aprobado | rechazado), origen_alta (manual | autorregistro), fecha_alta`
 
-**ciclos** *(semana de juego)*
-`id, fecha_inicio, fecha_fin, estado (programado | abierto | cerrado_con_ganador | cerrado_sin_ganador)`
+**ciclos** *(semana de juego, o sábado de juego — Fase 10)*
+`id, tipo (semanal | sabado — Fase 10, cada uno con su propia numeración y su propio "un ciclo abierto a la vez"), fecha_inicio, fecha_fin (para un ciclo de sábado, iguales: dura un solo día), estado (programado | abierto | cerrado_con_ganador | cerrado_sin_ganador)`
 
 **jugadas**
-`id, cliente_id, ciclo_id (nullable — ver 14.3), importe, pagada, estado_pago (pendiente_pago | confirmada | rechazada — ver 14.3), origen_carga (staff | cliente), solicitud_id (nullable, FK a solicitudes — ver 14.4), grupo_compra (id o UUID, para agrupar jugadas cargadas juntas por el staff), promocion_id (nullable, FK a promociones si el paquete se cargó con descuento — Fase 7), estado (activa | ganadora | perdedora | anulada — veredicto del cotejo, no confundir con estado_pago), fecha_carga, cargado_por (usuario_id, nullable — vacío cuando origen_carga = cliente)`
+`id, cliente_id, tipo_juego (semanal | sabado — Fase 10, para saber a qué caja pertenece mientras esta pendiente_pago sin ciclo_id todavía), ciclo_id (nullable — ver 14.3), importe, pagada, estado_pago (pendiente_pago | confirmada | rechazada — ver 14.3), origen_carga (staff | cliente), solicitud_id (nullable, FK a solicitudes — ver 14.4), grupo_compra (id o UUID, para agrupar jugadas cargadas juntas por el staff), promocion_id (nullable, FK a promociones si el paquete se cargó con descuento — Fase 7, exclusiva del juego semanal), estado (activa | ganadora | perdedora | anulada — veredicto del cotejo, no confundir con estado_pago), fecha_carga, cargado_por (usuario_id, nullable — vacío cuando origen_carga = cliente)`
 
 **jugada_numeros**
 `id, jugada_id, numero (00-99)`
 
 **sorteos**
-`id, ciclo_id, fecha, cargado_por (usuario_id)`
+`id, ciclo_id, fecha, turno (1 para el juego semanal — un sorteo por fecha, como siempre; 1 a 5 para un sábado, que reparte sus 5 turnos en la misma fecha — Fase 10), cargado_por (usuario_id)`
 
 **sorteo_numeros**
 `id, sorteo_id, numero (00-99)`
@@ -164,10 +164,10 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 `id, jugada_id, sorteo_id, monto_premio`
 
 **parametros**
-`clave (ej. importe_jugada, premio_base — Fase 7), valor, actualizado_por (usuario_id), actualizado_en` — la tabla real se llama `parametros`, no `configuracion`; `ConfiguracionService` es la capa admin-facing que la edita.
+`clave (ej. importe_jugada, premio_base — Fase 7; importe_jugada_sabado, premio_base_sabado, horario_limite_semanal, horario_limite_sabado — Fases 9/10), valor, actualizado_por (usuario_id), actualizado_en` — la tabla real se llama `parametros`, no `configuracion`; `ConfiguracionService` es la capa admin-facing que la edita.
 
 **solicitudes** *(Fase 6 — ver sección 14.4)*
-`id, cliente_id, numero_registro (VARCHAR(6), UNIQUE), cantidad_jugadas, monto_total, estado (pendiente | confirmada | rechazada), fecha_creacion, fecha_resolucion, resuelto_por (usuario_id)`
+`id, cliente_id, tipo_juego (semanal | sabado — Fase 10, análogo a jugadas.tipo_juego, para que confirmar el pago bloquee el ciclo abierto del tipo correcto), numero_registro (VARCHAR(6), UNIQUE), cantidad_jugadas, monto_total, estado (pendiente | confirmada | rechazada), fecha_creacion, fecha_resolucion, resuelto_por (usuario_id)`
 
 **promociones** *(Fase 7)*
 `id, cantidad_jugadas, precio_total, activa, fecha_creacion, actualizado_por`
@@ -191,6 +191,8 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 | 6. Selección propia de jugadas | Selección propia de jugadas por el cliente, con autorización de pago por staff | Implementada |
 | 7. Premio base y promociones | Piso garantizado de pozo por ciclo, paquetes promocionales de jugadas | Implementada |
 | 8. Carga anticipada | Ciclo "programado" para cargar jugadas de la próxima semana por adelantado | A implementar |
+| 9. Horario límite de carga | Corte de carga a las 18:00 (lunes a viernes) y 11:00 (sábados), configurable, aplica a cliente y staff por igual | Implementada |
+| 10. Juego de sábados | Mini-ciclo de 5 turnos el mismo sábado, pozo propio, mismo mecanismo de corte y arrastre que el semanal | Implementada |
 
 ## 13. Puntos abiertos antes de programar
 
@@ -237,3 +239,25 @@ Cuando el cliente arma varias jugadas en una misma sesión, todas comparten **un
 - **`cargado_por` queda vacío**, incluso después de confirmado el pago: esa columna significa "quién tipeó los números", y el supervisor que confirma verificó un pago, no eligió números. Quién resolvió la solicitud (y cuándo) sí queda registrado, en `solicitudes.resuelto_por` / `fecha_resolucion`.
 - **Pantallas:** `portal/jugar.php` (armar jugada), `portal/solicitud.php` (código y monto, revisitable por el cliente hasta que se resuelva) y `admin/solicitudes/` (buscador por código + cola de pendientes, confirmar/rechazar). El formulario reutiliza el mismo widget de carga múltiple de la sección 7.3 (`assets/js/numeros.js`).
 - **Pantallas existentes con un filtro adicional** para no mostrar una jugada pendiente de pago mezclada con las reales: el listado de "últimas jugadas" del tablero, el contador de jugadas del historial del cliente, y la auditoría de "quién cargó qué" — las tres exigen `estado_pago = 'confirmada'`. El resto del sistema (cotejo, reportes, pozo) ya queda afuera solo, por filtrar por `ciclo_id`.
+
+## 15. Fase 9: horario límite de carga (implementada)
+
+- **Juego semanal (lunes a viernes)**: las jugadas se pueden cargar solo hasta las **18:00 hora de Argentina**. Después de esa hora, cerrado hasta las 00:00 del día siguiente. Sábados y domingos no tienen este límite (sirve, por ejemplo, para precargar jugadas de la semana que arranca el lunes).
+- **Juego de sábados** (ver sección 16): las jugadas se pueden cargar hasta las **11:00 hora de Argentina del mismo sábado**. El resto de la semana no tiene límite para este juego.
+- **Aplica por igual a clientes (portal) y a staff (admin/supervisor)**, sin excepciones — no hay una vía "de confianza" que se salte el horario.
+- **Los dos horarios son configurables** desde `admin/configuracion/index.php` (parámetros `horario_limite_semanal` y `horario_limite_sabado`, formato `HH:MM`), con el mismo mecanismo de `parametros`/`ParametroService` que ya usaba el monto de la jugada.
+- **El corte es autoritativo del lado del servidor**: `JugadaService::crearVarias()` y `SolicitudService::crear()` lo verifican como primer paso, antes de tocar la base — cualquier camino de carga (presente o futuro) lo hereda automáticamente. El portal del cliente además **oculta el formulario completo** fuera de horario, con un aviso de cuándo reabre; el admin usa el mismo criterio visual.
+- Implementado en `src/Services/HorarioCargaService.php`.
+
+## 16. Fase 10: juego de sábados (implementada)
+
+- Los sábados hay **5 sorteos** ("turnos"), todos con la misma fecha calendario, en vez de un sorteo por día como el juego semanal — una especie de "semana" comprimida en un solo día.
+- **Una jugada de sábado aplica automáticamente a los 5 turnos**: el cliente carga sus 10 números una sola vez y esa jugada se coteja contra cada turno a medida que se van cargando, igual mecanismo que hoy usa una jugada semanal contra cada sorteo de lunes a viernes.
+- **Ganar corta el día**: si una jugada acierta en el turno N, el pozo se liquida ahí mismo y los turnos restantes de ese sábado no participan — misma regla que el "corte a mitad de semana" (sección 3.2), aplicada a la secuencia de turnos en vez de a fechas calendario.
+- **Si ningún turno tiene ganador, el pozo arrastra íntegro al sábado siguiente** — misma mecánica de arrastre que el pozo semanal (sección 3.3), nunca se pierde.
+- **Pozo completamente separado del semanal**: acumula solo con jugadas de sábado, con su propio monto de jugada (`importe_jugada_sabado`) y su propio premio base garantizado (`premio_base_sabado`), ambos configurables desde `admin/configuracion/index.php`.
+- **Promociones de paquete (Fase 7) exclusivas del juego semanal**: las jugadas de sábado siempre se cargan a precio de lista.
+- **Horario límite de carga**: hasta las 11:00 del mismo sábado (ver sección 15).
+- **Modelo de datos**: se generalizaron `ciclos` (columna `tipo`: `semanal` | `sabado`, cada uno con su propia numeración y su propio "un ciclo abierto a la vez") y `sorteos` (columna `turno`, 1 para el semanal y 1-5 para sábados, reemplazando a `fecha` como parte de la clave única). `jugadas` y `solicitudes` suman `tipo_juego` para saber a qué caja pertenecen mientras están `pendiente_pago` (sin `ciclo_id` todavía). `PozoService` no necesitó ningún cambio: ya opera sobre `ciclo_id`, que sigue siendo una PK global única sin importar el tipo.
+- **Pantallas**: directorio `admin/sabados/` (tablero, historial, detalle, carga de turno — paralelo a `admin/ciclos/` y `admin/sorteos/`), selector de modalidad en `admin/jugadas/nueva.php` y `portal/jugar.php`, tabs "Semana/Sábado" en `portal/index.php` y `portal/historial.php`.
+- **Reportes**: `ReporteService`/`FiltroReporte` suman un filtro de tipo de juego (`semanal` por default, para no mezclar de golpe con lo que ya mostraban; `sabado` o `todos` como alternativa) — la caja de sábados no aparece mezclada con la semanal salvo que se pida explícitamente.

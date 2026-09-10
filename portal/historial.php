@@ -14,7 +14,12 @@ $db        = getPDO();
 $portal    = new PortalService($db);
 $clienteId = (int) clienteActualId();
 
-$ciclos       = $portal->ciclosJugados($clienteId);
+$tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
+    ? $_GET['tipo']
+    : CicloService::TIPO_SEMANAL;
+$esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
+
+$ciclos       = $portal->ciclosJugados($clienteId, $tipoJuego);
 $totalGanado  = $portal->totalGanado($clienteId);
 $totalJugadas = $portal->totalJugadas($clienteId);
 
@@ -31,7 +36,18 @@ require __DIR__ . '/../includes/portal_cabecera.php';
     <?php require __DIR__ . '/../includes/flash.php'; ?>
 
     <h1 class="pantalla__titulo">Historial</h1>
-    <p class="pantalla__bajada">Tus semanas anteriores</p>
+    <p class="pantalla__bajada"><?= $esSabado ? 'Tus sábados anteriores' : 'Tus semanas anteriores' ?></p>
+
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link <?= !$esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/portal/historial.php?tipo=<?= CicloService::TIPO_SEMANAL ?>">Semana</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/portal/historial.php?tipo=<?= CicloService::TIPO_SABADO ?>">Sábado</a>
+        </li>
+    </ul>
 
     <div class="row g-2 mt-3 mb-4">
         <div class="col-6">
@@ -54,14 +70,18 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
         <div class="vacio tarjeta">
             <i class="bi bi-clock-history" aria-hidden="true"></i>
-            <p class="fw-semibold mb-2">Todavía no hay semanas cerradas</p>
+            <p class="fw-semibold mb-2">
+                <?= $esSabado ? 'Todavía no hay sábados cerrados' : 'Todavía no hay semanas cerradas' ?>
+            </p>
             <p class="fila__meta mb-0">
-                Cuando termine tu primera semana de juego, la vas a ver acá.
+                <?= $esSabado
+                    ? 'Cuando termine tu primer sábado de juego, lo vas a ver acá.'
+                    : 'Cuando termine tu primera semana de juego, la vas a ver acá.' ?>
             </p>
         </div>
 
-        <a href="<?= APP_URL ?>/portal/index.php" class="btn btn-outline-secondary w-100 mt-3">
-            <i class="bi bi-ticket-perforated"></i> Ver mis jugadas de esta semana
+        <a href="<?= APP_URL ?>/portal/index.php?tipo=<?= $tipoJuego ?>" class="btn btn-outline-secondary w-100 mt-3">
+            <i class="bi bi-ticket-perforated"></i> Ver mis jugadas actuales
         </a>
 
     <?php else: ?>
@@ -83,7 +103,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             <section class="mb-4">
                 <div class="d-flex align-items-baseline justify-content-between gap-2 mb-2">
                     <div>
-                        <span class="rotulo">Semana <?= (int) $c['numero'] ?></span>
+                        <span class="rotulo"><?= $esSabado ? 'Sábado' : 'Semana' ?> <?= (int) $c['numero'] ?></span>
                         <p class="fw-semibold mb-0"><?= e(CicloService::rotulo($c)) ?></p>
                     </div>
                     <?php if ($ganadoEnCiclo > 0): ?>

@@ -15,6 +15,8 @@
  */
 require_once __DIR__ . '/../config/portal.php';
 
+use Polla\Services\CicloService;
+use Polla\Services\HorarioCargaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PromocionService;
 use Polla\Services\SolicitudService;
@@ -23,24 +25,33 @@ requireCliente();
 
 $db         = getPDO();
 $parametros = new ParametroService($db);
+$horario    = new HorarioCargaService($parametros);
 $clienteId  = (int) clienteActualId();
 
-$importe  = $parametros->importeJugada();
+$tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
+    ? $_GET['tipo']
+    : CicloService::TIPO_SEMANAL;
+$esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
+$horaAbierto = $horario->abierto($tipoJuego);
+
+$importe  = $esSabado ? $parametros->importeJugadaSabado() : $parametros->importeJugada();
 $cantidad = $parametros->numerosPorJugada();
 
-// Promociones activas indexadas por cantidad_jugadas, para que
-// promociones.js sugiera el paquete sin ninguna consulta extra al
-// cambiar la cantidad de jugadas. Solo lo que la vista necesita.
+// Promociones exclusivas del juego semanal: en sabados ni se calculan.
+// Indexadas por cantidad_jugadas, para que promociones.js sugiera el
+// paquete sin ninguna consulta extra al cambiar la cantidad de jugadas.
 $promosPorCantidad = [];
-foreach ((new PromocionService($db))->activasPorCantidad() as $cantidadPromo => $promo) {
-    $promosPorCantidad[$cantidadPromo] = [
-        'id'               => (int) $promo['id'],
-        'precio_total'     => (float) $promo['precio_total'],
-        'cantidad_jugadas' => (int) $promo['cantidad_jugadas'],
-    ];
+if (!$esSabado) {
+    foreach ((new PromocionService($db))->activasPorCantidad() as $cantidadPromo => $promo) {
+        $promosPorCantidad[$cantidadPromo] = [
+            'id'               => (int) $promo['id'],
+            'precio_total'     => (float) $promo['precio_total'],
+            'cantidad_jugadas' => (int) $promo['cantidad_jugadas'],
+        ];
+    }
 }
 
-$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId);
+$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId, $tipoJuego);
 
 // Repoblar tras un error de validacion del servidor. Un grupo vacio por
 // defecto: lo normal es armar una sola jugada.
@@ -110,6 +121,17 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         transferencia con el código que te va a quedar.
     </p>
 
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link <?= !$esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/portal/jugar.php?tipo=<?= CicloService::TIPO_SEMANAL ?>">Semana</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link <?= $esSabado ? 'active' : '' ?>"
+               href="<?= APP_URL ?>/portal/jugar.php?tipo=<?= CicloService::TIPO_SABADO ?>">Sábado</a>
+        </li>
+    </ul>
+
     <?php if ($pendiente): ?>
         <div class="alert alert-info d-flex align-items-start gap-2 mt-3" role="note">
             <i class="bi bi-info-circle-fill flex-shrink-0" style="margin-top:.15rem"></i>
@@ -122,9 +144,19 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         </div>
     <?php endif; ?>
 
+    <?php if (!$horaAbierto): ?>
+
+        <div class="vacio tarjeta mt-3">
+            <i class="bi bi-clock-history" aria-hidden="true"></i>
+            <?= e($horario->motivoCerrado($tipoJuego)) ?>
+        </div>
+
+    <?php else: ?>
+
     <form method="post" id="form-jugada"
           action="<?= APP_URL ?>/portal/guardar_solicitud.php" novalidate>
         <?= csrfField() ?>
+        <input type="hidden" name="tipo_juego" value="<?= e($tipoJuego) ?>">
 
         <div class="d-flex align-items-baseline justify-content-between gap-2 mt-3">
             <span class="rotulo">Los <?= $cantidad ?> números de cada jugada</span>
@@ -143,17 +175,19 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             <i class="bi bi-plus-lg"></i> Agregar otra jugada
         </button>
 
-        <div id="promo-sugerida" class="alert alert-success d-flex align-items-start gap-2 mb-3" hidden
-             data-promos="<?= e(json_encode($promosPorCantidad, JSON_UNESCAPED_UNICODE)) ?>">
-            <i class="bi bi-tag-fill flex-shrink-0" style="margin-top:.15rem" aria-hidden="true"></i>
-            <div class="flex-grow-1">
-                <div id="promo-sugerida-texto" class="fw-semibold"></div>
-                <div class="form-check form-switch mt-2 mb-0">
-                    <input class="form-check-input" type="checkbox" role="switch" id="promo-aplicar">
-                    <label class="form-check-label" for="promo-aplicar">Aplicar la promo</label>
+        <?php if (!$esSabado): ?>
+            <div id="promo-sugerida" class="alert alert-success d-flex align-items-start gap-2 mb-3" hidden
+                 data-promos="<?= e(json_encode($promosPorCantidad, JSON_UNESCAPED_UNICODE)) ?>">
+                <i class="bi bi-tag-fill flex-shrink-0" style="margin-top:.15rem" aria-hidden="true"></i>
+                <div class="flex-grow-1">
+                    <div id="promo-sugerida-texto" class="fw-semibold"></div>
+                    <div class="form-check form-switch mt-2 mb-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="promo-aplicar">
+                        <label class="form-check-label" for="promo-aplicar">Aplicar la promo</label>
+                    </div>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
         <input type="hidden" name="promocion_id" id="promocion_id" value="">
 
         <section class="tarjeta p-3 mb-3">
@@ -204,6 +238,8 @@ require __DIR__ . '/../includes/portal_cabecera.php';
     <template id="plantilla-grupo-jugada">
         <?php $dibujarGrupo('__INDICE__', array_fill(0, $cantidad, '')); ?>
     </template>
+
+    <?php endif; ?>
 </main>
 
 <?php

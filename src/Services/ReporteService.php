@@ -85,8 +85,14 @@ class ReporteService
         if ($filtro->hasta) { $where[] = 's.fecha <= :hasta'; $params[':hasta'] = $filtro->hasta; }
         if ($filtro->cicloId)   { $where[] = 's.ciclo_id = :ciclo';      $params[':ciclo'] = $filtro->cicloId; }
         if ($filtro->usuarioId) { $where[] = 's.cargado_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $where[] = 'cy.tipo = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
 
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM sorteos s WHERE ' . implode(' AND ', $where));
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*) FROM sorteos s JOIN ciclos cy ON cy.id = s.ciclo_id WHERE ' . implode(' AND ', $where)
+        );
         $stmt->execute($params);
 
         return (int) $stmt->fetchColumn();
@@ -136,6 +142,10 @@ class ReporteService
         if ($filtro->desde)   { $where[] = 'DATE(j.fecha_carga) >= :desde'; $params[':desde'] = $filtro->desde; }
         if ($filtro->hasta)   { $where[] = 'DATE(j.fecha_carga) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
         if ($filtro->cicloId) { $where[] = 'j.ciclo_id = :ciclo';           $params[':ciclo'] = $filtro->cicloId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $where[] = 'j.tipo_juego = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
 
         $sql = "SELECT COUNT(*) AS jugadas, COALESCE(SUM(j.importe),0) AS recaudado
                   FROM jugadas j WHERE " . implode(' AND ', $where);
@@ -167,6 +177,10 @@ class ReporteService
         if ($filtro->desde)   { $on[] = 'DATE(j.fecha_carga) >= :desde'; $params[':desde'] = $filtro->desde; }
         if ($filtro->hasta)   { $on[] = 'DATE(j.fecha_carga) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
         if ($filtro->cicloId) { $on[] = 'j.ciclo_id = :ciclo';           $params[':ciclo'] = $filtro->cicloId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $on[] = 'j.tipo_juego = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
 
         $sql = "SELECT u.id, u.nombre, u.rol, u.activo,
                        COUNT(j.id) AS jugadas, COALESCE(SUM(j.importe),0) AS recaudado
@@ -276,6 +290,10 @@ class ReporteService
         if ($filtro->clienteId) { $where[] = 'j.cliente_id = :cliente';  $params[':cliente'] = $filtro->clienteId; }
         if ($filtro->cicloId)   { $where[] = 'g.ciclo_id = :ciclo';      $params[':ciclo']   = $filtro->cicloId; }
         if ($filtro->usuarioId) { $where[] = 'j.cargado_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $where[] = 'j.tipo_juego = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
 
         $sql = "SELECT g.id, g.monto_premio, g.creado_en,
                        j.id AS jugada_id,
@@ -353,6 +371,14 @@ class ReporteService
             $rangoC .= ' AND c.alta_por    = :usu3';
             $params += [':usu1' => $filtro->usuarioId, ':usu2' => $filtro->usuarioId, ':usu3' => $filtro->usuarioId];
         }
+        // El tipo de juego solo aplica a jugadas y sorteos -las altas de
+        // cliente no son de ningun juego en particular, asi que esa rama
+        // se muestra siempre entera sin importar el filtro.
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $rangoJ .= ' AND j.tipo_juego = :tipoj1';
+            $rangoS .= ' AND cy.tipo = :tipoj2';
+            $params += [':tipoj1' => $filtro->tipoJuego, ':tipoj2' => $filtro->tipoJuego];
+        }
 
         $sql = "
             SELECT 'jugada' AS tipo, j.id AS referencia, j.fecha_carga AS cuando,
@@ -369,7 +395,8 @@ class ReporteService
                    u.nombre, u.rol,
                    CONCAT('Extracto del ', DATE_FORMAT(s.fecha, '%d/%m/%Y'))
               FROM sorteos s
-              LEFT JOIN usuarios u ON u.id = s.cargado_por
+              JOIN ciclos cy        ON cy.id = s.ciclo_id
+              LEFT JOIN usuarios u  ON u.id  = s.cargado_por
              WHERE 1 = 1 $rangoS
 
             UNION ALL
@@ -429,12 +456,27 @@ class ReporteService
         )->fetchAll();
     }
 
-    public function ciclosParaFiltro(int $limite = 52): array
+    /**
+     * Ciclos para el desplegable, de un tipo de juego dado (o de todos si
+     * $tipoJuego es null). `numero` se repite entre semanal y sabado, asi
+     * que mezclarlos sin filtro mostraria "Ciclo 5" dos veces.
+     */
+    public function ciclosParaFiltro(?string $tipoJuego = null, int $limite = 52): array
     {
-        return $this->db->query(
-            'SELECT id, numero, fecha_inicio, fecha_fin, estado
-               FROM ciclos ORDER BY numero DESC LIMIT ' . (int) $limite
-        )->fetchAll();
+        if ($tipoJuego === null) {
+            return $this->db->query(
+                'SELECT id, numero, fecha_inicio, fecha_fin, estado, tipo
+                   FROM ciclos ORDER BY numero DESC LIMIT ' . (int) $limite
+            )->fetchAll();
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT id, numero, fecha_inicio, fecha_fin, estado, tipo
+               FROM ciclos WHERE tipo = :tipo ORDER BY numero DESC LIMIT ' . (int) $limite
+        );
+        $stmt->execute([':tipo' => $tipoJuego]);
+
+        return $stmt->fetchAll();
     }
 
     // ── Internos ────────────────────────────────────────────
@@ -459,6 +501,10 @@ class ReporteService
         if ($filtro->clienteId) { $where[] = 'j.cliente_id  = :cliente';      $params[':cliente'] = $filtro->clienteId; }
         if ($filtro->cicloId)   { $where[] = 'j.ciclo_id    = :ciclo';        $params[':ciclo']   = $filtro->cicloId; }
         if ($filtro->usuarioId) { $where[] = 'j.cargado_por = :usuario';      $params[':usuario'] = $filtro->usuarioId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $where[] = 'j.tipo_juego = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
 
         return [$where, $params];
     }

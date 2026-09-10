@@ -10,6 +10,7 @@
  */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\CicloService;
 use Polla\Services\SolicitudService;
 
 requireLogin();
@@ -66,7 +67,10 @@ require __DIR__ . '/../../includes/topbar.php';
         <article class="tarjeta tarjeta--realce p-3 mt-3">
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                 <div>
-                    <span class="rotulo d-block mb-1">Código <?= e($solicitud['numero_registro']) ?></span>
+                    <span class="rotulo d-block mb-1">
+                        Código <?= e($solicitud['numero_registro']) ?>
+                        · <?= e(CicloService::TIPOS[$solicitud['tipo_juego']] ?? $solicitud['tipo_juego']) ?>
+                    </span>
                     <p class="fila__titulo mb-0"><?= e($solicitud['cliente_nombre']) ?></p>
                     <p class="fila__meta">
                         <span class="cifra">N° <?= e($solicitud['nro_cliente']) ?></span>
@@ -160,6 +164,7 @@ require __DIR__ . '/../../includes/topbar.php';
                             <span class="cifra">N° <?= e($p['nro_cliente']) ?></span>
                             · <?= (int) $p['cantidad_jugadas'] ?>
                             <?= (int) $p['cantidad_jugadas'] === 1 ? 'jugada' : 'jugadas' ?>
+                            · <?= e(CicloService::TIPOS[$p['tipo_juego']] ?? $p['tipo_juego']) ?>
                             · <?= e(formatFechaHora($p['fecha_creacion'])) ?>
                         </p>
                     </div>

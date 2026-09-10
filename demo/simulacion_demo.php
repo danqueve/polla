@@ -31,6 +31,15 @@ $db = getPDO();
 function paso(string $t): void { echo PHP_EOL . "== $t ==" . PHP_EOL; }
 function ok(string $t): void { echo "  OK   $t" . PHP_EOL; }
 
+// Este script simula jugadas via JugadaService::crearVarias(), que desde
+// la Fase 9 exige estar dentro del horario de carga. Como la demo se
+// puede correr a cualquier hora, se afloja el limite semanal para que
+// no dependa de en que momento del dia se ejecute.
+$db->exec(
+    "INSERT INTO parametros (clave, valor) VALUES ('horario_limite_semanal', '23:59')
+     ON DUPLICATE KEY UPDATE valor = '23:59'"
+);
+
 // ── 0. Clave del admin conocida, para poder entrar a mirar ────────
 // Solo para uso local/demo: no correr esto contra una base con datos
 // reales, pisa la clave del admin sin pedir confirmacion.

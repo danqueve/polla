@@ -37,6 +37,26 @@ class ConfiguracionService
         return $this->parametros->premioBase();
     }
 
+    public function montoJugadaSabado(): float
+    {
+        return $this->parametros->importeJugadaSabado();
+    }
+
+    public function premioBaseSabado(): float
+    {
+        return $this->parametros->premioBaseSabado();
+    }
+
+    public function horarioLimiteSemanal(): string
+    {
+        return $this->parametros->horarioLimiteSemanal();
+    }
+
+    public function horarioLimiteSabado(): string
+    {
+        return $this->parametros->horarioLimiteSabado();
+    }
+
     /**
      * Quien cambio un parametro por ultima vez y cuando, para mostrarlo
      * en la pantalla. Null si nunca se toco desde que existe la columna.
@@ -65,5 +85,26 @@ class ConfiguracionService
     public function actualizarPremioBase(string $premioBase, int $actualizadoPor): void
     {
         $this->parametros->actualizar(['premio_base' => $premioBase], $actualizadoPor);
+    }
+
+    /** @throws ValidacionException */
+    public function actualizarMontoJugadaSabado(string $monto, int $actualizadoPor): void
+    {
+        $this->parametros->actualizar(['importe_jugada_sabado' => $monto], $actualizadoPor);
+    }
+
+    /** @throws ValidacionException */
+    public function actualizarPremioBaseSabado(string $premioBase, int $actualizadoPor): void
+    {
+        $this->parametros->actualizar(['premio_base_sabado' => $premioBase], $actualizadoPor);
+    }
+
+    /** @throws ValidacionException */
+    public function actualizarHorarios(string $limiteSemanal, string $limiteSabado, int $actualizadoPor): void
+    {
+        $this->parametros->actualizar([
+            'horario_limite_semanal' => $limiteSemanal,
+            'horario_limite_sabado'  => $limiteSabado,
+        ], $actualizadoPor);
     }
 }

@@ -8,8 +8,21 @@ use Polla\Support\ValidacionException;
 requireAdmin();
 requirePost();
 
-$monto      = trim($_POST['monto_jugada'] ?? '');
-$premioBase = trim($_POST['premio_base'] ?? '');
+$monto       = trim($_POST['monto_jugada'] ?? '');
+$premioBase  = trim($_POST['premio_base'] ?? '');
+$montoSabado = trim($_POST['monto_jugada_sabado'] ?? '');
+$premioBaseSabado = trim($_POST['premio_base_sabado'] ?? '');
+$horarioSemanal   = trim($_POST['horario_limite_semanal'] ?? '');
+$horarioSabado    = trim($_POST['horario_limite_sabado'] ?? '');
+
+$old = [
+    'monto_jugada'            => $monto,
+    'premio_base'             => $premioBase,
+    'monto_jugada_sabado'     => $montoSabado,
+    'premio_base_sabado'      => $premioBaseSabado,
+    'horario_limite_semanal'  => $horarioSemanal,
+    'horario_limite_sabado'   => $horarioSabado,
+];
 
 try {
     $configuracion = new ConfiguracionService(getPDO());
@@ -17,13 +30,17 @@ try {
 
     $configuracion->actualizarMontoJugada($monto, $usuarioId);
     $configuracion->actualizarPremioBase($premioBase, $usuarioId);
+    $configuracion->actualizarMontoJugadaSabado($montoSabado, $usuarioId);
+    $configuracion->actualizarPremioBaseSabado($premioBaseSabado, $usuarioId);
+    $configuracion->actualizarHorarios($horarioSemanal, $horarioSabado, $usuarioId);
 
     setFlash('success',
         'Configuración actualizada: monto de jugada ' . formatPesos($monto)
-        . ' · premio base ' . formatPesos($premioBase) . '.'
+        . ' · premio base ' . formatPesos($premioBase)
+        . ' · sábados ' . formatPesos($montoSabado) . '/' . formatPesos($premioBaseSabado) . '.'
     );
 } catch (ValidacionException $e) {
-    setOld(['monto_jugada' => $monto, 'premio_base' => $premioBase]);
+    setOld($old);
     setFlash('danger', implode("\n", $e->errores()));
 }
 

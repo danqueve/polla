@@ -9,13 +9,16 @@ use Polla\Support\ValidacionException;
 use Throwable;
 
 /**
- * Carga del extracto de la Nocturna y motor de cotejo.
+ * Carga del extracto de la Nocturna (registrar(), semanal) o de un turno
+ * del sabado (registrarTurnoSabado()), y motor de cotejo compartido por
+ * los dos.
  *
  * Guardar un sorteo dispara toda la cadena en una sola transaccion:
  * validar, insertar, cotejar contra las jugadas activas del ciclo y,
- * segun el resultado, liquidar el pozo y cerrar la semana.
+ * segun el resultado, liquidar el pozo y cerrar la secuencia (semana o
+ * sabado).
  *
- * El candado es CicloService::bloquearAbierto(): mientras esta
+ * El candado es CicloService::bloquearAbierto($tipo): mientras esta
  * transaccion corre, ningun otro request puede tocar ese ciclo.
  */
 class SorteoService
@@ -66,7 +69,7 @@ class SorteoService
         $this->db->beginTransaction();
         try {
             // A partir de aca el ciclo es nuestro hasta el commit.
-            $ciclo = $this->ciclos->bloquearAbierto();
+            $ciclo = $this->ciclos->bloquearAbierto(CicloService::TIPO_SEMANAL);
             if (!$ciclo) {
                 throw ValidacionException::de(
                     'No hay ningun ciclo abierto. Entrá al tablero para que se abra el de esta semana.'
@@ -76,9 +79,15 @@ class SorteoService
             $this->validarFechaContraCiclo($fecha, $ciclo);
             $this->validarFechaLibre($fecha);
 
-            $sorteoId = $this->insertarSorteo((int) $ciclo['id'], $fecha, $numeros, $cargadoPor);
+            $sorteoId = $this->insertarSorteo((int) $ciclo['id'], $fecha, 1, $numeros, $cargadoPor);
 
-            $resultado = $this->cotejarYCerrar($sorteoId, $ciclo, $fecha);
+            $esUltimoDeLaSecuencia = ($fecha->format('Y-m-d') === $ciclo['fecha_fin']);
+            $resultado = $this->cotejarYCerrar(
+                $sorteoId,
+                $ciclo,
+                $esUltimoDeLaSecuencia,
+                CicloService::TIPO_SEMANAL
+            );
 
             $this->db->commit();
 
@@ -89,13 +98,74 @@ class SorteoService
 
             // Dos supervisores cargando la misma fecha a la vez: el UNIQUE
             // frena al segundo y le damos el mensaje de negocio, no el error crudo.
-            if ($e instanceof PDOException && strpos($e->getMessage(), 'uk_sorteos_fecha') !== false) {
+            if ($e instanceof PDOException && strpos($e->getMessage(), 'uk_sorteos_fecha_turno') !== false) {
                 throw ValidacionException::de(
                     'El sorteo del ' . $fecha->format('d/m/Y') . ' ya estaba cargado.'
                 );
             }
             throw $e;
         }
+    }
+
+    /**
+     * Registra el proximo turno (1 a 5) del sabado en curso y corre el
+     * mismo motor de cotejo que el semanal.
+     *
+     * A diferencia de registrar(), no recibe fecha: usa la del ciclo
+     * sabado abierto (fecha_inicio === fecha_fin), y el turno se calcula
+     * solo contando cuantos sorteos tiene ya cargados ese ciclo.
+     *
+     * @param string[] $numerosCrudos Los 20 valores del formulario.
+     * @return array{
+     *     sorteo_id:int, ciclo_id:int, ganadores:array<int,float>,
+     *     cerro_ciclo:bool, estado_cierre:?string, pozo_repartido:float,
+     *     ciclo_nuevo_id:?int, arrastre:float
+     * }
+     * @throws ValidacionException
+     */
+    public function registrarTurnoSabado(array $numerosCrudos, ?int $cargadoPor): array
+    {
+        $numeros = $this->validarNumeros($numerosCrudos);
+
+        $this->db->beginTransaction();
+        try {
+            $ciclo = $this->ciclos->bloquearAbierto(CicloService::TIPO_SABADO);
+            if (!$ciclo) {
+                throw ValidacionException::de(
+                    'No hay ningun ciclo de sábado abierto. Entrá al tablero de sábados para que se abra.'
+                );
+            }
+
+            $turno = $this->proximoTurno((int) $ciclo['id']);
+            if ($turno > 5) {
+                throw ValidacionException::de('Ya se cargaron los 5 sorteos de este sábado.');
+            }
+
+            $fecha    = new DateTimeImmutable($ciclo['fecha_inicio']);
+            $sorteoId = $this->insertarSorteo((int) $ciclo['id'], $fecha, $turno, $numeros, $cargadoPor);
+
+            $resultado = $this->cotejarYCerrar($sorteoId, $ciclo, $turno === 5, CicloService::TIPO_SABADO);
+
+            $this->db->commit();
+
+            return ['sorteo_id' => $sorteoId, 'ciclo_id' => (int) $ciclo['id']] + $resultado;
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+
+            if ($e instanceof PDOException && strpos($e->getMessage(), 'uk_sorteos_fecha_turno') !== false) {
+                throw ValidacionException::de('Ese turno ya estaba cargado.');
+            }
+            throw $e;
+        }
+    }
+
+    private function proximoTurno(int $cicloId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM sorteos WHERE ciclo_id = :ciclo');
+        $stmt->execute([':ciclo' => $cicloId]);
+
+        return (int) $stmt->fetchColumn() + 1;
     }
 
     // ── Cotejo ──────────────────────────────────────────────
@@ -137,11 +207,19 @@ class SorteoService
     /**
      * Corre el cotejo y decide que hacer con el ciclo.
      *
+     * $esUltimoDeLaSecuencia le dice si este sorteo es el ultimo posible
+     * de su ciclo sin ganador (el viernes del ciclo semanal, o el turno 5
+     * del ciclo sabado) — a partir de ahi, sin ganador, el pozo arrastra.
+     *
      * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
      *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
      */
-    private function cotejarYCerrar(int $sorteoId, array $ciclo, DateTimeImmutable $fecha): array
-    {
+    private function cotejarYCerrar(
+        int $sorteoId,
+        array $ciclo,
+        bool $esUltimoDeLaSecuencia,
+        string $tipo
+    ): array {
         $cicloId   = (int) $ciclo['id'];
         $ganadoras = $this->jugadasGanadoras($sorteoId, $cicloId);
 
@@ -154,14 +232,18 @@ class SorteoService
             'arrastre'       => 0.0,
         ];
 
-        // ── Hay ganador: se corta la semana ─────────────────
+        $premioBase = $tipo === CicloService::TIPO_SABADO
+            ? $this->parametros->premioBaseSabado()
+            : $this->parametros->premioBase();
+
+        // ── Hay ganador: se corta la secuencia (semana o sabado) ────
         if ($ganadoras) {
             $this->marcarEstado($ganadoras, 'ganadora');
 
             // Fase 7: el piso garantizado se aplica en cada ciclo, sin
             // excepcion. Se lee el premio_base VIGENTE justo en este
             // momento, no el que estaba cuando se abrio el ciclo.
-            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras, $this->parametros->premioBase());
+            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras, $premioBase);
             $repartido = array_sum($premios);
 
             // Las que no ganaron quedan cerradas junto con el ciclo.
@@ -170,7 +252,7 @@ class SorteoService
             $this->ciclos->cerrar($cicloId, CicloService::ESTADO_CON_GANADOR);
 
             // El pozo se repartio entero: el ciclo nuevo arranca en $0.
-            $nuevoId = $this->ciclos->abrirSiguiente(0.0);
+            $nuevoId = $this->ciclos->abrirSiguiente($tipo, 0.0);
 
             return [
                 'ganadores'      => $premios,
@@ -183,18 +265,18 @@ class SorteoService
         }
 
         // ── Sin ganador y todavia quedan sorteos: no pasa nada ──
-        if ($fecha->format('Y-m-d') !== $ciclo['fecha_fin']) {
+        if (!$esUltimoDeLaSecuencia) {
             return $base;
         }
 
-        // ── Sin ganador y era el viernes: cierra la semana ──
+        // ── Sin ganador y era el ultimo de la secuencia: cierra ──
         // El pozo no se pierde: pasa entero al ciclo siguiente.
         $this->marcarRestantesPerdedoras($cicloId);
 
         $arrastre = $this->pozo->montoAcumulado($cicloId);
 
         $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
-        $nuevoId = $this->ciclos->abrirSiguiente($arrastre);
+        $nuevoId = $this->ciclos->abrirSiguiente($tipo, $arrastre);
 
         return [
             'ganadores'      => [],
@@ -373,13 +455,19 @@ class SorteoService
     // ── Escritura ───────────────────────────────────────────
 
     /** @param int[] $numeros */
-    private function insertarSorteo(int $cicloId, DateTimeImmutable $fecha, array $numeros, ?int $cargadoPor): int
-    {
+    private function insertarSorteo(
+        int $cicloId,
+        DateTimeImmutable $fecha,
+        int $turno,
+        array $numeros,
+        ?int $cargadoPor
+    ): int {
         $this->db->prepare(
-            'INSERT INTO sorteos (ciclo_id, fecha, cargado_por) VALUES (:ciclo, :fecha, :usuario)'
+            'INSERT INTO sorteos (ciclo_id, fecha, turno, cargado_por) VALUES (:ciclo, :fecha, :turno, :usuario)'
         )->execute([
             ':ciclo'   => $cicloId,
             ':fecha'   => $fecha->format('Y-m-d'),
+            ':turno'   => $turno,
             ':usuario' => $cargadoPor,
         ]);
 
@@ -405,7 +493,7 @@ class SorteoService
     public function listarPorCiclo(int $cicloId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT s.id, s.fecha, s.creado_en,
+            'SELECT s.id, s.fecha, s.turno, s.creado_en,
                     u.nombre AS cargado_por_nombre,
                     GROUP_CONCAT(n.numero ORDER BY n.posicion ASC) AS numeros,
                     (SELECT COUNT(*) FROM ganadores g WHERE g.sorteo_id = s.id) AS ganadores_total
@@ -414,7 +502,7 @@ class SorteoService
                LEFT JOIN sorteo_numeros n ON n.sorteo_id = s.id
               WHERE s.ciclo_id = :ciclo
               GROUP BY s.id
-              ORDER BY s.fecha DESC'
+              ORDER BY s.fecha DESC, s.turno ASC'
         );
         $stmt->execute([':ciclo' => $cicloId]);
 

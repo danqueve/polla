@@ -9,12 +9,30 @@
  * admin/reportes/index.php), asi que mostrarlo seria una opcion que no
  * hace nada.
  */
+use Polla\Services\CicloService;
+use Polla\Support\FiltroReporte;
+
 $_clientes = $reporte->clientesParaFiltro();
 $_usuarios = $reporte->usuariosParaFiltro();
-$_ciclos   = $reporte->ciclosParaFiltro();
+$_ciclos   = $reporte->ciclosParaFiltro($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS ? $filtro->tipoJuego : null);
 ?>
 <form method="get" action="<?= e($accion) ?>" class="filtros mb-3">
     <div class="row g-2">
+
+        <div class="col-12">
+            <label class="form-label" for="tipo_juego">Juego</label>
+            <select class="form-select" id="tipo_juego" name="tipo_juego">
+                <?php foreach (CicloService::TIPOS as $valor => $etiqueta): ?>
+                    <option value="<?= e($valor) ?>" <?= $filtro->tipoJuego === $valor ? 'selected' : '' ?>>
+                        <?= e($etiqueta) ?>
+                    </option>
+                <?php endforeach; ?>
+                <option value="<?= e(FiltroReporte::TIPO_JUEGO_TODOS) ?>"
+                        <?= $filtro->tipoJuego === FiltroReporte::TIPO_JUEGO_TODOS ? 'selected' : '' ?>>
+                    Todos
+                </option>
+            </select>
+        </div>
 
         <div class="col-6">
             <label class="form-label" for="desde">Desde</label>

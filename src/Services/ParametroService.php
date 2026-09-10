@@ -19,12 +19,16 @@ class ParametroService
 
     /** Valores de respaldo si la tabla todavia no fue sembrada. */
     private const DEFECTOS = [
-        'importe_jugada'     => '2000',
-        'porcentaje_pozo'    => '60',
-        'porcentaje_gastos'  => '40',
-        'numeros_por_jugada' => '10',
-        'numeros_por_sorteo' => '20',
-        'premio_base'        => '25000',
+        'importe_jugada'         => '2000',
+        'porcentaje_pozo'        => '60',
+        'porcentaje_gastos'      => '40',
+        'numeros_por_jugada'     => '10',
+        'numeros_por_sorteo'     => '20',
+        'premio_base'            => '25000',
+        'importe_jugada_sabado'  => '2000',
+        'premio_base_sabado'     => '25000',
+        'horario_limite_semanal' => '18:00',
+        'horario_limite_sabado'  => '11:00',
     ];
 
     public function __construct(PDO $db)
@@ -86,6 +90,30 @@ class ParametroService
         return $this->getFloat('premio_base');
     }
 
+    /** Monto por jugada del juego de sabados — caja separada del semanal. */
+    public function importeJugadaSabado(): float
+    {
+        return $this->getFloat('importe_jugada_sabado');
+    }
+
+    /** Piso garantizado del pozo de sabados — caja separada del semanal. */
+    public function premioBaseSabado(): float
+    {
+        return $this->getFloat('premio_base_sabado');
+    }
+
+    /** Hora limite (HH:MM, Argentina) para cargar jugadas del juego semanal (lunes a viernes). */
+    public function horarioLimiteSemanal(): string
+    {
+        return (string) $this->get('horario_limite_semanal');
+    }
+
+    /** Hora limite (HH:MM, Argentina) para cargar jugadas del juego de sabados, el mismo sabado. */
+    public function horarioLimiteSabado(): string
+    {
+        return (string) $this->get('horario_limite_sabado');
+    }
+
     /**
      * Parte un importe en la porcion que va al pozo y la que va a gastos.
      * Redondea el pozo a 2 decimales y le da el resto a gastos, para que
@@ -112,6 +140,17 @@ class ParametroService
         }
         if (isset($valores['premio_base']) && (float) $valores['premio_base'] < 0) {
             $errores[] = 'El premio base no puede ser negativo.';
+        }
+        if (isset($valores['importe_jugada_sabado']) && (float) $valores['importe_jugada_sabado'] <= 0) {
+            $errores[] = 'El importe de la jugada de sábados tiene que ser mayor a cero.';
+        }
+        if (isset($valores['premio_base_sabado']) && (float) $valores['premio_base_sabado'] < 0) {
+            $errores[] = 'El premio base de sábados no puede ser negativo.';
+        }
+        foreach (['horario_limite_semanal', 'horario_limite_sabado'] as $clave) {
+            if (isset($valores[$clave]) && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $valores[$clave])) {
+                $errores[] = 'El horario tiene que tener formato HH:MM (24hs).';
+            }
         }
         if (isset($valores['porcentaje_pozo'])) {
             $pozo = (float) $valores['porcentaje_pozo'];

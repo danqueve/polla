@@ -100,7 +100,7 @@ class ClienteService
         $nombre   = trim($datos['nombre'] ?? '');
         $telefono = self::normalizarTelefono($datos['telefono'] ?? '');
 
-        $this->validarDatos($dni, $nombre, $telefono);
+        $this->validarDatos($dni, $nombre, $telefono, telefonoObligatorio: true);
 
         if ($this->existeDni($dni)) {
             throw ValidacionException::de('Ya hay un cliente cargado con el DNI ' . $dni . '.');
@@ -278,8 +278,17 @@ class ClienteService
 
     // ── Internos ────────────────────────────────────────────
 
-    /** @throws ValidacionException */
-    private function validarDatos(string $dni, string $nombre, string $telefono): void
+    /**
+     * $telefonoObligatorio: true solo en el alta manual (crear()) -- ahi
+     * el staff esta cargando el dato de primera mano, asi que se le
+     * exige completo. La edicion y el autorregistro publico lo siguen
+     * dejando opcional (un cliente de antes de este cambio puede no
+     * tener telefono cargado, y no corresponde bloquearle otra edicion
+     * por eso).
+     *
+     * @throws ValidacionException
+     */
+    private function validarDatos(string $dni, string $nombre, string $telefono, bool $telefonoObligatorio = false): void
     {
         $errores = [];
 
@@ -291,6 +300,9 @@ class ClienteService
         }
         if (mb_strlen($nombre) > 120) {
             $errores[] = 'El nombre es demasiado largo.';
+        }
+        if ($telefonoObligatorio && $telefono === '') {
+            $errores[] = 'Cargá el teléfono del cliente.';
         }
         if ($telefono !== '' && !preg_match('/^[\d\s()+-]{6,30}$/', $telefono)) {
             $errores[] = 'El telefono solo puede tener numeros, espacios y los signos + - ( ).';

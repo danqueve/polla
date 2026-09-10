@@ -77,11 +77,16 @@ require __DIR__ . '/../../includes/topbar.php';
         </div>
 
         <div class="mb-3">
-            <label class="form-label" for="telefono">Telefono <span class="fw-normal text-secondary">(opcional)</span></label>
+            <label class="form-label" for="telefono">
+                Telefono
+                <?php if (!$esAlta): ?>
+                    <span class="fw-normal text-secondary">(opcional)</span>
+                <?php endif; ?>
+            </label>
             <input type="tel" class="form-control" id="telefono" name="telefono"
                    value="<?= e($valor('telefono')) ?>"
                    inputmode="tel" autocomplete="tel" maxlength="30"
-                   placeholder="381 555 1234">
+                   placeholder="381 555 1234" <?= $esAlta ? 'required' : '' ?>>
         </div>
 
         <?php if (!$esAlta): ?>

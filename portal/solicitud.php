@@ -27,8 +27,9 @@ if (!$solicitud || (int) $solicitud['cliente_id'] !== $clienteId) {
 
 $estado = $solicitud['estado'];
 
-$pageTitle  = 'Tu código · ' . APP_NAME;
-$navSeccion = 'jugar';
+$pageTitle   = 'Tu código · ' . APP_NAME;
+$navSeccion  = 'jugar';
+$pageScripts = ['copiar.js'];
 require __DIR__ . '/../includes/head.php';
 require __DIR__ . '/../includes/portal_cabecera.php';
 ?>
@@ -52,13 +53,18 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         <div class="etiqueta etiqueta--roja mb-2"><i class="bi bi-x-circle-fill"></i> Rechazada</div>
         <h1 class="pantalla__titulo">Esta solicitud no se procesó</h1>
         <p class="pantalla__bajada">
-            Hablá con Decena de Oro si te parece que es un error.
+            <a href="<?= e(whatsappUrl()) ?>" target="_blank" rel="noopener">Hablá con Decena de Oro</a>
+            si te parece que es un error.
         </p>
     <?php endif; ?>
 
     <section class="codigo-solicitud mt-3">
         <div class="codigo-solicitud__rotulo mb-2">Tu código</div>
         <div class="codigo-solicitud__valor"><?= e($solicitud['numero_registro']) ?></div>
+        <button type="button" class="btn btn-sm btn-outline-light codigo-solicitud__copiar"
+                data-copiar="<?= e($solicitud['numero_registro']) ?>">
+            <i class="bi bi-clipboard"></i> Copiar código
+        </button>
     </section>
 
     <section class="monto-a-pagar mt-3">
@@ -73,16 +79,19 @@ require __DIR__ . '/../includes/portal_cabecera.php';
     </section>
 
     <?php if ($estado === 'pendiente'): ?>
-        <!--
-            PLACEHOLDER — instrucciones de pago.
-            Reemplazar este bloque con el texto definitivo: medios de pago
-            aceptados, horarios, a quién contactar, etc.
-        -->
         <div class="alert alert-warning mt-3" role="note">
             <i class="bi bi-info-circle-fill"></i>
-            <strong>Cómo pagar:</strong> presentá este código en persona o por
-            transferencia según te indique Decena de Oro. Tus jugadas quedan
-            reservadas hasta que se registre el pago.
+            <strong>Cómo pagar:</strong> hacé la transferencia a este alias:
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="alias-transferencia">decenadeoro</div>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        data-copiar="decenadeoro">
+                    <i class="bi bi-clipboard"></i> Copiar
+                </button>
+            </div>
+            Una vez transferido, compartile el código al vendedor para que te
+            confirme el pago. Tus jugadas quedan
+            reservadas hasta entonces.
         </div>
     <?php endif; ?>
 

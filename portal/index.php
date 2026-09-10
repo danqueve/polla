@@ -45,6 +45,8 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
     <?php require __DIR__ . '/../includes/flash.php'; ?>
 
+    <h1 class="visually-hidden">Mis jugadas</h1>
+
     <!-- Pozo de la semana -->
     <section class="pozo pozo-cliente mb-4 text-center">
         <div class="pozo__rotulo mb-2">Pozo de esta semana</div>
@@ -56,10 +58,10 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
     <?php if ($pendiente): ?>
         <a href="<?= APP_URL ?>/portal/solicitud.php?id=<?= (int) $pendiente['id'] ?>"
-           class="tarjeta p-3 mb-3 d-flex align-items-center justify-content-between gap-2"
-           style="border-color:#e8d6a4;text-decoration:none;color:inherit">
+           class="tarjeta tarjeta--oro p-3 mb-3 d-flex align-items-center justify-content-between gap-2"
+           style="text-decoration:none;color:inherit">
             <span class="d-flex align-items-center gap-2">
-                <i class="bi bi-hourglass-split" style="color:var(--oro)"></i>
+                <i class="bi bi-hourglass-split texto-oro"></i>
                 <span>
                     Tenés una solicitud sin pagar: código
                     <strong class="cifra"><?= e($pendiente['numero_registro']) ?></strong>
@@ -72,13 +74,13 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
     <?php if (!$jugadas): ?>
 
-        <div class="tarjeta p-4 text-center">
-            <i class="bi bi-ticket-perforated d-block mb-3"
-               style="font-size:2.5rem;color:var(--borde-fuerte)" aria-hidden="true"></i>
+        <div class="vacio tarjeta">
+            <i class="bi bi-ticket-perforated" aria-hidden="true"></i>
             <p class="fw-semibold mb-2">Esta semana no tenés jugadas</p>
             <p class="fila__meta mb-0">
-                Armá una jugada vos mismo, o hablá con Decena de Oro, y entrá en
-                el pozo de <?= e(formatPesos($pozoMostrado)) ?>.
+                Armá una jugada vos mismo, o
+                <a href="<?= e(whatsappUrl()) ?>" target="_blank" rel="noopener">hablá con Decena de Oro</a>,
+                y entrá en el pozo de <?= e(formatPesos($pozoMostrado)) ?>.
             </p>
         </div>
 

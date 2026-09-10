@@ -18,6 +18,16 @@ define('APP_SHORT',   'Decena de Oro');
 define('APP_VERSION', '1.1.0');
 define('BASE_PATH',   dirname(__DIR__));
 
+// Contacto por WhatsApp: numero de Tucuman en formato E.164 sin el "+",
+// como lo pide un link wa.me (54 = Argentina, 9 = celular, 381 = area).
+define('CONTACTO_WHATSAPP',        '5493813444178');
+define('CONTACTO_WHATSAPP_LEGIBLE', '381 344-4178');
+
+function whatsappUrl(): string
+{
+    return 'https://wa.me/' . CONTACTO_WHATSAPP;
+}
+
 // ── Entorno segun el host ───────────────────────────────────
 $_appHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
 if ($_appHost === 'localhost' || $_appHost === '127.0.0.1') {

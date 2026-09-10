@@ -1,106 +1,20 @@
 <?php
 /**
- * Login del portal del cliente. Usuario = DNI.
+ * El formulario de login vive unificado en auth/login.php. Esta pagina
+ * sigue existiendo porque requireCliente() y cualquier link/bookmark
+ * viejo todavia apuntan aca.
  *
- * Nada de esta carpeta toca config/app.php: el portal corre sobre su
- * propia sesion (config/portal.php), con otro nombre de cookie.
+ * A proposito NO llama a getFlash(): si hay un flash pendiente (por
+ * ejemplo, requireCliente() rebotando una cuenta rechazada o dada de
+ * baja) tiene que quedar intacto en esta misma sesion POLLA_CLIENTE
+ * para que auth/login.php lo pueda leer despues del redirect.
  */
 require_once __DIR__ . '/../config/portal.php';
-
-use Polla\Services\ClienteAuthService;
-use Polla\Support\ValidacionException;
 
 if (clienteLogueado()) {
     header('Location: ' . APP_URL . '/portal/index.php');
     exit;
 }
 
-$errores = [];
-$dni     = '';
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-    $dni = trim($_POST['dni'] ?? '');
-
-    if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
-        $errores[] = 'La página estuvo abierta demasiado tiempo. Probá de nuevo.';
-    } else {
-        try {
-            (new ClienteAuthService(getPDO()))->login($dni, $_POST['password'] ?? '');
-            header('Location: ' . APP_URL . '/portal/index.php');
-            exit;
-        } catch (ValidacionException $e) {
-            $errores = $e->errores();
-        }
-    }
-}
-
-$flash     = getFlash();
-$pageTitle = 'Entrar · ' . APP_NAME;
-$bodyClass = 'sin-barra';
-require __DIR__ . '/../includes/head.php';
-?>
-
-<main class="login">
-    <div class="login__caja">
-
-        <h1 class="login__marca">Decena<em>de Oro</em></h1>
-        <p class="login__bajada">Mirá cómo van tus jugadas de la semana</p>
-
-        <div class="login__panel">
-
-            <?php if ($flash): ?>
-                <div class="alert alert-<?= e($flash['type']) ?>" role="alert">
-                    <?= nl2br(e($flash['msg'])) ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if ($errores): ?>
-                <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
-                    <i class="bi bi-exclamation-octagon-fill flex-shrink-0" style="margin-top:.15rem"></i>
-                    <div>
-                        <?php foreach ($errores as $error): ?>
-                            <div><?= e($error) ?></div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <form method="post" novalidate>
-                <?= csrfField() ?>
-
-                <div class="mb-3">
-                    <label class="form-label" for="dni">Tu DNI</label>
-                    <input type="text" class="form-control cifra" id="dni" name="dni"
-                           value="<?= e($dni) ?>"
-                           inputmode="numeric" pattern="[0-9]*" maxlength="9"
-                           autocomplete="username"
-                           placeholder="Sin puntos"
-                           required autofocus>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label" for="password">Tu contraseña</label>
-                    <input type="password" class="form-control" id="password" name="password"
-                           autocomplete="current-password" required>
-                    <div class="form-text">
-                        Tu contraseña es siempre tu DNI.
-                    </div>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100">
-                    <i class="bi bi-box-arrow-in-right"></i>
-                    Entrar
-                </button>
-            </form>
-        </div>
-
-        <p class="text-center mt-4 mb-2" style="color:rgba(255,255,255,.7);font-size:.875rem">
-            ¿Todavía no jugaste? <a href="<?= APP_URL ?>/registro.php" style="color:inherit">Registrate acá</a>.
-        </p>
-        <p class="text-center mb-0" style="color:rgba(255,255,255,.45);font-size:.8125rem">
-            ¿No podés entrar? Hablá con Decena de Oro.
-        </p>
-    </div>
-</main>
-
-<?php require __DIR__ . '/../includes/foot.php'; ?>
+header('Location: ' . APP_URL . '/auth/login.php');
+exit;

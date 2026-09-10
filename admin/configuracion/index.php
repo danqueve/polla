@@ -112,5 +112,4 @@ require __DIR__ . '/../../includes/topbar.php';
 
 <?php
 flushOld();
-require __DIR__ . '/../../includes/bottom_nav.php';
 require __DIR__ . '/../../includes/foot.php';

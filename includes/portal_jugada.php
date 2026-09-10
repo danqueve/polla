@@ -40,7 +40,11 @@ $marcados = $mejor['acertados'] ?? [];
             <div class="pozo__rotulo mb-1">Te tocó</div>
             <div class="premio-monto"><?= e(formatPesos($jugada['monto_premio'])) ?></div>
             <p class="mt-2 mb-3" style="color:rgba(255,255,255,.72);font-size:.8125rem">
-                Hablá con Decena de Oro para cobrarlo.
+                <a href="<?= e(whatsappUrl()) ?>" target="_blank" rel="noopener"
+                   style="color:inherit;text-decoration:underline">
+                    Hablá con Decena de Oro
+                </a>
+                para cobrarlo.
             </p>
         </div>
 

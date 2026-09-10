@@ -34,7 +34,7 @@ require __DIR__ . '/../../includes/topbar.php';
     <p class="pantalla__bajada">
         <?= count($jugadas) ?> jugadas · <?= e(formatPesos($resumen['recaudado'])) ?>
         <?php if (count($jugadas) >= 500): ?>
-            <br><span class="text-warning">Se muestran las 500 más recientes. Acotá el rango de fechas para ver el resto.</span>
+            <br><span class="texto-oro fw-semibold">Se muestran las 500 más recientes. Acotá el rango de fechas para ver el resto.</span>
         <?php endif; ?>
     </p>
 

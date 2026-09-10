@@ -44,10 +44,10 @@ require __DIR__ . '/../../includes/topbar.php';
     <form method="get" class="mt-3">
         <label class="form-label" for="codigo">Código de la solicitud</label>
         <div class="d-flex gap-2">
-            <input type="text" class="form-control cifra text-uppercase" id="codigo" name="codigo"
+            <input type="text" class="form-control cifra text-uppercase input-codigo" id="codigo" name="codigo"
                    value="<?= e($codigo) ?>"
                    maxlength="6" autocapitalize="characters" autocomplete="off"
-                   placeholder="ABC123" style="letter-spacing:.15em;font-size:1.25rem"
+                   placeholder="ABC123"
                    autofocus>
             <button type="submit" class="btn btn-primary flex-shrink-0">
                 <i class="bi bi-search"></i> Buscar

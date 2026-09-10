@@ -106,12 +106,14 @@ require __DIR__ . '/../../includes/topbar.php';
                     </div>
                     <div class="text-end text-nowrap">
                         <div class="cifra fw-bold"><?= e(formatPesos($jugada['importe'])) ?></div>
-                        <?php if ($jugada['estado'] === 'ganadora'): ?>
-                            <span class="etiqueta etiqueta--oro mt-1">Ganadora</span>
-                        <?php elseif ((int) $jugada['pagada'] === 1): ?>
-                            <span class="etiqueta etiqueta--verde mt-1">Pagada</span>
-                        <?php else: ?>
+                        <?php if ((int) $jugada['pagada'] !== 1): ?>
                             <span class="etiqueta etiqueta--roja mt-1">Impaga</span>
+                        <?php elseif ($jugada['estado'] === 'ganadora'): ?>
+                            <span class="etiqueta etiqueta--oro mt-1">Ganadora</span>
+                        <?php elseif ($jugada['estado'] === 'perdedora'): ?>
+                            <span class="etiqueta etiqueta--gris mt-1">Perdió</span>
+                        <?php else: ?>
+                            <span class="etiqueta etiqueta--verde mt-1">Activa</span>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -129,7 +131,8 @@ require __DIR__ . '/../../includes/topbar.php';
                         <?= csrfField() ?>
                         <input type="hidden" name="id" value="<?= (int) $jugada['id'] ?>">
                         <input type="hidden" name="volver_a" value="<?= (int) $ciclo['id'] ?>">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                title="Se descuenta el aporte al pozo">
                             <i class="bi bi-trash"></i> Borrar
                         </button>
                     </form>

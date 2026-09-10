@@ -73,14 +73,14 @@ function requireCliente(bool $permitirPendiente = false): void
 
     if (!$fila || (int) $fila['activo'] !== 1) {
         cerrarSesionCliente();
-        setFlash('danger', 'Tu acceso fue dado de baja. Hablá con Decena de Oro.');
+        setFlash('danger', 'Tu acceso fue dado de baja. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.');
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }
 
     if ($fila['estado'] === 'rechazado') {
         cerrarSesionCliente();
-        setFlash('danger', 'Tu solicitud de alta fue rechazada. Hablá con Decena de Oro.');
+        setFlash('danger', 'Tu solicitud de alta fue rechazada. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.');
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }

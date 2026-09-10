@@ -16,9 +16,11 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
 <main class="pantalla">
 
+    <?php require __DIR__ . '/../includes/flash.php'; ?>
+
     <div class="tarjeta p-4 text-center mt-3">
-        <i class="bi bi-hourglass-split d-block mb-3"
-           style="font-size:2.5rem;color:var(--oro)" aria-hidden="true"></i>
+        <i class="bi bi-hourglass-split d-block mb-3 texto-oro"
+           style="font-size:2.5rem" aria-hidden="true"></i>
         <p class="fw-semibold mb-2">Tu cuenta está en revisión</p>
         <p class="fila__meta mb-0">
             Recibimos tu registro. Un administrador tiene que aprobarlo

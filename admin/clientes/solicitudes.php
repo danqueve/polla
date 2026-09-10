@@ -57,7 +57,8 @@ require __DIR__ . '/../../includes/topbar.php';
 
                 <div class="d-flex gap-2">
                     <form method="post" class="flex-grow-1"
-                          action="<?= APP_URL ?>/admin/clientes/solicitud_aprobar.php">
+                          action="<?= APP_URL ?>/admin/clientes/solicitud_aprobar.php"
+                          onsubmit="return confirm('Aprobar la solicitud de <?= e(addslashes($s['nombre'])) ?>? Va a poder entrar al portal.')">
                         <?= csrfField() ?>
                         <input type="hidden" name="id" value="<?= (int) $s['id'] ?>">
                         <button type="submit" class="btn btn-primary w-100">

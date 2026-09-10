@@ -3,6 +3,7 @@
 namespace Polla\Services;
 
 use PDO;
+use Polla\Support\CuentaInactivaException;
 use Polla\Support\ValidacionException;
 
 /**
@@ -30,10 +31,28 @@ class AuthService
     /**
      * Valida credenciales y deja la sesion abierta.
      *
-     * @throws ValidacionException si el usuario no existe, esta inactivo
-     *                             o la clave no coincide.
+     * @throws ValidacionException si el usuario no existe o la clave no
+     *                             coincide; @throws CuentaInactivaException
+     *                             si las credenciales son correctas pero el
+     *                             usuario esta desactivado.
      */
     public function login(string $usuario, string $password): array
+    {
+        $fila = $this->verificar($usuario, $password);
+        $this->abrirSesion($fila);
+
+        return $fila;
+    }
+
+    /**
+     * Igual que login(), pero sin tocar la sesion: la usa el login
+     * unificado para probar esta tabla antes de decidir cual de las dos
+     * sesiones (panel o portal) abrir.
+     *
+     * @throws ValidacionException
+     * @throws CuentaInactivaException
+     */
+    public function verificar(string $usuario, string $password): array
     {
         $usuario = trim($usuario);
 
@@ -64,7 +83,7 @@ class AuthService
         }
 
         if ((int) $fila['activo'] !== 1) {
-            throw ValidacionException::de('Tu usuario esta desactivado. Hablalo con el administrador.');
+            throw new CuentaInactivaException(['Tu usuario esta desactivado. Hablalo con el administrador.']);
         }
 
         // Rehash si el costo por defecto de PHP cambio desde el alta.
@@ -76,12 +95,10 @@ class AuthService
         $this->db->prepare('UPDATE usuarios SET ultimo_acceso = NOW() WHERE id = :id')
                  ->execute([':id' => $fila['id']]);
 
-        $this->abrirSesion($fila);
-
         return $fila;
     }
 
-    private function abrirSesion(array $usuario): void
+    public function abrirSesion(array $usuario): void
     {
         // Evita fijacion de sesion: el id previo al login se descarta.
         // El guard es por si algo ya escribio salida (CLI, un warning suelto):

@@ -33,6 +33,9 @@
     --verde-claro:  #e6f1eb;
     --oro:          #a67c12;
     --oro-claro:    #fbf3dd;
+    /* Mismo oro, pero calibrado para leerse sobre el verde oscuro
+       (pozo, login, "ganaste"): el tono base pierde contraste ahi. */
+    --oro-sobre-oscuro: #f2d382;
     --rojo:         #a52620;
     --rojo-claro:   #fbeae9;
 
@@ -116,15 +119,15 @@ a { color: var(--verde); }
     font-size: .6875rem;
     letter-spacing: .1em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, .62);
+    color: rgba(255, 255, 255, .75);
 }
 
 .topbar__usuario {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: var(--toque);
+    height: var(--toque);
     border-radius: 50%;
     background: rgba(255, 255, 255, .14);
     color: #fff;
@@ -164,6 +167,15 @@ a { color: var(--verde); }
 
 .tarjeta--realce { box-shadow: var(--sombra-card); }
 
+/* Tarjeta de aviso "esto necesita tu atención" (solicitud sin pagar,
+   ganador sin liquidar, etc.): mismo tratamiento en todo el sitio en
+   vez de repetir el mismo style="border-color:#e8d6a4" en cada pantalla. */
+.tarjeta--oro { border-color: #e8d6a4; }
+
+/* Util para no repetir style="color:var(--oro)" en cada ícono/cifra
+   suelta que necesita el tono de "esto es plata". */
+.texto-oro { color: var(--oro); }
+
 /* Tarjeta del pozo: el único lugar donde manda el oro */
 .pozo {
     background: var(--verde-oscuro);
@@ -192,7 +204,7 @@ a { color: var(--verde); }
     font-weight: 700;
     font-size: clamp(2.25rem, 12vw, 3.25rem);
     line-height: 1;
-    color: #f2d382;
+    color: var(--oro-sobre-oscuro);
     font-variant-numeric: tabular-nums;
 }
 
@@ -201,7 +213,7 @@ a { color: var(--verde); }
     font-weight: 600;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, .62);
+    color: rgba(255, 255, 255, .75);
 }
 
 /* ── Métricas ─────────────────────────────────────────────── */
@@ -501,7 +513,7 @@ a.fila:hover { border-color: var(--verde); }
 
 .login__marca em {
     font-style: normal;
-    color: #f2d382;
+    color: var(--oro-sobre-oscuro);
     display: block;
 }
 
@@ -705,7 +717,11 @@ a.fila:hover { border-color: var(--verde); }
     padding: 1rem 1rem 1.25rem;
     padding-top: calc(1rem + env(safe-area-inset-top));
     position: relative;
-    overflow: hidden;
+    /* Sin overflow:hidden a proposito: a diferencia de .pozo (una tarjeta
+       con bordes redondeados que si necesita recortar la trama), este
+       header no tiene border-radius, asi que no hace falta recortar nada
+       — y el recorte era lo que le comia el menu de "Salir" cuando se
+       abria (queda mas alto que el header). */
 }
 
 /* La misma trama diagonal del pozo y del login: hilo entre pantallas */
@@ -741,7 +757,7 @@ a.fila:hover { border-color: var(--verde); }
     font-size: .75rem;
     letter-spacing: .08em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, .6);
+    color: rgba(255, 255, 255, .75);
 }
 
 /* ── Estado de la jugada: el titular de cada tarjeta ──────── */
@@ -786,8 +802,8 @@ a.fila:hover { border-color: var(--verde); }
     background: var(--verde-oscuro);
     color: #fff;
 }
-.estado-jugada--gano .estado-jugada__icono { background: #f2d382; color: var(--verde-oscuro); }
-.estado-jugada--gano .estado-jugada__titulo { color: #f2d382; }
+.estado-jugada--gano .estado-jugada__icono { background: var(--oro-sobre-oscuro); color: var(--verde-oscuro); }
+.estado-jugada--gano .estado-jugada__titulo { color: var(--oro-sobre-oscuro); }
 
 /* Sigue en juego */
 .estado-jugada--jugando { background: var(--verde-claro); color: var(--verde-oscuro); }
@@ -802,7 +818,7 @@ a.fila:hover { border-color: var(--verde); }
     font-weight: 700;
     font-size: clamp(2rem, 10vw, 2.75rem);
     line-height: 1;
-    color: #f2d382;
+    color: var(--oro-sobre-oscuro);
     font-variant-numeric: tabular-nums;
 }
 
@@ -885,16 +901,6 @@ a.fila:hover { border-color: var(--verde); }
 
 .pozo-cliente { padding: 1.5rem 1.25rem; }
 .pozo-cliente .pozo__monto { font-size: clamp(2.75rem, 15vw, 4rem); }
-
-/* ── Aviso de primer ingreso ──────────────────────────────── */
-
-.aviso-clave {
-    background: var(--oro-claro);
-    border: 1px solid #e8d6a4;
-    border-radius: var(--radio);
-    padding: 1rem;
-    color: #7a5a0d;
-}
 
 @media (min-width: 576px) {
     .bolillas-cliente { grid-template-columns: repeat(10, 1fr); }
@@ -1169,8 +1175,18 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     margin-top: .5rem;
 }
 
-/* Monto a pagar: mismo tratamiento que el premio en portal_jugada,
-   asi las dos pantallas de "plata" se leen igual. */
+/* Mismo tratamiento tipografico del codigo (localizador, letras
+   separadas) aplicado al buscador del staff en admin/solicitudes,
+   en vez de repetir un style="letter-spacing:..." ad hoc. */
+.input-codigo {
+    letter-spacing: .15em;
+    font-size: 1.25rem;
+}
+
+/* Monto a pagar: a diferencia del premio de portal_jugada, esto es
+   plata que el cliente TODAVIA DEBE, no plata que gano — por eso NO
+   lleva el oro (reservado para pozo/recaudacion/premio), va en la
+   tinta normal para no confundir una deuda con un premio. */
 .monto-a-pagar {
     background: var(--superficie);
     border: 1px solid var(--borde);
@@ -1184,8 +1200,24 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     font-weight: 700;
     font-size: clamp(2rem, 11vw, 2.75rem);
     line-height: 1.1;
-    color: var(--oro);
+    color: var(--tinta);
     font-variant-numeric: tabular-nums;
+}
+
+/* Alias de transferencia: separado del texto de la instruccion para que
+   se pueda leer (o dictar) de un vistazo, sin perderse en el parrafo. */
+.alias-transferencia {
+    display: inline-block;
+    margin: .5rem 0;
+    padding: .5rem 1rem;
+    background: var(--superficie);
+    border: 1.5px dashed var(--oro);
+    border-radius: var(--radio-sm);
+    font-family: var(--ff-cifra);
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: .01em;
+    color: var(--tinta);
 }
 
 /* ============================================================
@@ -1209,7 +1241,7 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     line-height: 1.4;
 }
 
-.pozo__desglose i { margin-top: .0625rem; color: #f2d382; flex-shrink: 0; }
+.pozo__desglose i { margin-top: .0625rem; color: var(--oro-sobre-oscuro); flex-shrink: 0; }
 
 /* Tabla de desglose del detalle de ciclo: real / piso / pagado /
    subsidiado, en una tarjeta clara — distinto contexto visual del

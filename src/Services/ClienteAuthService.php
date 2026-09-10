@@ -3,6 +3,7 @@
 namespace Polla\Services;
 
 use PDO;
+use Polla\Support\CuentaInactivaException;
 use Polla\Support\ValidacionException;
 
 /**
@@ -33,8 +34,27 @@ class ClienteAuthService
      * del portal.
      *
      * @throws ValidacionException
+     * @throws CuentaInactivaException
      */
     public function login(string $dni, string $password): array
+    {
+        $cliente = $this->verificar($dni, $password);
+        $this->abrirSesion($cliente);
+
+        return $cliente;
+    }
+
+    /**
+     * Igual que login(), pero sin tocar la sesion: la usa el login
+     * unificado para probar esta tabla antes de decidir cual de las dos
+     * sesiones (panel o portal) abrir. No chequea `estado` (pendiente/
+     * rechazado) a proposito: ese gating sigue viviendo en
+     * requireCliente(), recien en la siguiente pantalla.
+     *
+     * @throws ValidacionException
+     * @throws CuentaInactivaException
+     */
+    public function verificar(string $dni, string $password): array
     {
         $dni = ClienteService::normalizarDni($dni);
 
@@ -64,7 +84,9 @@ class ClienteAuthService
         }
 
         if ((int) $cliente['activo'] !== 1) {
-            throw ValidacionException::de('Tu acceso esta dado de baja. Hablá con Decena de Oro.');
+            throw new CuentaInactivaException([
+                'Tu acceso esta dado de baja. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.',
+            ]);
         }
 
         // El hash siempre corresponde al DNI: si cambio el costo por
@@ -77,12 +99,10 @@ class ClienteAuthService
         $this->db->prepare('UPDATE clientes SET ultimo_acceso = NOW() WHERE id = :id')
                  ->execute([':id' => $cliente['id']]);
 
-        $this->abrirSesion($cliente);
-
         return $cliente;
     }
 
-    private function abrirSesion(array $cliente): void
+    public function abrirSesion(array $cliente): void
     {
         // Evita fijacion de sesion. El guard es por si algo ya escribio
         // salida (CLI, un warning suelto): regenerar ahi solo tira un aviso.

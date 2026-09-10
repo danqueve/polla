@@ -70,16 +70,7 @@ require __DIR__ . '/includes/head.php';
 
         <div class="login__panel">
 
-            <?php if ($errores): ?>
-                <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
-                    <i class="bi bi-exclamation-octagon-fill flex-shrink-0" style="margin-top:.15rem"></i>
-                    <div>
-                        <?php foreach ($errores as $error): ?>
-                            <div><?= e($error) ?></div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
+            <?php require __DIR__ . '/includes/alerta_errores.php'; ?>
 
             <div class="alert alert-warning d-flex align-items-start gap-2 py-2 mb-3" style="font-size:.875rem">
                 <i class="bi bi-info-circle-fill flex-shrink-0" style="margin-top:.15rem"></i>
@@ -126,8 +117,8 @@ require __DIR__ . '/includes/head.php';
             </form>
         </div>
 
-        <p class="text-center mt-4 mb-0" style="color:rgba(255,255,255,.45);font-size:.8125rem">
-            ¿Ya tenés cuenta? <a href="<?= APP_URL ?>/portal/login.php" style="color:inherit">Entrá acá</a>.
+        <p class="text-center mt-4 mb-0" style="color:rgba(255,255,255,.75);font-size:.8125rem">
+            ¿Ya tenés cuenta? <a href="<?= APP_URL ?>/auth/login.php" style="color:inherit">Entrá acá</a>.
         </p>
     </div>
 </main>

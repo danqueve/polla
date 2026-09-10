@@ -79,7 +79,7 @@ require __DIR__ . '/../includes/topbar.php';
             <?php endif; ?>
         </div>
 
-        <?php if (isAdmin() && $subsidio > 0): ?>
+        <?php if ($subsidio > 0): ?>
             <div class="pozo__desglose mt-3">
                 <i class="bi bi-info-circle-fill"></i>
                 De los cuales <?= e(formatPesos($pozoReal)) ?> son reales ·

@@ -52,9 +52,8 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
     <?php if (!$ciclos): ?>
 
-        <div class="tarjeta p-4 text-center">
-            <i class="bi bi-clock-history d-block mb-3"
-               style="font-size:2.5rem;color:var(--borde-fuerte)" aria-hidden="true"></i>
+        <div class="vacio tarjeta">
+            <i class="bi bi-clock-history" aria-hidden="true"></i>
             <p class="fw-semibold mb-2">Todavía no hay semanas cerradas</p>
             <p class="fila__meta mb-0">
                 Cuando termine tu primera semana de juego, la vas a ver acá.

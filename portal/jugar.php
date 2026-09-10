@@ -57,12 +57,13 @@ $dibujarGrupo = static function ($indice, array $numeros) use ($cantidad): void 
             <div class="fw-semibold">
                 Jugada <span class="js-grupo-numero"><?= is_int($indice) ? $indice + 1 : '' ?></span>
             </div>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-3">
                 <button type="button" class="js-limpiar btn btn-sm btn-outline-secondary">
                     <i class="bi bi-eraser"></i> Limpiar
                 </button>
-                <button type="button" class="js-quitar-grupo btn btn-sm btn-outline-danger" hidden>
-                    <i class="bi bi-x-lg"></i>
+                <button type="button" class="js-quitar-grupo btn btn-sm btn-outline-danger" hidden
+                        aria-label="Quitar esta jugada">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
                 </button>
             </div>
         </div>

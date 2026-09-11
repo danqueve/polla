@@ -14,14 +14,16 @@ $montoSabado = trim($_POST['monto_jugada_sabado'] ?? '');
 $premioBaseSabado = trim($_POST['premio_base_sabado'] ?? '');
 $horarioSemanal   = trim($_POST['horario_limite_semanal'] ?? '');
 $horarioSabado    = trim($_POST['horario_limite_sabado'] ?? '');
+$comisionPorcentaje = trim($_POST['comision_jugada_porcentaje'] ?? '');
 
 $old = [
-    'monto_jugada'            => $monto,
-    'premio_base'             => $premioBase,
-    'monto_jugada_sabado'     => $montoSabado,
-    'premio_base_sabado'      => $premioBaseSabado,
-    'horario_limite_semanal'  => $horarioSemanal,
-    'horario_limite_sabado'   => $horarioSabado,
+    'monto_jugada'               => $monto,
+    'premio_base'                => $premioBase,
+    'monto_jugada_sabado'        => $montoSabado,
+    'premio_base_sabado'         => $premioBaseSabado,
+    'horario_limite_semanal'     => $horarioSemanal,
+    'horario_limite_sabado'      => $horarioSabado,
+    'comision_jugada_porcentaje' => $comisionPorcentaje,
 ];
 
 try {
@@ -33,11 +35,13 @@ try {
     $configuracion->actualizarMontoJugadaSabado($montoSabado, $usuarioId);
     $configuracion->actualizarPremioBaseSabado($premioBaseSabado, $usuarioId);
     $configuracion->actualizarHorarios($horarioSemanal, $horarioSabado, $usuarioId);
+    $configuracion->actualizarComisionJugadaPorcentaje($comisionPorcentaje, $usuarioId);
 
     setFlash('success',
         'Configuración actualizada: monto de jugada ' . formatPesos($monto)
         . ' · premio base ' . formatPesos($premioBase)
-        . ' · sábados ' . formatPesos($montoSabado) . '/' . formatPesos($premioBaseSabado) . '.'
+        . ' · sábados ' . formatPesos($montoSabado) . '/' . formatPesos($premioBaseSabado)
+        . ' · comisión ' . $comisionPorcentaje . '%.'
     );
 } catch (ValidacionException $e) {
     setOld($old);

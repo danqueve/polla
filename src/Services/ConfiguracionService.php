@@ -57,6 +57,11 @@ class ConfiguracionService
         return $this->parametros->horarioLimiteSabado();
     }
 
+    public function comisionJugadaPorcentaje(): float
+    {
+        return $this->parametros->comisionJugadaPorcentaje();
+    }
+
     /**
      * Quien cambio un parametro por ultima vez y cuando, para mostrarlo
      * en la pantalla. Null si nunca se toco desde que existe la columna.
@@ -106,5 +111,11 @@ class ConfiguracionService
             'horario_limite_semanal' => $limiteSemanal,
             'horario_limite_sabado'  => $limiteSabado,
         ], $actualizadoPor);
+    }
+
+    /** @throws ValidacionException */
+    public function actualizarComisionJugadaPorcentaje(string $porcentaje, int $actualizadoPor): void
+    {
+        $this->parametros->actualizar(['comision_jugada_porcentaje' => $porcentaje], $actualizadoPor);
     }
 }

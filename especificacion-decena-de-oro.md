@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.7 (agrega Fase 9: horario límite de carga, y Fase 10: juego de sábados — ambas implementadas. Sigue el borrador de Fase 8: carga anticipada para la próxima semana, en revisión, sin dependencia con las dos fases nuevas)
+**Versión:** 1.8 (agrega Fase 11: vendedores y referidos — implementada. Ya estaban implementadas la Fase 9: horario límite de carga, y la Fase 10: juego de sábados. Sigue el borrador de Fase 8: carga anticipada para la próxima semana, en revisión, sin dependencia con las fases nuevas)
 
 ---
 
@@ -193,6 +193,7 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 | 8. Carga anticipada | Ciclo "programado" para cargar jugadas de la próxima semana por adelantado | A implementar |
 | 9. Horario límite de carga | Corte de carga a las 18:00 (lunes a viernes) y 11:00 (sábados), configurable, aplica a cliente y staff por igual | Implementada |
 | 10. Juego de sábados | Mini-ciclo de 5 turnos el mismo sábado, pozo propio, mismo mecanismo de corte y arrastre que el semanal | Implementada |
+| 11. Vendedores y referidos | Rol vendedor con link de referido, comisión por % de cada jugada del referido, supervisores también refieren (arrancan en 0%), liquidación manual por admin | Implementada |
 
 ## 13. Puntos abiertos antes de programar
 
@@ -261,3 +262,79 @@ Cuando el cliente arma varias jugadas en una misma sesión, todas comparten **un
 - **Modelo de datos**: se generalizaron `ciclos` (columna `tipo`: `semanal` | `sabado`, cada uno con su propia numeración y su propio "un ciclo abierto a la vez") y `sorteos` (columna `turno`, 1 para el semanal y 1-5 para sábados, reemplazando a `fecha` como parte de la clave única). `jugadas` y `solicitudes` suman `tipo_juego` para saber a qué caja pertenecen mientras están `pendiente_pago` (sin `ciclo_id` todavía). `PozoService` no necesitó ningún cambio: ya opera sobre `ciclo_id`, que sigue siendo una PK global única sin importar el tipo.
 - **Pantallas**: directorio `admin/sabados/` (tablero, historial, detalle, carga de turno — paralelo a `admin/ciclos/` y `admin/sorteos/`), selector de modalidad en `admin/jugadas/nueva.php` y `portal/jugar.php`, tabs "Semana/Sábado" en `portal/index.php` y `portal/historial.php`.
 - **Reportes**: `ReporteService`/`FiltroReporte` suman un filtro de tipo de juego (`semanal` por default, para no mezclar de golpe con lo que ya mostraban; `sabado` o `todos` como alternativa) — la caja de sábados no aparece mezclada con la semanal salvo que se pida explícitamente.
+
+## 17. Fase 11: vendedores y referidos
+
+### 17.1 Concepto
+
+Nuevo rol **vendedor**: una persona que no juega ni carga jugadas ni sorteos. Su única función es captar jugadores nuevos mediante un link personal de referido. Gana un **porcentaje del importe de cada jugada confirmada** que cargue un cliente referido por él. Ese porcentaje es **global** (un solo valor configurable por el admin, aplica igual a todos los vendedores y supervisores) y sale del **40% de gastos/ganancias**, nunca del pozo de premios.
+
+Los **supervisores** también reciben un código de referido con el mismo mecanismo, pero arrancan con el porcentaje global en 0% — el admin puede subirlo cuando quiera sin tocar código.
+
+### 17.2 Flujo
+
+1. **Admin crea vendedores** desde el panel (nombre, DNI, teléfono, clave). Al crearse se genera automáticamente un código de referido único y su link personal (`decenadeoro.lol/registro.php?ref=CODIGO`).
+2. **Supervisores** reciben también un código de referido (migración sobre la tabla `usuarios`), con la misma mecánica.
+3. **Registro con referido**: cuando alguien se registra usando un link con `?ref=CODIGO`, el sistema guarda `cliente.referido_por_tipo` (vendedor o supervisor) y `cliente.referido_por_id`. El formulario de registro funciona igual que hoy, solo viaja el código por detrás.
+4. **Acreditación de comisión**: cada vez que un referido carga una jugada **confirmada y pagada** (no pendiente de pago), el sistema calcula el porcentaje global sobre el importe de esa jugada y lo registra como comisión para el vendedor/supervisor que lo refirió. Aplica tanto al juego semanal como al de sábados.
+5. **Liquidación manual**: las comisiones se acumulan en un saldo. El admin las liquida cuando decide (botón de "liquidar" que registra el pago, la fecha y quién liquidó, y pone el saldo en cero).
+
+### 17.3 No hay comisión por registro
+
+El vendedor **no gana nada** por el hecho de que alguien se registre — la comisión se genera únicamente cuando el referido juega (jugada confirmada). Un referido que se registra pero nunca juega no le produce comisión al vendedor.
+
+### 17.4 Panel del vendedor
+
+- Su link de referido con botón de copiar (para compartir fácil desde el celular).
+- Listado de sus referidos (nombre, cantidad de jugadas cargadas por cada uno).
+- Saldo acumulado actual (comisiones pendientes de cobro).
+- Historial de liquidaciones ya cobradas.
+
+### 17.5 Panel del supervisor (lo que se agrega)
+
+- Misma vista que el vendedor: sus propios referidos, cantidad de jugadas, saldo acumulado, historial de liquidaciones.
+- No cambia nada de lo que ya puede hacer el supervisor (cargar jugadas, sorteos, aprobar clientes, etc.).
+
+### 17.6 Panel del admin (lo nuevo)
+
+- ABM de vendedores (crear, editar, desactivar).
+- Configurar el **porcentaje global de comisión por jugada** (`parametros.comision_jugada_porcentaje`), desde la misma pantalla de configuración.
+- Vista de **todos los referidos de todos** (vendedores y supervisores): quién refirió a quién, cuántas jugadas generó cada referido, cuánta comisión acumuló cada referidor.
+- Liquidar comisiones por vendedor/supervisor individual.
+
+### 17.7 Permisos
+
+| Acción | Admin | Supervisor | Vendedor |
+|---|---|---|---|
+| Crear/editar/desactivar vendedores | ✅ | ❌ | ❌ |
+| Configurar % de comisión | ✅ | ❌ | ❌ |
+| Ver referidos de TODOS | ✅ | ❌ | ❌ |
+| Liquidar comisiones | ✅ | ❌ | ❌ |
+| Ver sus propios referidos y saldo | ❌ | ✅ | ✅ |
+| Cargar jugadas / sorteos / clientes | ❌ | ✅ | ❌ |
+
+### 17.8 Cambios de modelo de datos
+
+- **`vendedores`** (nueva): `id, nombre, dni, telefono, password_hash, codigo_referido (VARCHAR UNIQUE), activo, fecha_alta`.
+- **`usuarios`**: se agrega `codigo_referido (VARCHAR UNIQUE, nullable)` — se genera para supervisores existentes en la migración.
+- **`clientes`**: se agrega `referido_por_tipo (ENUM: vendedor, supervisor, NULL)` y `referido_por_id (INT nullable)`.
+- **`comisiones`** (nueva): `id, referidor_tipo (vendedor | supervisor), referidor_id, jugada_id (FK), monto, porcentaje_aplicado (snapshot del % vigente al momento de acreditar), fecha`.
+- **`liquidaciones`** (nueva): `id, referidor_tipo, referidor_id, monto, fecha, liquidado_por (FK a usuarios)`.
+- **`parametros`**: clave nueva `comision_jugada_porcentaje` (default 0).
+
+### 17.9 Login del vendedor
+
+El vendedor entra por la misma pantalla unificada de login (`auth/login.php`) que ya prueba contra `usuarios` y `clientes`. Se agrega una tercera prueba contra `vendedores`. Al detectar que es vendedor, redirige a su panel propio (`vendedor/index.php`) — sesión separada, sin acceso al panel de admin ni al portal de clientes.
+
+### 17.10 Notas de implementación
+
+- **Tercer "mundo" de sesión**: `config/vendedor.php` (cookie `POLLA_VENDEDOR`), mismo patrón de aislamiento que ya usaba `config/portal.php` para el cliente. `auth/login.php` prueba en cascada `usuarios` → `clientes` → `vendedores`, y cambia de sesión de forma explícita apenas hay un match (con tres mundos en cascada ya no alcanza con asumir "la sesión activa es la correcta").
+- **El vendedor entra con su DNI** (no hay un campo "usuario" propio en la tabla `vendedores`), igual criterio que ya usa el cliente — el campo del login ya decía "Usuario o DNI", así que no hizo falta tocar esa pantalla.
+- **Código de referido**: mismo alfabeto y largo que `numero_registro` de `solicitudes` (`ABCDEFGHJKMNPQRSTUVWXYZ23456789`, 6 caracteres, reintento ante colisión). `VendedorService` y `UsuarioService` tienen cada uno su propio generador (mismo criterio que ya coexistían `ClienteService::generarNroCliente()` y `SolicitudService::generarCodigo()` sin compartir código).
+- **`UsuarioService::asignarCodigoReferidoSiFalta()`** se llama automáticamente desde `crear()` y `actualizar()`: todo supervisor nuevo (o que pase a serlo) saca su código solo, sin depender de que alguien se acuerde de generarlo. Nunca se lo saca si deja de ser supervisor.
+- **Relación polimórfica sin FK**: `clientes.referido_por_tipo/referido_por_id` y `comisiones.referidor_tipo/referidor_id` pueden apuntar a `vendedores` o a `usuarios` según el tipo — una sola columna no puede tener una FK a dos tablas distintas, así que la integridad la garantiza la aplicación (`ComisionService::resolverCodigo()` antes de guardar), no la base.
+- **El gancho de comisión** vive en `ComisionService::acreditarSiCorresponde()`, y se llama desde los dos puntos exactos donde una jugada pasa a `estado_pago = 'confirmada'`: `JugadaService::crearVarias()` (carga directa del staff) y `SolicitudService::confirmar()` (el cliente arma la jugada, el staff confirma el pago después). Los dos ya corrían dentro de su propia transacción, así que la comisión se acredita atómicamente junto con la jugada — nada nuevo que abrir. `PozoService` no se toca: la comisión es un libro aparte (`comisiones`), no resta nada de `jugadas.aporte_pozo`/`aporte_gastos`.
+- **Sin fila si el porcentaje es 0 o el cliente no tiene referidor** — evita ruido en la tabla `comisiones`.
+- **Liquidación como libro mayor**: `liquidaciones` no linkea comisiones puntuales. El saldo pendiente de un referidor es `SUM(comisiones.monto) - SUM(liquidaciones.monto)`; liquidar registra el saldo del momento (dentro de su propia transacción, para que leer el saldo e insertar sean atómicos) y lo deja en $0 hasta la próxima comisión.
+- **`admin/referidos/mios.php`**: la vista del supervisor sobre sus propios referidos, dentro del panel admin (no un mundo de sesión aparte, porque el supervisor ya vive ahí para todo lo demás). Sin botón de liquidar — eso es exclusivo de `admin/liquidaciones/`.
+- **Promociones de paquete no interactúan con comisiones**: la comisión se calcula sobre `jugadas.importe`, que con una promo ya viene prorrateado (Fase 7) — no hizo falta ningún ajuste adicional.

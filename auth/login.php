@@ -1,22 +1,25 @@
 <?php
 /**
- * Login unico: admin, supervisor y cliente entran por la misma pantalla.
- * Lo unico que cambia despues es el perfil (y con el, los permisos) —
- * la puerta de entrada es una sola.
+ * Login unico: admin, supervisor, cliente y (desde la Fase 11) vendedor
+ * entran por la misma pantalla. Lo unico que cambia despues es el
+ * perfil (y con el, los permisos) — la puerta de entrada es una sola.
  *
- * config/app.php (sesion PHPSESSID, panel) y config/portal.php (sesion
- * POLLA_CLIENTE, cliente) no se pueden tener abiertas a la vez: cada uno
- * usa un nombre de sesion distinto y PHP no permite renombrar una sesion
- * ya activa. Por eso esta pagina cambia de "mundo" con cambiarASesion()
- * (mas abajo) en vez de requerir los dos config a la vez: primero prueba
- * si ya hay sesion abierta en cualquiera de los dos mundos, y en el POST
- * prueba primero contra `usuarios` y despues contra `clientes`, sin abrir
- * la sesion definitiva hasta tener un match real.
+ * config/app.php (sesion PHPSESSID, panel), config/portal.php (sesion
+ * POLLA_CLIENTE, cliente) y config/vendedor.php (sesion POLLA_VENDEDOR,
+ * vendedor) no se pueden tener abiertas a la vez: cada una usa un
+ * nombre de sesion distinto y PHP no permite renombrar una sesion ya
+ * activa. Por eso esta pagina cambia de "mundo" con cambiarASesion()
+ * (mas abajo) en vez de requerir los tres config a la vez: primero
+ * prueba si ya hay sesion abierta en cualquiera de los tres mundos, y
+ * en el POST prueba en cascada contra `usuarios`, despues `clientes` y
+ * despues `vendedores`, sin abrir la sesion definitiva hasta tener un
+ * match real.
  */
 require_once __DIR__ . '/../config/bootstrap.php';
 
 use Polla\Services\AuthService;
 use Polla\Services\ClienteAuthService;
+use Polla\Services\VendedorAuthService;
 use Polla\Support\CuentaInactivaException;
 use Polla\Support\ValidacionException;
 
@@ -64,13 +67,24 @@ if (clienteLogueado()) {
     exit;
 }
 
-// Si el visitante viene rebotado de requireCliente() (baja o rechazo,
-// via el adaptador de portal/login.php), el flash vive en esta misma
-// sesion del portal.
+// Tampoco es cliente: probamos el tercer mundo, el del vendedor
+// [Fase 11], mismo patron que el del portal.
+cambiarASesion('POLLA_VENDEDOR');
+require_once __DIR__ . '/../config/vendedor.php';
+if (vendedorLogueado()) {
+    header('Location: ' . APP_URL . '/vendedor/index.php');
+    exit;
+}
+
+// Si el visitante viene rebotado de requireCliente()/requireVendedor()
+// (baja o rechazo), el flash vive en esta misma sesion -- la que haya
+// quedado activa despues del ultimo cambiarASesion() de arriba.
 $flash = getFlash();
 
-// De aca en adelante la sesion activa es la del portal: ahi se genera
-// y valida el CSRF de este formulario.
+// La sesion activa a esta altura es la ultima que se probo (vendedor):
+// ahi se genera y valida el CSRF de este formulario, sea cual sea el
+// mundo al que termine perteneciendo quien lo envia -- el POST de abajo
+// cambia de mundo de forma explicita en cuanto sabe con cual matcheo.
 $errores       = [];
 $identificador = '';
 
@@ -86,9 +100,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         try {
             $fila = (new AuthService($db))->verificar($identificador, $password);
 
-            // Matcheo contra usuarios: soltamos la sesion del portal (la
-            // activa desde arriba) y recien ahi abrimos la del panel, que
-            // no se puede tener abierta a la vez que la otra.
+            // Matcheo contra usuarios: soltamos la sesion activa y recien
+            // ahi abrimos la del panel, que no puede convivir con otra.
             cambiarASesion($sesionPanel);
             (new AuthService($db))->abrirSesion($fila);
 
@@ -96,14 +109,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             exit;
         } catch (CuentaInactivaException $e) {
             // Matcheo real contra usuarios pero la cuenta esta
-            // desactivada: mensaje especifico, no probamos clientes.
+            // desactivada: mensaje especifico, no probamos las demas.
             $errores = $e->errores();
         } catch (ValidacionException $eStaff) {
             try {
                 $cliente = (new ClienteAuthService($db))->verificar($identificador, $password);
 
-                // Matcheo contra clientes: la sesion activa ya es la del
-                // portal, no hay que cambiar nada.
+                // Matcheo contra clientes: cambio explicito siempre, sin
+                // asumir que la sesion activa ya es la correcta -- con
+                // tres mundos en cascada, cual quedo activa depende del
+                // orden en que se probaron arriba, no conviene confiar
+                // en eso.
+                cambiarASesion('POLLA_CLIENTE');
                 (new ClienteAuthService($db))->abrirSesion($cliente);
 
                 header('Location: ' . APP_URL . '/portal/index.php');
@@ -111,9 +128,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             } catch (CuentaInactivaException $eCliente) {
                 $errores = $eCliente->errores();
             } catch (ValidacionException $eClienteGenerico) {
-                // Ninguna de las dos tablas matcheo: un solo mensaje
-                // generico, para no filtrar contra cual se probo.
-                $errores[] = 'Usuario/DNI o contraseña incorrectos.';
+                try {
+                    $vendedor = (new VendedorAuthService($db))->verificar($identificador, $password);
+
+                    cambiarASesion('POLLA_VENDEDOR');
+                    (new VendedorAuthService($db))->abrirSesion($vendedor);
+
+                    header('Location: ' . APP_URL . '/vendedor/index.php');
+                    exit;
+                } catch (CuentaInactivaException $eVendedor) {
+                    $errores = $eVendedor->errores();
+                } catch (ValidacionException $eVendedorGenerico) {
+                    // Ninguna de las tres tablas matcheo: un solo mensaje
+                    // generico, para no filtrar contra cual se probo.
+                    $errores[] = 'Usuario/DNI o contraseña incorrectos.';
+                }
             }
         }
     }

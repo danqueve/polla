@@ -16,12 +16,20 @@ require_once __DIR__ . '/config/portal.php';
 use Polla\Services\ClienteAuthService;
 use Polla\Services\ClienteRegistroService;
 use Polla\Services\ClienteService;
+use Polla\Services\ComisionService;
 use Polla\Support\ValidacionException;
 
 if (clienteLogueado()) {
     header('Location: ' . APP_URL . '/portal/index.php');
     exit;
 }
+
+// Fase 11: ?ref=CODIGO viaja por la URL de este mismo formulario (no
+// tiene action explicito, asi que el POST se manda a la misma URL con
+// el query string incluido). Si el codigo no existe (o esta de baja),
+// se ignora en silencio -- nunca bloquea el registro.
+$refCodigo  = trim($_GET['ref'] ?? '');
+$referidoPor = $refCodigo !== '' ? ComisionService::crearDesde(getPDO())->resolverCodigo($refCodigo) : null;
 
 $errores  = [];
 $dni      = old('dni');
@@ -40,7 +48,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $db = getPDO();
             $datos = ['dni' => $dni, 'nombre' => $nombre, 'telefono' => $telefono];
 
-            ClienteRegistroService::crearDesde($db)->registrar($datos);
+            ClienteRegistroService::crearDesde($db)->registrar($datos, $referidoPor);
             flushOld();
 
             // Ya tiene cuenta: lo dejamos logueado (clave = su propio DNI)

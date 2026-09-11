@@ -36,13 +36,16 @@ class ClienteRegistroService
      * admin o supervisor la apruebe. La clave es el DNI, igual que en
      * el alta manual.
      *
+     * $referidoPor [Fase 11]: ver ClienteService::crearAutorregistro().
+     *
      * @param array{dni:string,nombre:string,telefono?:string} $datos
+     * @param array{tipo:string,id:int}|null $referidoPor
      * @return int Id del cliente nuevo.
      * @throws ValidacionException
      */
-    public function registrar(array $datos): int
+    public function registrar(array $datos, ?array $referidoPor = null): int
     {
-        return $this->clientes->crearAutorregistro($datos);
+        return $this->clientes->crearAutorregistro($datos, $referidoPor);
     }
 
     // ── Cola de aprobacion ──────────────────────────────────

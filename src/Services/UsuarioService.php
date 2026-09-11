@@ -3,6 +3,7 @@
 namespace Polla\Services;
 
 use PDO;
+use PDOException;
 use Polla\Support\ValidacionException;
 
 /**
@@ -15,6 +16,14 @@ class UsuarioService
 
     private const PASSWORD_MIN = 8;
 
+    /**
+     * Sin 0/O/1/I/L: mismo alfabeto y largo que SolicitudService/
+     * VendedorService usan para sus codigos cortos [Fase 11].
+     */
+    private const ALFABETO_CODIGO   = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    private const LARGO_CODIGO      = 6;
+    private const REINTENTOS_CODIGO = 10;
+
     private PDO $db;
 
     public function __construct(PDO $db)
@@ -26,7 +35,7 @@ class UsuarioService
     public function listar(): array
     {
         return $this->db->query(
-            'SELECT id, usuario, nombre, rol, activo, ultimo_acceso, creado_en
+            'SELECT id, usuario, nombre, rol, codigo_referido, activo, ultimo_acceso, creado_en
                FROM usuarios
               ORDER BY activo DESC, rol ASC, nombre ASC'
         )->fetchAll();
@@ -35,7 +44,7 @@ class UsuarioService
     public function buscarPorId(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, usuario, nombre, rol, activo, ultimo_acceso, creado_en
+            'SELECT id, usuario, nombre, rol, codigo_referido, activo, ultimo_acceso, creado_en
                FROM usuarios WHERE id = :id LIMIT 1'
         );
         $stmt->execute([':id' => $id]);
@@ -84,7 +93,13 @@ class UsuarioService
             ':activo'  => !empty($datos['activo']) ? 1 : 0,
         ]);
 
-        return (int) $this->db->lastInsertId();
+        $id = (int) $this->db->lastInsertId();
+
+        // Fase 11: todo supervisor tiene codigo de referido desde que
+        // nace, sin que nadie tenga que acordarse de generarlo aparte.
+        $this->asignarCodigoReferidoSiFalta($id);
+
+        return $id;
     }
 
     /**
@@ -129,6 +144,65 @@ class UsuarioService
             $this->db->prepare('UPDATE usuarios SET password_hash = :h WHERE id = :id')
                      ->execute([':h' => password_hash($datos['password'], PASSWORD_DEFAULT), ':id' => $id]);
         }
+
+        // Fase 11: si paso a supervisor (o ya lo era pero nunca tuvo
+        // codigo, ej. una fila migrada a mano) y todavia no tiene uno,
+        // se lo asigna aca. Nunca se lo saca si deja de ser supervisor:
+        // un codigo inactivo no hace nada, y sacarlo podria romper un
+        // link que alguien ya tiene compartido si vuelve a serlo.
+        $this->asignarCodigoReferidoSiFalta($id);
+    }
+
+    /**
+     * Genera y guarda un codigo_referido para este usuario si es
+     * supervisor y todavia no tiene uno. No hace nada para un admin, ni
+     * para un supervisor que ya tiene codigo. Con reintento ante
+     * colision, mismo patron que SolicitudService::numero_registro.
+     *
+     * @return string|null El codigo asignado, o null si no correspondia.
+     */
+    public function asignarCodigoReferidoSiFalta(int $id): ?string
+    {
+        $stmt = $this->db->prepare('SELECT rol, codigo_referido FROM usuarios WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $id]);
+        $fila = $stmt->fetch();
+
+        if (!$fila || $fila['rol'] !== 'supervisor' || $fila['codigo_referido'] !== null) {
+            return null;
+        }
+
+        $update = $this->db->prepare('UPDATE usuarios SET codigo_referido = :c WHERE id = :id');
+
+        for ($intento = 1; $intento <= self::REINTENTOS_CODIGO; $intento++) {
+            $codigo = $this->generarCodigoReferido();
+            try {
+                $update->execute([':c' => $codigo, ':id' => $id]);
+                return $codigo;
+            } catch (PDOException $e) {
+                if ($e->getCode() !== '23000') {
+                    throw $e;
+                }
+                // Colision del codigo: seguimos al siguiente intento.
+            }
+        }
+
+        throw ValidacionException::de(
+            'No se pudo generar un código de referido único después de '
+            . self::REINTENTOS_CODIGO . ' intentos. Reintentá en unos segundos.'
+        );
+    }
+
+    private function generarCodigoReferido(): string
+    {
+        $letras = self::ALFABETO_CODIGO;
+        $max    = strlen($letras) - 1;
+
+        $codigo = '';
+        for ($i = 0; $i < self::LARGO_CODIGO; $i++) {
+            $codigo .= $letras[random_int(0, $max)];
+        }
+
+        return $codigo;
     }
 
     /**

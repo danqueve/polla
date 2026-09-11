@@ -29,6 +29,7 @@ class ParametroService
         'premio_base_sabado'     => '25000',
         'horario_limite_semanal' => '18:00',
         'horario_limite_sabado'  => '11:00',
+        'comision_jugada_porcentaje' => '0',
     ];
 
     public function __construct(PDO $db)
@@ -115,6 +116,16 @@ class ParametroService
     }
 
     /**
+     * Porcentaje global de comision [Fase 11] para el vendedor/supervisor
+     * que refirio al cliente, sobre el importe de cada jugada confirmada.
+     * Arranca en 0 (nadie cobra) hasta que el admin lo suba.
+     */
+    public function comisionJugadaPorcentaje(): float
+    {
+        return $this->getFloat('comision_jugada_porcentaje');
+    }
+
+    /**
      * Parte un importe en la porcion que va al pozo y la que va a gastos.
      * Redondea el pozo a 2 decimales y le da el resto a gastos, para que
      * pozo + gastos sea siempre exactamente el importe.
@@ -150,6 +161,12 @@ class ParametroService
         foreach (['horario_limite_semanal', 'horario_limite_sabado'] as $clave) {
             if (isset($valores[$clave]) && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $valores[$clave])) {
                 $errores[] = 'El horario tiene que tener formato HH:MM (24hs).';
+            }
+        }
+        if (isset($valores['comision_jugada_porcentaje'])) {
+            $comision = (float) $valores['comision_jugada_porcentaje'];
+            if ($comision < 0 || $comision > 100) {
+                $errores[] = 'El porcentaje de comisión tiene que estar entre 0 y 100.';
             }
         }
         if (isset($valores['porcentaje_pozo'])) {

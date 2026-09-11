@@ -61,6 +61,7 @@ class SolicitudService
     private CicloService $ciclos;
     private PozoService $pozo;
     private HorarioCargaService $horario;
+    private ComisionService $comisiones;
 
     public function __construct(
         PDO $db,
@@ -68,7 +69,8 @@ class SolicitudService
         ParametroService $parametros,
         CicloService $ciclos,
         PozoService $pozo,
-        HorarioCargaService $horario
+        HorarioCargaService $horario,
+        ComisionService $comisiones
     ) {
         $this->db         = $db;
         $this->jugadas     = $jugadas;
@@ -76,14 +78,15 @@ class SolicitudService
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
         $this->horario     = $horario;
+        $this->comisiones  = $comisiones;
     }
 
     /**
      * Fabrica: comparte una unica instancia de ParametroService/
-     * CicloService/PozoService entre esta clase y el JugadaService
-     * interno, para que "el monto vigente" se lea una sola vez por
-     * request y no pueda haber drift entre el monto_total de la
-     * solicitud y el importe de cada jugada.
+     * CicloService/PozoService/ComisionService entre esta clase y el
+     * JugadaService interno, para que "el monto vigente" se lea una
+     * sola vez por request y no pueda haber drift entre el monto_total
+     * de la solicitud y el importe de cada jugada.
      */
     public static function crearDesde(PDO $db): self
     {
@@ -91,9 +94,10 @@ class SolicitudService
         $ciclos     = new CicloService($db);
         $pozo       = new PozoService($db);
         $horario    = new HorarioCargaService($parametros);
-        $jugadas    = new JugadaService($db, $parametros, $ciclos, $pozo, $horario);
+        $comisiones = new ComisionService($db, $parametros);
+        $jugadas    = new JugadaService($db, $parametros, $ciclos, $pozo, $horario, $comisiones);
 
-        return new self($db, $jugadas, $parametros, $ciclos, $pozo, $horario);
+        return new self($db, $jugadas, $parametros, $ciclos, $pozo, $horario, $comisiones);
     }
 
     // ── El cliente arma su jugada ───────────────────────────
@@ -393,7 +397,7 @@ class SolicitudService
             $cicloId = (int) $ciclo['id'];
 
             $stmt = $this->db->prepare(
-                "SELECT id, aporte_pozo FROM jugadas
+                "SELECT id, aporte_pozo, cliente_id, importe FROM jugadas
                   WHERE solicitud_id = :solicitud AND estado_pago = 'pendiente_pago'"
             );
             $stmt->execute([':solicitud' => $solicitudId]);
@@ -416,6 +420,16 @@ class SolicitudService
             foreach ($filas as $fila) {
                 $alPozo += (float) $fila['aporte_pozo'];
                 $this->pozo->acumular($cicloId, (float) $fila['aporte_pozo']);
+
+                // Fase 11: este UPDATE de arriba es el momento exacto en
+                // que estas jugadas pasan a confirmadas -- el punto donde
+                // corresponde acreditar la comision del referido, si el
+                // cliente tiene uno.
+                $this->comisiones->acreditarSiCorresponde(
+                    (int) $fila['cliente_id'],
+                    (int) $fila['id'],
+                    (float) $fila['importe']
+                );
             }
 
             $this->db->prepare(

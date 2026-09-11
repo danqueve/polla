@@ -116,10 +116,18 @@ class ClienteService
      * duplicado, el reintento del nro_cliente y la clave (siempre el
      * DNI); lo unico que cambia es el origen y el estado inicial.
      *
+     * $referidoPor [Fase 11]: quien lo trajo via su link de referido
+     * (?ref=CODIGO en registro.php), ya resuelto por
+     * ComisionService::resolverCodigo() -- esta clase no valida el
+     * codigo, solo guarda lo que le llega. Null si no vino por ningun
+     * link, o si el codigo no existia (registro.php lo ignora en
+     * silencio en ese caso, nunca bloquea el alta).
+     *
      * @param array{dni:string,nombre:string,telefono?:string} $datos
+     * @param array{tipo:string,id:int}|null $referidoPor
      * @throws ValidacionException
      */
-    public function crearAutorregistro(array $datos): int
+    public function crearAutorregistro(array $datos, ?array $referidoPor = null): int
     {
         $dni      = self::normalizarDni($datos['dni'] ?? '');
         $nombre   = trim($datos['nombre'] ?? '');
@@ -131,7 +139,7 @@ class ClienteService
             throw ValidacionException::de('Ya hay un cliente cargado con ese DNI.');
         }
 
-        return $this->insertar($dni, $nombre, $telefono, 'pendiente', 'autorregistro', null);
+        return $this->insertar($dni, $nombre, $telefono, 'pendiente', 'autorregistro', null, $referidoPor);
     }
 
     /**
@@ -142,6 +150,7 @@ class ClienteService
      * La clave siempre es el DNI: se hashea aca mismo, no hay otra via
      * de entrada para el password_hash inicial.
      *
+     * @param array{tipo:string,id:int}|null $referidoPor
      * @throws ValidacionException
      */
     private function insertar(
@@ -150,25 +159,30 @@ class ClienteService
         string $telefono,
         string $estado,
         string $origenAlta,
-        ?int $altaPor
+        ?int $altaPor,
+        ?array $referidoPor = null
     ): int {
         $stmt = $this->db->prepare(
             'INSERT INTO clientes (nro_cliente, dni, nombre, telefono, password_hash,
-                                   activo, estado, origen_alta, alta_por)
-             VALUES (:nro, :dni, :nombre, :telefono, :hash, 1, :estado, :origen, :alta_por)'
+                                   activo, estado, origen_alta, alta_por,
+                                   referido_por_tipo, referido_por_id)
+             VALUES (:nro, :dni, :nombre, :telefono, :hash, 1, :estado, :origen, :alta_por,
+                     :referido_tipo, :referido_id)'
         );
 
         for ($intento = 1; $intento <= self::REINTENTOS_NRO; $intento++) {
             try {
                 $stmt->execute([
-                    ':nro'      => $this->generarNroCliente(),
-                    ':dni'      => $dni,
-                    ':nombre'   => $nombre,
-                    ':telefono' => $telefono !== '' ? $telefono : null,
-                    ':hash'     => password_hash($dni, PASSWORD_DEFAULT),
-                    ':estado'   => $estado,
-                    ':origen'   => $origenAlta,
-                    ':alta_por' => $altaPor,
+                    ':nro'           => $this->generarNroCliente(),
+                    ':dni'           => $dni,
+                    ':nombre'        => $nombre,
+                    ':telefono'      => $telefono !== '' ? $telefono : null,
+                    ':hash'          => password_hash($dni, PASSWORD_DEFAULT),
+                    ':estado'        => $estado,
+                    ':origen'        => $origenAlta,
+                    ':alta_por'      => $altaPor,
+                    ':referido_tipo' => $referidoPor['tipo'] ?? null,
+                    ':referido_id'   => $referidoPor['id'] ?? null,
                 ]);
                 return (int) $this->db->lastInsertId();
             } catch (PDOException $e) {

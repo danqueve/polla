@@ -25,6 +25,9 @@ $horarioSabado       = old('horario_limite_sabado', $configuracion->horarioLimit
 $ultimoHorarioSemanal = $configuracion->ultimaActualizacion('horario_limite_semanal');
 $ultimoHorarioSabado  = $configuracion->ultimaActualizacion('horario_limite_sabado');
 
+$comisionPorcentaje = old('comision_jugada_porcentaje', (string) $configuracion->comisionJugadaPorcentaje());
+$ultimaComision     = $configuracion->ultimaActualizacion('comision_jugada_porcentaje');
+
 $pageTitle  = 'Configuración · ' . APP_NAME;
 $navSeccion = 'configuracion';
 $bodyClass  = 'con-accion-fija';
@@ -194,11 +197,46 @@ require __DIR__ . '/../../includes/topbar.php';
                 <?php endif; ?>
             </div>
         </div>
+
+        <div class="tarjeta p-3 mb-3">
+            <span class="rotulo d-block mb-2">Comisión por referidos</span>
+            <p class="fila__meta mt-0 mb-3">
+                Porcentaje global que cobra el vendedor o supervisor que
+                refirió a un cliente, sobre el importe de cada jugada
+                confirmada de ese cliente. Aplica igual al juego semanal y
+                al de sábados. En 0%, nadie cobra nada.
+            </p>
+
+            <div class="mb-2">
+                <label class="form-label" for="comision_jugada_porcentaje">Porcentaje por jugada</label>
+                <div class="input-group">
+                    <input type="number" class="form-control cifra" id="comision_jugada_porcentaje"
+                           name="comision_jugada_porcentaje"
+                           value="<?= e($comisionPorcentaje) ?>"
+                           inputmode="decimal" min="0" max="100" step="0.5" required>
+                    <span class="input-group-text">%</span>
+                </div>
+            </div>
+
+            <?php if ($ultimaComision): ?>
+                <p class="fila__meta mb-0">
+                    Último cambio: <?= e(formatFechaHora($ultimaComision['actualizado_en'])) ?>
+                    <?php if ($ultimaComision['actualizado_por']): ?>
+                        · por <?= e($ultimaComision['actualizado_por']) ?>
+                    <?php endif; ?>
+                </p>
+            <?php endif; ?>
+        </div>
     </form>
 
-    <a href="<?= APP_URL ?>/admin/promociones/index.php" class="btn btn-outline-secondary w-100">
-        <i class="bi bi-box-seam"></i> Promociones de paquete
-    </a>
+    <div class="d-flex flex-column gap-2">
+        <a href="<?= APP_URL ?>/admin/promociones/index.php" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-box-seam"></i> Promociones de paquete
+        </a>
+        <a href="<?= APP_URL ?>/admin/referidos/index.php" class="btn btn-outline-secondary w-100">
+            <i class="bi bi-diagram-3"></i> Vendedores y referidos
+        </a>
+    </div>
 </main>
 
 <div class="accion-fija">

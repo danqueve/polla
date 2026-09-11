@@ -28,26 +28,36 @@ class JugadaService
     private CicloService $ciclos;
     private PozoService $pozo;
     private HorarioCargaService $horario;
+    private ComisionService $comisiones;
 
     public function __construct(
         PDO $db,
         ParametroService $parametros,
         CicloService $ciclos,
         PozoService $pozo,
-        HorarioCargaService $horario
+        HorarioCargaService $horario,
+        ComisionService $comisiones
     ) {
         $this->db         = $db;
         $this->parametros = $parametros;
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
         $this->horario    = $horario;
+        $this->comisiones = $comisiones;
     }
 
     /** Fabrica: arma el service con sus dependencias ya cableadas. */
     public static function crearDesde(PDO $db): self
     {
         $parametros = new ParametroService($db);
-        return new self($db, $parametros, new CicloService($db), new PozoService($db), new HorarioCargaService($parametros));
+        return new self(
+            $db,
+            $parametros,
+            new CicloService($db),
+            new PozoService($db),
+            new HorarioCargaService($parametros),
+            new ComisionService($db, $parametros)
+        );
     }
 
     /**
@@ -157,6 +167,11 @@ class JugadaService
                 }
 
                 $this->pozo->acumular((int) $ciclo['id'], $reparto['pozo']);
+
+                // Fase 11: la jugada nace ya confirmada en este camino
+                // (staff), asi que es el momento exacto de acreditar la
+                // comision del referido, si corresponde.
+                $this->comisiones->acreditarSiCorresponde((int) $cliente['id'], $jugadaId, $importes[$i]);
             }
 
             $this->db->commit();

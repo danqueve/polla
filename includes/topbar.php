@@ -52,8 +52,29 @@ $_iniciales = mb_strtoupper(mb_substr(trim($_u['nombre']) !== '' ? $_u['nombre']
                         </a>
                     </li>
                     <li>
+                        <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/vendedores/index.php">
+                            <i class="bi bi-person-badge me-2"></i>Vendedores
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/referidos/index.php">
+                            <i class="bi bi-diagram-3 me-2"></i>Referidos
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/liquidaciones/index.php">
+                            <i class="bi bi-cash-coin me-2"></i>Liquidaciones
+                        </a>
+                    </li>
+                    <li>
                         <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/configuracion/index.php">
                             <i class="bi bi-sliders me-2"></i>Configuración
+                        </a>
+                    </li>
+                <?php else: ?>
+                    <li>
+                        <a class="dropdown-item py-2" href="<?= APP_URL ?>/admin/referidos/mios.php">
+                            <i class="bi bi-diagram-3 me-2"></i>Mis referidos
                         </a>
                     </li>
                 <?php endif; ?>

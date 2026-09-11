@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.8 (agrega Fase 11: vendedores y referidos — implementada. Ya estaban implementadas la Fase 9: horario límite de carga, y la Fase 10: juego de sábados. Sigue el borrador de Fase 8: carga anticipada para la próxima semana, en revisión, sin dependencia con las fases nuevas)
+**Versión:** 1.9 (Fase 11 suma el vínculo cliente ↔ vendedor: dar de alta un vendedor resuelve o crea su cuenta de cliente sola por DNI, y cada panel tiene un botón para saltar al otro sin pedir contraseña de nuevo — ver 17.11. Ya estaban implementadas la Fase 9: horario límite de carga, y la Fase 10: juego de sábados. Sigue el borrador de Fase 8: carga anticipada para la próxima semana, en revisión, sin dependencia con las fases nuevas)
 
 ---
 
@@ -290,6 +290,7 @@ El vendedor **no gana nada** por el hecho de que alguien se registre — la comi
 - Listado de sus referidos (nombre, cantidad de jugadas cargadas por cada uno).
 - Saldo acumulado actual (comisiones pendientes de cobro).
 - Historial de liquidaciones ya cobradas.
+- **También puede jugar**: todo vendedor tiene una cuenta de cliente vinculada (ver 17.11) y un botón "Jugar" en su panel que lo lleva directo al portal, sin pedirle otra contraseña.
 
 ### 17.5 Panel del supervisor (lo que se agrega)
 
@@ -316,7 +317,7 @@ El vendedor **no gana nada** por el hecho de que alguien se registre — la comi
 
 ### 17.8 Cambios de modelo de datos
 
-- **`vendedores`** (nueva): `id, nombre, dni, telefono, password_hash, codigo_referido (VARCHAR UNIQUE), activo, fecha_alta`.
+- **`vendedores`** (nueva): `id, nombre, dni, cliente_id (INT UNIQUE, FK a clientes, nullable), telefono, password_hash, codigo_referido (VARCHAR UNIQUE), activo, fecha_alta`. `cliente_id` es el vínculo con su cuenta para jugar (ver 17.11).
 - **`usuarios`**: se agrega `codigo_referido (VARCHAR UNIQUE, nullable)` — se genera para supervisores existentes en la migración.
 - **`clientes`**: se agrega `referido_por_tipo (ENUM: vendedor, supervisor, NULL)` y `referido_por_id (INT nullable)`.
 - **`comisiones`** (nueva): `id, referidor_tipo (vendedor | supervisor), referidor_id, jugada_id (FK), monto, porcentaje_aplicado (snapshot del % vigente al momento de acreditar), fecha`.
@@ -339,3 +340,14 @@ El vendedor entra por la misma pantalla unificada de login (`auth/login.php`) qu
 - **Liquidación como libro mayor**: `liquidaciones` no linkea comisiones puntuales. El saldo pendiente de un referidor es `SUM(comisiones.monto) - SUM(liquidaciones.monto)`; liquidar registra el saldo del momento (dentro de su propia transacción, para que leer el saldo e insertar sean atómicos) y lo deja en $0 hasta la próxima comisión.
 - **`admin/referidos/mios.php`**: la vista del supervisor sobre sus propios referidos, dentro del panel admin (no un mundo de sesión aparte, porque el supervisor ya vive ahí para todo lo demás). Sin botón de liquidar — eso es exclusivo de `admin/liquidaciones/`.
 - **Promociones de paquete no interactúan con comisiones**: la comisión se calcula sobre `jugadas.importe`, que con una promo ya viene prorrateado (Fase 7) — no hizo falta ningún ajuste adicional.
+
+### 17.11 Vínculo cliente ↔ vendedor (para que uno se convierta en el otro)
+
+Una persona que ya es clienta puede pasar a ser vendedora reusando sus datos, y todo vendedor —exista o no como cliente previamente— puede también jugar:
+
+- `VendedorService::crear()` resuelve automáticamente `cliente_id` **por DNI**, sin ninguna pantalla de "convertir": si ya existe un cliente con ese DNI se vincula tal cual (sin tocarle nombre/teléfono); si no existe, se le crea un cliente nuevo con esos mismos datos (alta manual de siempre: aprobado, clave = DNI).
+- Editar un vendedor (`actualizar()`) **no** re-resuelve el vínculo, aunque cambie el DNI — evita re-enganchar por error a otra persona si el admin corrige un DNI mal tipeado.
+- Los vendedores que ya existían antes de esta mejora se vinculan con el script de una sola corrida `db/migrations/2026-09-11_vincular_vendedores_existentes.php`.
+- **Salto sin contraseña entre paneles**: `vendedor/jugar.php` y `portal/panel_vendedor.php` cambian de sesión (`cambiarASesion()`, ahora en `config/bootstrap.php` para que la puedan usar los dos) y abren la sesión de la cuenta vinculada llamando directo a `ClienteAuthService::abrirSesion()` / `VendedorAuthService::abrirSesion()` — nunca piden la otra clave, porque el vínculo se resuelve siempre a partir de quien ya está autenticado en la sesión activa, nunca de un id que llegue por parámetro. Cada cuenta sigue teniendo su propia contraseña para el login normal.
+- El botón aparece solo si corresponde: "Jugar" en el dropdown del panel del vendedor (si tiene `cliente_id`), "Mi panel de vendedor" en el dropdown del portal (si el cliente logueado tiene un vendedor vinculado y activo).
+- `ClienteService::eliminar()` desactiva en vez de borrar si el cliente tiene jugadas **o** un vendedor vinculado, para no chocar nunca con el `FOREIGN KEY ... ON DELETE RESTRICT` de `vendedores.cliente_id`.

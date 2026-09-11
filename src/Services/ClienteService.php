@@ -77,6 +77,21 @@ class ClienteService
         return $stmt->fetch() ?: null;
     }
 
+    /**
+     * Para VendedorService: detectar si ya existe un cliente con un DNI
+     * dado, antes de crearle uno nuevo al dar de alta un vendedor.
+     */
+    public function buscarPorDni(string $dni): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, nro_cliente, dni, nombre, telefono, activo,
+                    fecha_alta, ultimo_acceso
+               FROM clientes WHERE dni = :dni LIMIT 1'
+        );
+        $stmt->execute([':dni' => self::normalizarDni($dni)]);
+        return $stmt->fetch() ?: null;
+    }
+
     /** Clientes activos para poblar el selector del formulario de jugada. */
     public function listarActivosParaSelect(): array
     {
@@ -280,8 +295,13 @@ class ClienteService
 
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM jugadas WHERE cliente_id = :id');
         $stmt->execute([':id' => $id]);
+        $tieneJugadas = (int) $stmt->fetchColumn() > 0;
 
-        if ((int) $stmt->fetchColumn() > 0) {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM vendedores WHERE cliente_id = :id');
+        $stmt->execute([':id' => $id]);
+        $tieneVendedor = (int) $stmt->fetchColumn() > 0;
+
+        if ($tieneJugadas || $tieneVendedor) {
             $this->db->prepare('UPDATE clientes SET activo = 0 WHERE id = :id')->execute([':id' => $id]);
             return 'desactivado';
         }

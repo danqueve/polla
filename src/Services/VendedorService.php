@@ -26,17 +26,19 @@ class VendedorService
     private const PASSWORD_MIN = 8;
 
     private PDO $db;
+    private ClienteService $clientes;
 
-    public function __construct(PDO $db)
+    public function __construct(PDO $db, ?ClienteService $clientes = null)
     {
-        $this->db = $db;
+        $this->db       = $db;
+        $this->clientes = $clientes ?? new ClienteService($db);
     }
 
     /** @return array<int,array> */
     public function listar(): array
     {
         return $this->db->query(
-            'SELECT id, nombre, dni, telefono, codigo_referido, activo, fecha_alta
+            'SELECT id, nombre, dni, cliente_id, telefono, codigo_referido, activo, fecha_alta
                FROM vendedores
               ORDER BY activo DESC, nombre ASC'
         )->fetchAll();
@@ -45,10 +47,26 @@ class VendedorService
     public function buscarPorId(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, nombre, dni, telefono, codigo_referido, activo, fecha_alta
+            'SELECT id, nombre, dni, cliente_id, telefono, codigo_referido, activo, fecha_alta
                FROM vendedores WHERE id = :id LIMIT 1'
         );
         $stmt->execute([':id' => $id]);
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Vendedor a partir del cliente que tiene vinculado -- lo usa el
+     * portal para saber si el cliente logueado tambien es vendedor (y
+     * mostrarle el salto "Mi panel de vendedor" sin pedirle clave de
+     * nuevo).
+     */
+    public function buscarPorClienteId(int $clienteId): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, nombre, dni, cliente_id, telefono, codigo_referido, activo, fecha_alta
+               FROM vendedores WHERE cliente_id = :cid LIMIT 1'
+        );
+        $stmt->execute([':cid' => $clienteId]);
         return $stmt->fetch() ?: null;
     }
 
@@ -68,12 +86,15 @@ class VendedorService
 
     /**
      * Alta de vendedor. Genera el codigo de referido solo, con
-     * reintento ante colision.
+     * reintento ante colision. Ademas vincula (o crea) la cuenta de
+     * cliente con el mismo DNI, para que todo vendedor pueda tambien
+     * jugar -- ver resolverClienteId().
      *
      * @param array{nombre:string,dni:string,telefono?:string,password:string,password2:string} $datos
+     * @return array{id:int, cliente_id:int, cliente_nro:string, cliente_nuevo:bool}
      * @throws ValidacionException
      */
-    public function crear(array $datos): int
+    public function crear(array $datos): array
     {
         $nombre   = trim($datos['nombre'] ?? '');
         $dni      = ClienteService::normalizarDni($datos['dni'] ?? '');
@@ -86,22 +107,30 @@ class VendedorService
             throw ValidacionException::de('Ya hay un vendedor cargado con el DNI ' . $dni . '.');
         }
 
+        $cliente = $this->resolverClienteId($dni, $nombre, $telefono);
+
         $stmt = $this->db->prepare(
-            'INSERT INTO vendedores (nombre, dni, telefono, password_hash, codigo_referido, activo)
-             VALUES (:nombre, :dni, :telefono, :hash, :codigo, 1)'
+            'INSERT INTO vendedores (nombre, dni, cliente_id, telefono, password_hash, codigo_referido, activo)
+             VALUES (:nombre, :dni, :cliente_id, :telefono, :hash, :codigo, 1)'
         );
 
         for ($intento = 1; $intento <= self::REINTENTOS_CODIGO; $intento++) {
             $codigo = $this->generarCodigo();
             try {
                 $stmt->execute([
-                    ':nombre'   => $nombre,
-                    ':dni'      => $dni,
-                    ':telefono' => $telefono !== '' ? $telefono : null,
-                    ':hash'     => password_hash($datos['password'], PASSWORD_DEFAULT),
-                    ':codigo'   => $codigo,
+                    ':nombre'     => $nombre,
+                    ':dni'        => $dni,
+                    ':cliente_id' => $cliente['id'],
+                    ':telefono'   => $telefono !== '' ? $telefono : null,
+                    ':hash'       => password_hash($datos['password'], PASSWORD_DEFAULT),
+                    ':codigo'     => $codigo,
                 ]);
-                return (int) $this->db->lastInsertId();
+                return [
+                    'id'            => (int) $this->db->lastInsertId(),
+                    'cliente_id'    => $cliente['id'],
+                    'cliente_nro'   => $cliente['nro_cliente'],
+                    'cliente_nuevo' => $cliente['nuevo'],
+                ];
             } catch (PDOException $e) {
                 if (!self::esDuplicado($e)) {
                     throw $e;
@@ -120,8 +149,62 @@ class VendedorService
     }
 
     /**
+     * Vincula con su cliente a un vendedor que ya existia antes de esta
+     * mejora (cliente_id todavia NULL). No hace nada si ya esta
+     * vinculado -- pensado para correrse mas de una vez sin romper nada
+     * (mismo criterio que UsuarioService::asignarCodigoReferidoSiFalta()).
+     *
+     * @return array{cliente_id:int, cliente_nro:string, cliente_nuevo:bool}|null null si ya estaba vinculado
+     * @throws ValidacionException
+     */
+    public function vincularSiFalta(int $vendedorId): ?array
+    {
+        $vendedor = $this->buscarPorId($vendedorId);
+        if (!$vendedor) {
+            throw ValidacionException::de('El vendedor no existe.');
+        }
+        if ($vendedor['cliente_id'] !== null) {
+            return null;
+        }
+
+        $cliente = $this->resolverClienteId($vendedor['dni'], $vendedor['nombre'], $vendedor['telefono'] ?? '');
+
+        $this->db->prepare('UPDATE vendedores SET cliente_id = :cid WHERE id = :id')
+                 ->execute([':cid' => $cliente['id'], ':id' => $vendedorId]);
+
+        return $cliente;
+    }
+
+    /**
+     * Resuelve la cuenta de cliente de un vendedor por DNI: si ya existe
+     * un cliente con ese DNI se reusa tal cual (nunca se le tocan sus
+     * datos, para no pisar un cliente ya cargado antes); si no existe,
+     * se le crea uno nuevo con estos mismos datos, alta manual de
+     * siempre (aprobado, clave = DNI) -- asi todo vendedor, exista o no
+     * como cliente previamente, puede tambien jugar.
+     *
+     * @return array{id:int, nro_cliente:string, nuevo:bool}
+     * @throws ValidacionException
+     */
+    private function resolverClienteId(string $dni, string $nombre, string $telefono): array
+    {
+        $existente = $this->clientes->buscarPorDni($dni);
+        if ($existente) {
+            return ['id' => (int) $existente['id'], 'nro_cliente' => $existente['nro_cliente'], 'nuevo' => false];
+        }
+
+        $nuevoId = $this->clientes->crear(['dni' => $dni, 'nombre' => $nombre, 'telefono' => $telefono]);
+        $nuevo   = $this->clientes->buscarPorId($nuevoId);
+
+        return ['id' => $nuevoId, 'nro_cliente' => $nuevo['nro_cliente'], 'nuevo' => true];
+    }
+
+    /**
      * Edicion. El codigo de referido no se toca aca (es fijo desde el
-     * alta: cambiarlo invalidaria los links ya compartidos).
+     * alta: cambiarlo invalidaria los links ya compartidos). El
+     * cliente_id vinculado tampoco se re-resuelve aca a proposito: si
+     * el admin corrige un DNI mal tipeado, no queremos re-engancharlo
+     * solo con otra persona que tenga ese DNI nuevo.
      *
      * @throws ValidacionException
      */

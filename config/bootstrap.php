@@ -75,6 +75,32 @@ spl_autoload_register(static function (string $class): void {
 
 
 // ============================================================
+// Cambio de "mundo" de sesion (panel / portal / vendedor)
+// ============================================================
+
+/**
+ * Cambia la sesion activa a la que corresponde a otro nombre de cookie
+ * (PHPSESSID, POLLA_CLIENTE o POLLA_VENDEDOR), sin perder la que ya
+ * estuviera guardada en esa cookie. Hace falta porque PHP no permite
+ * renombrar una sesion ya activa: session_write_close() la suelta, y
+ * recien ahi se puede arrancar la otra leyendo su propia cookie.
+ *
+ * La usan auth/login.php (para probar login contra las tres tablas en
+ * cascada) y los saltos sin clave entre panel de vendedor y portal del
+ * cliente (vendedor/jugar.php, portal/panel_vendedor.php).
+ */
+function cambiarASesion(string $nombre): void
+{
+    if (session_status() !== PHP_SESSION_NONE) {
+        session_write_close();
+    }
+    session_name($nombre);
+    session_id($_COOKIE[$nombre] ?? session_create_id());
+    session_start();
+}
+
+
+// ============================================================
 // Peticiones POST
 // ============================================================
 

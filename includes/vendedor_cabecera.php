@@ -1,7 +1,11 @@
 <?php
 /** Encabezado del panel del vendedor: a quien saluda y por donde sale. */
-$_ven  = vendedorActual();
-$_pila = explode(' ', trim($_ven['nombre']))[0];
+use Polla\Services\VendedorService;
+
+$_ven      = vendedorActual();
+$_pila     = explode(' ', trim($_ven['nombre']))[0];
+$_venDatos = (new VendedorService(getPDO()))->buscarPorId((int) $_ven['id']);
+$_puedeJugar = $_venDatos && $_venDatos['cliente_id'] !== null;
 ?>
 <header class="cabecera-cliente">
     <div class="cabecera-cliente__interior d-flex align-items-start justify-content-between gap-3">
@@ -29,6 +33,14 @@ $_pila = explode(' ', trim($_ven['nombre']))[0];
                         <i class="bi bi-clock-history me-2"></i>Historial de pagos
                     </a>
                 </li>
+                <?php if ($_puedeJugar): ?>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item py-2" href="<?= APP_URL ?>/vendedor/jugar.php">
+                            <i class="bi bi-dice-5 me-2"></i>Jugar
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <a class="dropdown-item py-2 text-danger" href="<?= APP_URL ?>/vendedor/logout.php">

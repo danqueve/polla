@@ -9,7 +9,7 @@
  * vendedor) no se pueden tener abiertas a la vez: cada una usa un
  * nombre de sesion distinto y PHP no permite renombrar una sesion ya
  * activa. Por eso esta pagina cambia de "mundo" con cambiarASesion()
- * (mas abajo) en vez de requerir los tres config a la vez: primero
+ * (config/bootstrap.php) en vez de requerir los tres config a la vez: primero
  * prueba si ya hay sesion abierta en cualquiera de los tres mundos, y
  * en el POST prueba en cascada contra `usuarios`, despues `clientes` y
  * despues `vendedores`, sin abrir la sesion definitiva hasta tener un
@@ -23,25 +23,9 @@ use Polla\Services\VendedorAuthService;
 use Polla\Support\CuentaInactivaException;
 use Polla\Support\ValidacionException;
 
-/**
- * session_write_close() no limpia el id interno que arrastra PHP: si el
- * proximo session_start() se hace a ciegas, reusa ese mismo id en vez de
- * leer la cookie que corresponde al otro nombre de sesion (y las dos
- * terminan compartiendo el mismo archivo), o —peor— session_id('') hace
- * que PHP descarte cualquier cookie real y arranque siempre una sesion
- * nueva y vacia. La forma correcta de cambiar de "mundo" a mitad de
- * request es leer nosotros mismos la cookie que corresponda y fijarla
- * de forma explicita antes de arrancar.
- */
-function cambiarASesion(string $nombre): void
-{
-    if (session_status() !== PHP_SESSION_NONE) {
-        session_write_close();
-    }
-    session_name($nombre);
-    session_id($_COOKIE[$nombre] ?? session_create_id());
-    session_start();
-}
+// cambiarASesion() vive en config/bootstrap.php (nucleo comun a los
+// tres mundos) -- la usa este archivo y ademas los saltos sin clave
+// entre panel de vendedor y portal del cliente.
 
 // Nombre de sesion por defecto (la del panel), capturado antes de que
 // nada lo cambie: hace falta para poder reabrirla mas abajo sin depender

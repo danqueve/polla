@@ -2,11 +2,13 @@
 /** Alta y edicion de vendedores [Fase 11]. Sin ?id es alta; con ?id es edicion. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\ClienteService;
 use Polla\Services\VendedorService;
 
 requireAdmin();
 
 $servicio = new VendedorService(getPDO());
+$clienteVinculado = null;
 
 $id       = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $vendedor = $id > 0 ? $servicio->buscarPorId($id) : null;
@@ -18,6 +20,10 @@ if ($id > 0 && !$vendedor) {
 }
 
 $esAlta = $vendedor === null;
+
+if (!$esAlta && $vendedor['cliente_id'] !== null) {
+    $clienteVinculado = (new ClienteService(getPDO()))->buscarPorId((int) $vendedor['cliente_id']);
+}
 
 $valor = static function (string $campo, $default = '') use ($vendedor) {
     return old($campo, $vendedor[$campo] ?? $default);
@@ -45,6 +51,14 @@ require __DIR__ . '/../../includes/topbar.php';
             Código <span class="cifra"><?= e($vendedor['codigo_referido']) ?></span>
             · alta del <?= e(formatFecha($vendedor['fecha_alta'])) ?>
         </p>
+        <?php if ($clienteVinculado): ?>
+            <p class="pantalla__bajada">
+                También juega como cliente
+                <a href="<?= APP_URL ?>/admin/clientes/form.php?id=<?= (int) $clienteVinculado['id'] ?>">
+                    N° <?= e($clienteVinculado['nro_cliente']) ?>
+                </a>
+            </p>
+        <?php endif; ?>
     <?php endif; ?>
 
     <form method="post" id="form-vendedor" class="tarjeta p-3 mt-3"

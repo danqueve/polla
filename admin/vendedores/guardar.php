@@ -16,8 +16,11 @@ try {
         $servicio->actualizar($id, $_POST);
         setFlash('success', 'Vendedor actualizado.');
     } else {
-        $servicio->crear($_POST);
-        setFlash('success', 'Vendedor creado.');
+        $resultado = $servicio->crear($_POST);
+        setFlash('success', $resultado['cliente_nuevo']
+            ? 'Vendedor creado. Como todavía no era cliente, también se le creó su cuenta para jugar (N° '
+              . $resultado['cliente_nro'] . ', clave: su DNI).'
+            : 'Vendedor creado y vinculado a su cuenta de cliente existente (N° ' . $resultado['cliente_nro'] . ').');
     }
 
     flushOld();

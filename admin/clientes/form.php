@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\ClienteService;
+use Polla\Services\VendedorService;
 
 requireLogin();
 
@@ -18,6 +19,8 @@ if ($id > 0 && !$cliente) {
 }
 
 $esAlta = $cliente === null;
+
+$vendedorVinculado = $esAlta ? null : (new VendedorService(getPDO()))->buscarPorClienteId($id);
 
 // Tras un error de validacion el handler guarda lo tipeado y vuelve aca.
 $valor = static function (string $campo, $default = '') use ($cliente) {
@@ -51,6 +54,14 @@ require __DIR__ . '/../../includes/topbar.php';
             <span class="cifra">N° <?= e($cliente['nro_cliente']) ?></span>
             · alta del <?= e(formatFecha($cliente['fecha_alta'])) ?>
         </p>
+        <?php if ($vendedorVinculado): ?>
+            <p class="pantalla__bajada">
+                También es vendedor · código
+                <a href="<?= APP_URL ?>/admin/vendedores/form.php?id=<?= (int) $vendedorVinculado['id'] ?>">
+                    <span class="cifra"><?= e($vendedorVinculado['codigo_referido']) ?></span>
+                </a>
+            </p>
+        <?php endif; ?>
     <?php endif; ?>
 
     <form method="post" id="form-cliente" class="tarjeta p-3 mt-3"

@@ -15,7 +15,7 @@ try {
 
     setFlash('success', $resultado === 'borrado'
         ? 'Cliente borrado.'
-        : 'El cliente tenia jugadas cargadas, asi que se desactivo en vez de borrarse.');
+        : 'El cliente tenia jugadas cargadas o una cuenta de vendedor vinculada, asi que se desactivo en vez de borrarse.');
 } catch (ValidacionException $e) {
     setFlash('danger', implode("\n", $e->errores()));
 }

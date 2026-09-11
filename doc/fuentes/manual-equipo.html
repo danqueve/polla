@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Manual del Equipo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+body {
+    margin: 0; font-family: 'Sora', Arial, sans-serif; color: #10201a; background: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+h1, h2, h3, .display { font-family: 'Bricolage Grotesque', Arial, sans-serif; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+.cifra { font-family: 'Space Grotesk', Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+.hoja { width: 210mm; height: 297mm; padding: 16mm 15mm; position: relative; page-break-after: always; overflow: hidden; }
+.hoja:last-child { page-break-after: avoid; }
+
+.rotulo { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #8b9a93; }
+
+/* ---------- Tapa ---------- */
+.tapa {
+    background: #0d4a2d; color: #fff; border-radius: 16px; padding: 34px 30px;
+    position: relative; overflow: hidden;
+}
+.tapa::after {
+    content: ''; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.05) 0 1px, transparent 1px 11px);
+    pointer-events: none;
+}
+.tapa > * { position: relative; }
+.tapa .rotulo { color: rgba(255,255,255,.72); text-align: center; }
+.tapa h1 { font-size: 42px; text-align: center; margin: 10px 0 14px; text-wrap: balance; }
+.tapa p.bajada { text-align: center; color: rgba(255,255,255,.85); font-size: 14.5px; max-width: 480px; margin: 0 auto 22px; line-height: 1.55; }
+
+.chip-rol {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+    border-radius: 999px; background: rgba(255,255,255,.14); color: #fff;
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    margin: 3px;
+}
+.chip-rol.oro { background: rgba(242,211,130,.22); color: #f2d382; }
+
+h2.titulo { font-size: 25px; margin-top: 6px; margin-bottom: 16px; text-wrap: balance; }
+h3.sub { font-size: 15px; margin-top: 20px; margin-bottom: 10px; color: #0d4a2d; }
+
+.paso { display: flex; gap: 14px; margin-bottom: 16px; align-items: flex-start; }
+.paso .num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: #14663f; color: #fff; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+}
+.paso h3 { font-size: 15px; margin-bottom: 3px; }
+.paso p { margin: 0; color: #4b5b54; font-size: 13px; line-height: 1.5; }
+
+.tarjeta { border: 1px solid #e2e0d8; border-radius: 12px; padding: 14px 18px; margin: 12px 0; }
+.tarjeta b.tit { font-size: 13.5px; }
+.tarjeta p { margin: 6px 0 0; font-size: 12.5px; color: #4b5b54; line-height: 1.5; }
+.tarjeta-oro { border-color: #e8d6a4; background: #fbf3dd; }
+.tarjeta-oro p { color: #7a5a0d; }
+.tarjeta-roja { border-color: #eec9c7; background: #fbeae9; }
+.tarjeta-verde { border-color: #c6ded1; background: #e6f1eb; }
+
+.pregunta { margin-bottom: 14px; }
+.pregunta h3 { font-size: 13.5px; margin-bottom: 3px; }
+.pregunta p { margin: 0; color: #4b5b54; font-size: 12.5px; line-height: 1.5; }
+
+.wp-caja {
+    background: #e6f1eb; border: 1px solid #c6ded1; border-radius: 12px;
+    padding: 16px 20px; display: flex; align-items: center; gap: 14px; margin-top: 18px;
+}
+.wp-caja .num-wp { font-family: 'Space Grotesk', monospace; font-weight: 700; font-size: 18px; color: #0d4a2d; }
+.wp-icono {
+    width: 40px; height: 40px; border-radius: 50%; background: #14663f; color: #fff;
+    display:flex; align-items:center; justify-content:center; font-size: 19px; flex-shrink: 0;
+}
+
+.alias-caja {
+    display: inline-block; background: #fff; border: 1.5px dashed #a67c12; border-radius: 10px;
+    padding: 6px 16px; font-family: 'Space Grotesk', monospace; font-weight: 700; font-size: 16px; color: #10201a;
+}
+
+.pie {
+    position: absolute; left: 15mm; right: 15mm; bottom: 12mm;
+    display: flex; justify-content: space-between; font-size: 10.5px; color: #8b9a93;
+    border-top: 1px solid #e2e0d8; padding-top: 9px;
+}
+
+table.permisos { width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 12px 0; }
+table.permisos th { text-align: left; padding: 7px 5px; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: #8b9a93; border-bottom: 2px solid #10201a; }
+table.permisos th.centro, table.permisos td.centro { text-align: center; }
+table.permisos td { padding: 7px 5px; border-bottom: 1px solid #e2e0d8; }
+table.permisos td.centro { font-size: 14px; }
+.si { color: #14663f; }
+.no { color: #a52620; }
+
+.etiqueta { display: inline-flex; align-items:center; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing:.03em; text-transform: uppercase; }
+.etiqueta-verde { background: #e6f1eb; color: #0d4a2d; }
+.etiqueta-oro { background: #fbf3dd; color: #a67c12; }
+.etiqueta-gris { background: #eceae3; color: #4b5b54; }
+.etiqueta-roja { background: #fbeae9; color: #a52620; }
+
+.item-check { margin: 6px 0; font-size: 12.5px; color: #10201a; }
+.check { color: #14663f; font-weight: 700; margin-right: 7px; }
+.aviso-rol { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.aviso-rol.admin { color: #a67c12; }
+.aviso-rol.no { color: #a52620; }
+
+/* ---------- Barra de reparto (plan de negocio) ---------- */
+.barra-reparto { display: flex; height: 46px; border-radius: 10px; overflow: hidden; margin: 14px 0 8px; }
+.barra-reparto > div { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12.5px; font-weight: 700; font-family: 'Space Grotesk', monospace; }
+.seg-pozo { background: #0d4a2d; }
+.seg-gastos { background: #a67c12; }
+.seg-comision { background: #4b5b54; }
+.leyenda-barra { display: flex; gap: 18px; font-size: 11.5px; color: #4b5b54; flex-wrap: wrap; }
+.leyenda-barra span { display: inline-flex; align-items: center; gap: 6px; }
+.leyenda-barra i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.dato-clave { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid #e2e0d8; font-size: 12.5px; }
+.dato-clave:last-child { border-bottom: none; }
+.dato-clave .val { font-family: 'Space Grotesk', monospace; font-weight: 700; color: #0d4a2d; }
+
+.credenciales { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+.credencial { border: 1px solid #e2e0d8; border-radius: 12px; padding: 12px; text-align: center; }
+.credencial .rol { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #8b9a93; margin-bottom: 6px; }
+.credencial .campo { font-size: 11.5px; color: #4b5b54; margin: 2px 0; }
+.credencial .campo b { color: #10201a; }
+</style>
+</head>
+<body>
+
+<!-- ============ PAGINA 1: TAPA ============ -->
+<section class="hoja">
+    <div class="tapa" style="margin-top:38px">
+        <div class="rotulo">MANUAL DEL EQUIPO</div>
+        <h1>Decena de Oro</h1>
+        <p class="bajada">
+            Cómo funciona el negocio y cómo usar el sistema: para quien
+            administra, supervisa o vende. Cada función explicada, y el
+            circuito completo de la plata, de punta a punta.
+        </p>
+        <div style="text-align:center;margin-top:20px">
+            <span class="chip-rol">🛡 Administrador</span>
+            <span class="chip-rol">👤 Supervisor</span>
+            <span class="chip-rol oro">🔗 Vendedor</span>
+        </div>
+        <div style="text-align:center;margin-top:26px;color:rgba(255,255,255,.6);font-size:12px">
+            Este manual marca con <span style="color:#f2d382;font-weight:700">★</span>
+            las acciones exclusivas de cada rol, para que sepas de entrada
+            qué te toca a vos y qué no.
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>Manual del equipo</span></div>
+</section>
+
+<!-- ============ PAGINA 2: EL NEGOCIO (I) — JUEGO SEMANAL ============ -->
+<section class="hoja">
+    <div class="rotulo">EL NEGOCIO · PARTE 1</div>
+    <h2 class="titulo">Cómo se genera la plata</h2>
+    <p style="color:#4b5b54;font-size:13px;line-height:1.6;margin-bottom:4px">
+        Decena de Oro es una polla sobre la Quiniela Nocturna de Tucumán.
+        El cliente elige <b>10 números entre 00 y 99</b>; si esos 10 números
+        están, todos, entre los 20 que saca el sorteo oficial de esa noche,
+        gana el pozo entero. No hay premios por aciertos parciales.
+    </p>
+
+    <h3 class="sub">Cada jugada, un reparto fijo</h3>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin:0 0 4px">
+        El cliente paga un monto por jugada (hoy <span class="cifra" style="font-weight:700">$2.000</span>,
+        lo fija el administrador y puede cambiarlo cuando quiera — las jugadas
+        ya cargadas conservan el monto con el que se pagaron). De cada jugada
+        pagada:
+    </p>
+    <div class="barra-reparto">
+        <div class="seg-pozo" style="flex:6">60% al pozo</div>
+        <div class="seg-gastos" style="flex:4">40% a gastos</div>
+    </div>
+    <div class="leyenda-barra">
+        <span><i style="background:#0d4a2d"></i>Pozo de premios</span>
+        <span><i style="background:#a67c12"></i>Gastos y ganancia de Decena de Oro</span>
+    </div>
+
+    <h3 class="sub">El pozo, semana a semana</h3>
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Arranca en $0</h3><p>Cada ciclo (una semana, lunes a viernes) el pozo nace vacío y
+        crece con el 60% de cada jugada que se va pagando durante esos días.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Piso garantizado</h3><p>El pozo que se muestra y que se paga nunca es menor a un
+        mínimo fijado por el administrador (hoy <span class="cifra" style="font-weight:700">$25.000</span>).
+        Si lo recaudado esa semana no llega, la diferencia la pone Decena de Oro.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>Hay ganador → se corta la semana</h3><p>El sistema liquida el pozo entero apenas
+        aparece un ganador (dividido en partes iguales si hay más de uno), y arranca
+        una semana nueva en $0. Las jugadas de días posteriores de esa misma
+        semana calendario ya no participan.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">4</div>
+        <div><h3>No hay ganador → arrastra</h3><p>Si llega el viernes sin que nadie acierte los 10,
+        el pozo <b>no se pierde</b>: pasa entero a la semana siguiente, que arranca con ese
+        saldo en vez de en $0.</p></div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>2 · El negocio (1/3)</span></div>
+</section>
+
+<!-- ============ PAGINA 3: EL NEGOCIO (II) — SABADOS ============ -->
+<section class="hoja">
+    <div class="rotulo">EL NEGOCIO · PARTE 2</div>
+    <h2 class="titulo">El juego de los sábados</h2>
+    <p style="color:#4b5b54;font-size:13px;line-height:1.6;margin-bottom:10px">
+        Mismo mecanismo que el juego semanal, comprimido en un solo día:
+        en vez de un sorteo por día durante 5 días, el sábado hay
+        <b>5 sorteos ("turnos") seguidos, todos ese mismo día</b>.
+    </p>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Una jugada, los 5 turnos</h3><p>El cliente carga sus 10 números una sola vez para
+        el sábado, y esa misma jugada se coteja contra cada uno de los 5 turnos a medida
+        que se van cargando — no elige a cuál turno apuntar.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Ganar corta el día</h3><p>Si alguien acierta en el turno 2, por ejemplo, el pozo
+        del sábado se liquida ahí mismo y los turnos 3, 4 y 5 ya no reparten nada —
+        misma lógica que el corte a mitad de semana.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>Sin ganador en los 5, arrastra</h3><p>Si ningún turno tiene ganador, el pozo del
+        sábado pasa entero al sábado siguiente. Nunca se pierde.</p></div>
+    </div>
+
+    <div class="tarjeta tarjeta-verde">
+        <b class="tit">Caja completamente separada</b>
+        <p>El pozo de los sábados <b>no se mezcla</b> con el pozo semanal: tiene su propio
+        monto de jugada, su propio premio base garantizado, y su propia numeración de
+        ciclos. Son dos negocios en paralelo con el mismo motor.</p>
+    </div>
+
+    <h3 class="sub">Valores de hoy (los configura el administrador)</h3>
+    <div class="dato-clave"><span>Monto por jugada — semanal</span><span class="val">$2.000</span></div>
+    <div class="dato-clave"><span>Premio base garantizado — semanal</span><span class="val">$25.000</span></div>
+    <div class="dato-clave"><span>Monto por jugada — sábados</span><span class="val">$2.000</span></div>
+    <div class="dato-clave"><span>Premio base garantizado — sábados</span><span class="val">$25.000</span></div>
+
+    <div class="tarjeta tarjeta-oro">
+        <b class="tit">Horario límite de carga</b>
+        <p>Nadie puede cargar jugadas fuera de este horario — ni cliente, ni supervisor,
+        ni administrador. Semanal (lunes a viernes): hasta las <b>18:00</b>. Sábados:
+        hasta las <b>11:00</b> del mismo sábado. Sábado y domingo no tienen límite para
+        el juego semanal; el resto de la semana no tiene límite para el de sábados.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>3 · El negocio (2/3)</span></div>
+</section>
+
+<!-- ============ PAGINA 4: EL NEGOCIO (III) — VENDEDORES Y COMISIONES ============ -->
+<section class="hoja">
+    <div class="rotulo">EL NEGOCIO · PARTE 3</div>
+    <h2 class="titulo">Vendedores, referidos y comisión</h2>
+    <p style="color:#4b5b54;font-size:13px;line-height:1.6;margin-bottom:10px">
+        Un <b>vendedor</b> no juega ni carga nada: capta clientes nuevos con
+        un link personal. Los supervisores tienen el mismo mecanismo por
+        default (arrancan en 0%, el admin les puede subir el porcentaje
+        cuando quiera).
+    </p>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>El link personal</h3><p>Cada vendedor (y cada supervisor) tiene un código único
+        de 6 caracteres y un link (<span class="cifra" style="font-size:11.5px">decenadeoro.lol/registro.php?ref=CODIGO</span>).
+        Quien se registra con ese link queda marcado como su referido.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>No cobra por el registro</h3><p>Registrarse no genera nada. La comisión se
+        acredita recién cuando ese referido <b>juega</b> — una jugada confirmada y pagada,
+        del juego semanal o del de sábados.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>De dónde sale la comisión</h3><p>Sale del 40% de gastos/ganancias de esa
+        jugada — <b>nunca del pozo de premios</b>. El pozo que le toca al ganador no se
+        toca por esto.</p></div>
+    </div>
+
+    <div style="margin-top:14px">
+        <div class="barra-reparto">
+            <div class="seg-pozo" style="flex:6">60% pozo</div>
+            <div class="seg-gastos" style="flex:3">Gastos</div>
+            <div class="seg-comision" style="flex:1;font-size:10.5px">Comisión</div>
+        </div>
+        <div class="leyenda-barra">
+            <span><i style="background:#0d4a2d"></i>Pozo de premios (intacto)</span>
+            <span><i style="background:#a67c12"></i>Gastos y ganancia</span>
+            <span><i style="background:#4b5b54"></i>Comisión del referidor, si el cliente tiene uno</span>
+        </div>
+    </div>
+
+    <div class="tarjeta tarjeta-oro" style="margin-top:16px">
+        <b class="tit">Porcentaje global, configurable</b>
+        <p>Es un único porcentaje que aplica por igual a todos los vendedores y
+        supervisores, sobre el importe de cada jugada de su referido. Hoy está en
+        <b>0%</b> (nadie cobra nada) hasta que el administrador lo suba desde
+        Configuración. Aplica igual al juego semanal y al de sábados.</p>
+    </div>
+
+    <div class="paso" style="margin-top:6px">
+        <div class="num">4</div>
+        <div><h3>El saldo se acumula, se liquida a mano</h3><p>Cada comisión acreditada suma
+        al saldo pendiente del vendedor o supervisor. El administrador decide cuándo
+        pagarle — al liquidar, el saldo vuelve a $0 hasta la próxima comisión.</p></div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>4 · El negocio (3/3)</span></div>
+</section>
+
+<!-- ============ PAGINA 5: ROLES Y PERMISOS ============ -->
+<section class="hoja">
+    <div class="rotulo">EMPEZAR</div>
+    <h2 class="titulo">Roles y permisos</h2>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin-bottom:6px">
+        Tres roles internos, tres niveles de acceso. Si te falta un botón
+        que esperabas ver, probablemente es una acción de otro rol — no es
+        un error del sistema.
+    </p>
+
+    <table class="permisos">
+        <tr><th>Acción</th><th class="centro">Admin</th><th class="centro">Supervisor</th><th class="centro">Vendedor</th></tr>
+        <tr><td>Dar de alta clientes / aprobar autorregistros</td><td class="centro si">✓</td><td class="centro si">✓</td><td class="centro no">✗</td></tr>
+        <tr><td>Rechazar o eliminar una solicitud de alta</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Cargar jugadas (semanal y sábados)</td><td class="centro si">✓</td><td class="centro si">✓</td><td class="centro no">✗</td></tr>
+        <tr><td>Confirmar el pago de una solicitud del portal</td><td class="centro si">✓</td><td class="centro si">✓</td><td class="centro no">✗</td></tr>
+        <tr><td>Rechazar una solicitud de pago</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Borrar clientes, jugadas o sorteos</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Cargar el sorteo / los turnos de sábado</td><td class="centro si">✓</td><td class="centro si">✓</td><td class="centro no">✗</td></tr>
+        <tr><td>Ver reportes y recaudación del negocio</td><td class="centro si">✓</td><td class="centro si">✓</td><td class="centro no">✗</td></tr>
+        <tr><td>Detalle de jugadas, auditoría, exportar CSV</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Cambiar montos, premio base, horarios límite, % de comisión</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Crear promociones de paquete</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Gestionar usuarios del panel (admin/supervisor)</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Crear, editar o desactivar vendedores</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Ver los referidos de TODOS y liquidar comisiones</td><td class="centro si">✓</td><td class="centro no">✗</td><td class="centro no">✗</td></tr>
+        <tr><td>Ver sus propios referidos, jugadas generadas y saldo</td><td class="centro no">✗</td><td class="centro si">✓</td><td class="centro si">✓</td></tr>
+    </table>
+
+    <h3 class="sub">Cómo entra cada uno</h3>
+    <div class="credenciales">
+        <div class="credencial">
+            <div class="rol">Admin / Supervisor</div>
+            <div class="campo">Usuario: <b>el que te dio el admin</b></div>
+            <div class="campo">Clave: <b>la que elegiste</b></div>
+        </div>
+        <div class="credencial">
+            <div class="rol">Vendedor</div>
+            <div class="campo">Usuario: <b>tu DNI</b></div>
+            <div class="campo">Clave: <b>la que te dio el admin</b></div>
+        </div>
+        <div class="credencial">
+            <div class="rol" style="color:#a67c12">Cliente (referencia)</div>
+            <div class="campo">Usuario: <b>su DNI</b></div>
+            <div class="campo">Clave: <b>su DNI</b></div>
+        </div>
+    </div>
+    <p style="font-size:11.5px;color:#8b9a93;margin-top:4px">
+        Los tres roles internos entran por la misma pantalla
+        (<span class="cifra">decenadeoro.lol</span>) — el sistema detecta solo contra
+        cuál de las tres listas coincide el usuario, y te lleva a tu panel.
+    </p>
+    <div class="pie"><span>Decena de Oro</span><span>5 · Roles y permisos</span></div>
+</section>
+
+<!-- ============ PAGINA 6: CLIENTES (Admin + Supervisor) ============ -->
+<section class="hoja">
+    <div class="rotulo">ADMIN Y SUPERVISOR · CLIENTES</div>
+    <h2 class="titulo">Dar de alta y aprobar</h2>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Alta manual</h3><p>DNI, nombre y apellido, y teléfono — los tres datos son
+        <b>obligatorios</b>. El sistema genera solo el número de cliente y la clave de
+        acceso al portal (siempre el mismo DNI). Esta alta queda <b>aprobada al instante</b>.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Autorregistro</h3><p>Si el cliente se registró solo desde la web (con o sin
+        link de un vendedor), su cuenta queda <b>pendiente</b> hasta que alguien del panel
+        la apruebe. El teléfono ahí sigue siendo opcional.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>Revisá las solicitudes pendientes</h3><p>En "Clientes → Solicitudes" está la
+        cola de autorregistros. Un toque en <b>Aprobar</b> deja al cliente operando de
+        inmediato.</p></div>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol admin">★ Solo admin</span>
+        <p><b>Rechazar</b> o <b>borrar</b> una solicitud de alta. Si algo te parece
+        sospechoso o duplicado, avisale al admin.</p>
+    </div>
+
+    <div class="tarjeta">
+        <b class="tit">Recordá</b>
+        <p>La clave del portal de cualquier cliente es siempre su DNI — no hay
+        contraseña propia ni cambio de clave. Si no puede entrar, confirmá que esté
+        escribiendo bien su DNI, sin puntos, como usuario y como clave.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>6 · Clientes</span></div>
+</section>
+
+<!-- ============ PAGINA 7: CARGAR JUGADAS ============ -->
+<section class="hoja">
+    <div class="rotulo">ADMIN Y SUPERVISOR · JUGADAS</div>
+    <h2 class="titulo">Cargar una o varias juntas</h2>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Elegí la modalidad</h3><p>Arriba del formulario de carga hay dos pestañas:
+        <b>Semanal</b> y <b>Sábados</b>. Cambia el monto, el ciclo al que entra la jugada, y
+        si está dentro de horario para cargar.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Elegí el cliente y cargá los 10 números</h3><p>Buscalo por nombre, DNI o
+        número de cliente. Los 10 números van distintos, entre 00 y 99.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>¿Paga por varias de una?</h3><p>Tocá <b>"Agregar otra jugada"</b> para sumar
+        otro set de 10 números a la misma operación. Todas quedan asociadas al mismo
+        cliente y al ciclo activo, cada una con su propio importe.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">4</div>
+        <div><h3>Confirmá el total y cobrá</h3><p>El panel te muestra el total (monto vigente
+        × cantidad). Cobrá y confirmá — recién ahí la jugada entra al ciclo y suma al pozo.</p></div>
+    </div>
+
+    <div class="tarjeta tarjeta-oro">
+        <b class="tit">Promociones de paquete (solo juego semanal)</b>
+        <p>Si hay una promo activa para la cantidad que estás cargando (ej. 4 jugadas con
+        descuento), el panel te lo sugiere solo. Las promociones no aplican al juego
+        de sábados: ahí siempre se cobra precio de lista.</p>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol no">✗ Fuera de horario, nadie carga</span>
+        <p>Pasadas las 18:00 (semanal) o las 11:00 del sábado (sábados), el formulario
+        directamente <b>no aparece</b> — ni para vos, ni para el admin, ni desde el
+        portal del cliente. No hay forma de forzarlo.</p>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol admin">★ Solo admin</span>
+        <p>Borrar una jugada ya cargada. Si te equivocaste, avisale al admin en vez de
+        intentar corregirla vos.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>7 · Cargar jugadas</span></div>
+</section>
+
+<!-- ============ PAGINA 8: COBRAR SOLICITUDES ============ -->
+<section class="hoja">
+    <div class="rotulo">ADMIN Y SUPERVISOR · PAGOS</div>
+    <h2 class="titulo">Confirmar una solicitud del portal</h2>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin-bottom:14px">
+        Cuando un cliente arma su propia jugada desde el portal (semanal o de
+        sábados), no entra en juego todavía: es una <b>solicitud</b> pendiente
+        de pago, con un código corto, hasta que alguien del panel confirma
+        que llegó la plata.
+    </p>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Pedile el código al cliente</h3><p>Un código corto (ej.
+        <span class="cifra">E2V8JQ</span>) que el cliente ve en su portal después de
+        armar la jugada.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Buscalo en "Solicitudes de pago"</h3><p>Vas a ver el cliente, las jugadas y
+        el monto total que tiene que haber transferido al alias:</p>
+        <div style="margin-top:8px"><span class="alias-caja">decenadeoro</span></div></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>Verificá la transferencia</h3><p>Confirmá en tu cuenta (o pedile el
+        comprobante) que el monto llegó completo antes de confirmar.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">4</div>
+        <div><h3>Confirmá el pago</h3><p>Recién ahí las jugadas de esa solicitud entran al
+        ciclo abierto (del tipo que corresponda, semanal o sábado) y suman al pozo. Si
+        el cliente tiene referidor, ahí también se acredita su comisión.</p></div>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol admin">★ Solo admin</span>
+        <p><b>Rechazar</b> una solicitud (por ejemplo, si nunca llegó el pago). Vos podés
+        dejarla pendiente y avisarle al admin.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>8 · Cobrar solicitudes</span></div>
+</section>
+
+<!-- ============ PAGINA 9: SORTEOS Y TURNOS ============ -->
+<section class="hoja">
+    <div class="rotulo">ADMIN Y SUPERVISOR · SORTEOS</div>
+    <h2 class="titulo">Cargar el extracto y el cotejo</h2>
+
+    <h3 class="sub">Juego semanal</h3>
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Al terminar el sorteo de la Nocturna</h3><p>Entrá a "Cargar el sorteo" y
+        tipeá los 20 números del extracto oficial, en el orden que salieron.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>El cotejo es automático</h3><p>Al guardar, el sistema compara los 10 números
+        de cada jugada activa del ciclo contra los 20 del sorteo. No hace falta revisar
+        jugada por jugada.</p></div>
+    </div>
+
+    <h3 class="sub">Juego de sábados</h3>
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Entrá a "Sábados" → "Cargar el próximo turno"</h3><p>El sistema te muestra
+        directo qué turno le toca (1 al 5) — no hace falta elegir fecha, siempre es el
+        sábado en curso.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Mismo cotejo, contra ese turno</h3><p>Cada turno se coteja contra todas las
+        jugadas de sábado activas. Si hay ganador, ahí se corta el día (ver página 3).</p></div>
+    </div>
+
+    <div class="tarjeta">
+        <b class="tit">Un extracto por fecha (o por turno)</b>
+        <p>Solo se puede cargar un extracto semanal por fecha, y un turno de sábado a la
+        vez, en orden. Si te equivocaste al tipear un número, avisale al admin — borrar
+        y recargar es exclusivo de administrador, porque puede afectar jugadas ya
+        cotejadas.</p>
+    </div>
+
+    <div class="tarjeta tarjeta-oro">
+        <b class="tit">¿Faltó cargar algo?</b>
+        <p>El tablero (semanal o de sábados) te avisa cuántos sorteos o turnos todavía
+        no se cargaron. Hasta que no se cargan, esas jugadas no se cotejan.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>9 · Sorteos y turnos</span></div>
+</section>
+
+<!-- ============ PAGINA 10: REPORTES Y MIS REFERIDOS (Supervisor) ============ -->
+<section class="hoja">
+    <div class="rotulo">ADMIN Y SUPERVISOR · REPORTES</div>
+    <h2 class="titulo">Lo que vas a ver en el tablero</h2>
+
+    <div class="tarjeta tarjeta-verde">
+        <b class="tit">Premio base garantizado</b>
+        <p>El pozo que se muestra nunca baja de un mínimo fijado por el admin, aunque lo
+        recaudado sea menor. También ves el desglose: cuánto es plata real recaudada y
+        cuánto está poniendo Decena de Oro para llegar al mínimo.</p>
+    </div>
+
+    <div class="tarjeta">
+        <b class="tit">Reportes</b>
+        <p>Desde el menú de tu usuario entrás a "Reportes". Ahí ves el recaudado total
+        del negocio y un desglose de cuánto cargó cada persona del staff. Podés filtrar
+        entre juego semanal, sábados, o los dos juntos.</p>
+    </div>
+
+    <div class="tarjeta tarjeta-oro">
+        <b class="tit">"Mis referidos" — si tenés código de vendedor</b>
+        <p>Si el admin te subió el porcentaje de comisión, en el menú vas a ver "Mis
+        referidos": tu propio link, cuántos clientes referiste, cuántas jugadas cargaron,
+        y tu saldo acumulado — misma información que ve un vendedor, pero dentro de tu
+        panel de supervisor. No podés liquidarte a vos mismo: eso lo hace el admin.</p>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol admin">★ Solo admin</span>
+        <p>El detalle jugada por jugada, el historial de ganadores, la auditoría de
+        quién cargó qué y cuándo, y el export a CSV.</p>
+    </div>
+
+    <div class="rotulo" style="margin-top:16px">ETIQUETAS QUE VAS A VER</div>
+    <div style="margin-top:8px">
+        <span class="etiqueta etiqueta-verde">Activa</span>
+        <span class="etiqueta etiqueta-oro">Ganadora</span>
+        <span class="etiqueta etiqueta-gris">Perdió</span>
+        <span class="etiqueta etiqueta-roja">Impaga</span>
+    </div>
+    <p style="font-size:11.5px;color:#8b9a93;margin-top:6px">
+        "Impaga" aparece en jugadas armadas desde el portal y todavía sin confirmar el
+        pago — no las cuentes como jugadas en el sorteo hasta que cambien de estado.
+    </p>
+    <div class="pie"><span>Decena de Oro</span><span>10 · Reportes</span></div>
+</section>
+
+<!-- ============ PAGINA 11: GUIA DEL VENDEDOR ============ -->
+<section class="hoja">
+    <div class="rotulo">VENDEDOR</div>
+    <h2 class="titulo">Tu panel</h2>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin-bottom:14px">
+        Vos no cargás jugadas ni entrás al panel de administración: tenés
+        tu propio panel, con una sola tarea — compartir tu link y mirar
+        cuánto acumulaste.
+    </p>
+
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Entrá con tu DNI</h3><p>Por la misma pantalla de siempre
+        (<span class="cifra">decenadeoro.lol</span>), con tu DNI como usuario y la clave
+        que te dio el admin. El sistema te reconoce solo y te lleva a tu panel.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Ahí arriba, tu saldo</h3><p>Lo primero que ves es cuánta comisión tenés
+        acumulada y todavía sin cobrar.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">3</div>
+        <div><h3>Tu código y tu link, listos para copiar</h3><p>Un botón copia el código
+        corto (para decirlo en voz alta), otro copia el link completo (para pegarlo en
+        WhatsApp). Compartilo con quien quieras que juegue.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">4</div>
+        <div><h3>Abajo, tus referidos</h3><p>Cada persona que se registró con tu link, y
+        cuántas jugadas confirmadas cargó cada una hasta ahora.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">5</div>
+        <div><h3>Historial de pagos</h3><p>Cuando Decena de Oro te liquide el saldo, el
+        pago va a aparecer ahí, con fecha y monto.</p></div>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol no">No cobrás por el registro</span>
+        <p>Solo cuando tu referido efectivamente juega y esa jugada se confirma. Un
+        referido que se anota pero nunca juega no te genera nada.</p>
+    </div>
+
+    <div class="tarjeta">
+        <b class="tit">¿Cómo cobro?</b>
+        <p>El pago te lo liquida el administrador cuando corresponda — vos no tenés
+        botón de "cobrar": solo mirás tu saldo y esperás que aparezca en tu historial.
+        Si tenés dudas sobre cuándo cobrás, hablalo directo con Decena de Oro.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>11 · Guía del vendedor</span></div>
+</section>
+
+<!-- ============ PAGINA 12: ADMIN — CONFIGURACION Y USUARIOS ============ -->
+<section class="hoja">
+    <div class="rotulo">SOLO ADMINISTRADOR</div>
+    <h2 class="titulo">Configuración del negocio</h2>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin-bottom:10px">
+        Todo lo que hace el supervisor, más el control completo de cómo
+        funciona el negocio. Desde el menú de tu usuario → "Configuración":
+    </p>
+
+    <div class="item-check"><span class="check">✓</span> Monto de la jugada — semanal y sábados, por separado</div>
+    <div class="item-check"><span class="check">✓</span> Premio base garantizado — semanal y sábados, por separado</div>
+    <div class="item-check"><span class="check">✓</span> Horario límite de carga — semanal (18:00) y sábados (11:00)</div>
+    <div class="item-check"><span class="check">✓</span> Porcentaje de comisión por referidos (global, para vendedores y supervisores)</div>
+
+    <div class="tarjeta">
+        <b class="tit">Los cambios no son retroactivos</b>
+        <p>Cambiar un monto o un premio base rige desde ese momento en adelante. Las
+        jugadas ya cargadas, y los ciclos ya cerrados, conservan los valores con los
+        que se pagaron o liquidaron.</p>
+    </div>
+
+    <h3 class="sub">Usuarios del sistema</h3>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin:0 0 8px">
+        Menú de tu usuario → "Usuarios del sistema". Ahí das de alta a otros
+        administradores o supervisores (usuario, nombre, clave), y podés desactivarlos
+        o editarlos.
+    </p>
+    <div class="tarjeta tarjeta-oro">
+        <b class="tit">Todo supervisor nuevo saca su código de referido solo</b>
+        <p>Apenas lo creás (o si editás a alguien y le cambiás el rol a supervisor), el
+        sistema le genera el código automáticamente — no hace falta un paso extra.</p>
+    </div>
+
+    <div class="tarjeta tarjeta-roja">
+        <span class="aviso-rol admin">★ Exclusivo de administrador</span>
+        <p>Toda esta página. Un supervisor no ve "Configuración" ni "Usuarios del
+        sistema" en su menú.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>12 · Configuración</span></div>
+</section>
+
+<!-- ============ PAGINA 13: ADMIN — VENDEDORES Y REFERIDOS ============ -->
+<section class="hoja">
+    <div class="rotulo">SOLO ADMINISTRADOR</div>
+    <h2 class="titulo">Vendedores, referidos y liquidaciones</h2>
+
+    <h3 class="sub">Dar de alta un vendedor</h3>
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>Menú de tu usuario → "Vendedores" → "Nuevo"</h3><p>Nombre y apellido, DNI,
+        teléfono (los tres obligatorios) y una contraseña para que entre a su panel.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>El código y el link salen solos</h3><p>Al guardar, el sistema le genera un
+        código único de 6 caracteres. Pasale el link (o el código) para que empiece a
+        compartirlo.</p></div>
+    </div>
+
+    <h3 class="sub">Ver todos los referidos</h3>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin:0 0 8px">
+        "Referidos" te muestra a todos los vendedores y supervisores con código activo:
+        cuántos clientes captó cada uno, cuántas jugadas generaron, y el saldo pendiente
+        de cada uno. Tocá cualquiera para ver el detalle: sus clientes uno por uno, y
+        el historial de lo que ya se le liquidó.
+    </p>
+
+    <h3 class="sub">Liquidar una comisión</h3>
+    <div class="paso">
+        <div class="num">1</div>
+        <div><h3>"Liquidaciones"</h3><p>Lista solo a quienes tienen saldo pendiente mayor a
+        $0.</p></div>
+    </div>
+    <div class="paso">
+        <div class="num">2</div>
+        <div><h3>Pagale y tocá "Liquidar"</h3><p>El sistema registra el monto, la fecha y
+        quién liquidó, y el saldo de esa persona vuelve a $0. No hay forma de deshacer
+        una liquidación: revisá el monto antes de confirmar.</p></div>
+    </div>
+
+    <div class="tarjeta tarjeta-oro">
+        <b class="tit">El saldo es acumulativo</b>
+        <p>Si no liquidás seguido, el saldo simplemente sigue creciendo con cada jugada
+        nueva de sus referidos — no hay vencimiento ni límite de tiempo para cobrar.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>13 · Vendedores y liquidaciones</span></div>
+</section>
+
+<!-- ============ PAGINA 14: ADMIN — REPORTES AVANZADOS Y BORRADOS ============ -->
+<section class="hoja">
+    <div class="rotulo">SOLO ADMINISTRADOR</div>
+    <h2 class="titulo">Reportes avanzados y zona de riesgo</h2>
+
+    <h3 class="sub">Reportes exclusivos</h3>
+    <div class="item-check"><span class="check">✓</span> Detalle de cada jugada (quién, cuándo, cuánto, con qué números)</div>
+    <div class="item-check"><span class="check">✓</span> Historial completo de ganadores</div>
+    <div class="item-check"><span class="check">✓</span> Auditoría: quién cargó qué y cuándo, jugadas y sorteos</div>
+    <div class="item-check"><span class="check">✓</span> Exportar cualquier reporte a CSV (Excel)</div>
+    <div class="item-check"><span class="check">✓</span> Filtrar todo por juego semanal, sábados, o ambos</div>
+
+    <h3 class="sub">Promociones de paquete</h3>
+    <p style="color:#4b5b54;font-size:12.5px;line-height:1.6;margin:0 0 8px">
+        "Promociones" (dentro de Configuración) te deja crear paquetes de N jugadas a
+        un precio con descuento (ej. 4 jugadas por $10.000 en vez de $12.000 de lista).
+        El sistema sugiere el paquete solo cuando la cantidad que se está cargando
+        coincide. Exclusivo del juego semanal.
+    </p>
+
+    <div class="tarjeta tarjeta-roja">
+        <b class="tit" style="color:#a52620">Zona de riesgo</b>
+        <p><b>Borrar un cliente</b>: si ya tiene jugadas cargadas, no se borra — se
+        desactiva, para no perder el historial del pozo.<br><br>
+        <b>Borrar una jugada</b>: le devuelve al pozo el aporte que había sumado. No se
+        puede borrar una jugada ya ganadora y liquidada.<br><br>
+        <b>Borrar un sorteo o un turno</b>: solo si el ciclo sigue abierto — una vez
+        liquidado el pozo, ya no se puede deshacer.<br><br>
+        <b>Borrar un vendedor</b>: si ya tiene referidos, se desactiva en vez de
+        borrarse, mismo criterio.</p>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>14 · Reportes avanzados</span></div>
+</section>
+
+<!-- ============ PAGINA 15: PREGUNTAS FRECUENTES ============ -->
+<section class="hoja">
+    <div class="rotulo">DUDAS FRECUENTES</div>
+    <h2 class="titulo">Preguntas y respuestas</h2>
+
+    <div class="pregunta">
+        <h3>Un cliente dice que no puede entrar al portal</h3>
+        <p>Confirmá que esté escribiendo su DNI sin puntos, como usuario y como clave.
+        Si sigue sin poder, revisá que su cuenta esté "aprobada" y no "pendiente" o
+        "rechazada" en Clientes.</p>
+    </div>
+    <div class="pregunta">
+        <h3>Son las 18:05 y un cliente insiste en jugar hoy</h3>
+        <p>No hay forma de cargarla para hoy: el horario límite corre igual para todos,
+        sin excepciones. Se carga para el próximo día hábil.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Puedo cargar jugadas de más de un cliente en la misma operación?</h3>
+        <p>No: "Agregar otra jugada" suma varios sets de números para el mismo cliente.
+        Para otro cliente, hacé una carga nueva.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Un vendedor puede referir a un cliente que ya jugaba antes?</h3>
+        <p>No — el registro con link solo aplica a un cliente nuevo, en el momento en
+        que se crea la cuenta. No se puede asignar un referido después.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Qué pasa si cambia el monto de la jugada a mitad de semana?</h3>
+        <p>Las jugadas ya cargadas mantienen el monto con el que se pagaron. El nuevo
+        monto aplica solo a las que se carguen de ahí en adelante.</p>
+    </div>
+    <div class="pregunta">
+        <h3>¿Necesito revisar cada jugada contra el sorteo a mano?</h3>
+        <p>No, el cotejo es automático apenas se guarda el extracto o el turno.</p>
+    </div>
+    <div class="pregunta">
+        <h3>Confirmé una solicitud de pago por error</h3>
+        <p>Avisale al admin lo antes posible — ya afectó el pozo (y una eventual
+        comisión) del ciclo activo, y revertirlo es una acción exclusiva de
+        administrador.</p>
+    </div>
+
+    <div class="wp-caja">
+        <div class="wp-icono">✆</div>
+        <div>
+            <div style="font-size:12.5px;color:#4b5b54">¿Alguna duda que no está acá? Consultá al admin</div>
+            <div class="num-wp">WhatsApp 381 344-4178</div>
+        </div>
+    </div>
+    <div class="pie"><span>Decena de Oro</span><span>Manual del equipo</span></div>
+</section>
+
+</body>
+</html>

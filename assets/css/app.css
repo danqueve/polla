@@ -342,6 +342,20 @@ a { color: var(--verde); }
     opacity: 1;
 }
 
+.btn-whatsapp {
+    background: #25D366;
+    border-color: #25D366;
+    color: #fff;
+}
+
+.btn-whatsapp:hover,
+.btn-whatsapp:focus,
+.btn-whatsapp:active {
+    background: #1EBE5D !important;
+    border-color: #1EBE5D !important;
+    color: #fff !important;
+}
+
 .btn-outline-secondary {
     border-color: var(--borde-fuerte);
     color: var(--tinta-suave);

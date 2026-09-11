@@ -17,6 +17,10 @@ $saldo     = $comisiones->saldoPendiente('vendedor', (int) $vendedor['id']);
 $referidos = $comisiones->listarReferidos('vendedor', (int) $vendedor['id']);
 $link      = APP_URL . '/registro.php?ref=' . $vendedor['codigo_referido'];
 
+$mensajeWhatsapp = "🎉 Jugá en Decena de Oro, la Quiniela Nocturna de Tucumán.\n"
+    . "Registrate con mi link y arrancá 👇\n" . $link;
+$linkWhatsapp = 'https://wa.me/?text=' . rawurlencode($mensajeWhatsapp);
+
 $pageTitle  = 'Mi panel · ' . APP_NAME;
 $navSeccion = 'vendedor-inicio';
 $pageScripts = ['copiar.js'];
@@ -56,9 +60,19 @@ require __DIR__ . '/../includes/vendedor_cabecera.php';
                 <?= e($link) ?>
             </div>
         </div>
-        <button type="button" class="btn btn-sm btn-primary w-100 mt-3" data-copiar="<?= e($link) ?>">
-            <i class="bi bi-clipboard"></i> Copiar link
-        </button>
+        <div class="d-flex gap-2 mt-3">
+            <button type="button" class="btn btn-sm btn-primary flex-fill" data-copiar="<?= e($link) ?>">
+                <i class="bi bi-clipboard"></i> Copiar link
+            </button>
+            <a href="<?= e($linkWhatsapp) ?>" target="_blank" rel="noopener"
+               class="btn btn-sm btn-whatsapp flex-fill">
+                <i class="bi bi-whatsapp"></i> WhatsApp
+            </a>
+        </div>
+        <p class="form-text mt-2 mb-0">
+            "WhatsApp" abre la app con el mensaje ya escrito: elegís a quién
+            mandárselo, o lo ponés directo como tu estado.
+        </p>
         <p class="form-text mt-2 mb-0">
             Quien se registre con este link queda como tu referido. Cobrás
             comisión cuando juega, no por el solo hecho de registrarse.

@@ -11,7 +11,7 @@
 -- vendedores sin cliente vinculado conviven sin problema.
 -- ============================================================
 
-USE `polla_quevedo`;
+USE `iifatgdb_decena`;
 
 ALTER TABLE `vendedores`
     ADD COLUMN `cliente_id` INT UNSIGNED NULL AFTER `dni`,

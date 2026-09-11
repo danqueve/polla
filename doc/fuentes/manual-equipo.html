@@ -144,7 +144,7 @@ table.permisos td.centro { font-size: 14px; }
         <div style="text-align:center;margin-top:20px">
             <span class="chip-rol">🛡 Administrador</span>
             <span class="chip-rol">👤 Supervisor</span>
-            <span class="chip-rol oro">🔗 Vendedor</span>
+            <span class="chip-rol oro">💰 Vendedor</span>
         </div>
         <div style="text-align:center;margin-top:26px;color:rgba(255,255,255,.6);font-size:12px">
             Este manual marca con <span style="color:#f2d382;font-weight:700">★</span>
@@ -161,9 +161,10 @@ table.permisos td.centro { font-size: 14px; }
     <h2 class="titulo">Cómo se genera la plata</h2>
     <p style="color:#4b5b54;font-size:13px;line-height:1.6;margin-bottom:4px">
         Decena de Oro es una polla sobre la Quiniela Nocturna de Tucumán.
-        El cliente elige <b>10 números entre 00 y 99</b>; si esos 10 números
-        están, todos, entre los 20 que saca el sorteo oficial de esa noche,
-        gana el pozo entero. No hay premios por aciertos parciales.
+        En el juego semanal, el cliente elige <b>10 números entre 00 y 99</b>
+        (los sábados son 5 — página siguiente); si esos números están, todos,
+        entre los 20 que saca el sorteo, gana el pozo entero. No hay premios
+        por aciertos parciales.
     </p>
 
     <h3 class="sub">Cada jugada, un reparto fijo</h3>
@@ -217,14 +218,16 @@ table.permisos td.centro { font-size: 14px; }
     <p style="color:#4b5b54;font-size:13px;line-height:1.6;margin-bottom:10px">
         Mismo mecanismo que el juego semanal, comprimido en un solo día:
         en vez de un sorteo por día durante 5 días, el sábado hay
-        <b>5 sorteos ("turnos") seguidos, todos ese mismo día</b>.
+        <b>5 sorteos ("turnos") seguidos, todos ese mismo día</b>. Y la jugada
+        también es distinta: <b>5 números en vez de 10</b>.
     </p>
 
     <div class="paso">
         <div class="num">1</div>
-        <div><h3>Una jugada, los 5 turnos</h3><p>El cliente carga sus 10 números una sola vez para
-        el sábado, y esa misma jugada se coteja contra cada uno de los 5 turnos a medida
-        que se van cargando — no elige a cuál turno apuntar.</p></div>
+        <div><h3>Una jugada de 5 números, los 5 turnos</h3><p>El cliente carga sus 5 números una
+        sola vez para el sábado (hoy son 5 — el admin puede ajustar la cantidad desde
+        Configuración), y esa misma jugada se coteja contra cada uno de los 5 turnos a
+        medida que se van cargando — no elige a cuál turno apuntar.</p></div>
     </div>
     <div class="paso">
         <div class="num">2</div>
@@ -241,22 +244,41 @@ table.permisos td.centro { font-size: 14px; }
     <div class="tarjeta tarjeta-verde">
         <b class="tit">Caja completamente separada</b>
         <p>El pozo de los sábados <b>no se mezcla</b> con el pozo semanal: tiene su propio
-        monto de jugada, su propio premio base garantizado, y su propia numeración de
-        ciclos. Son dos negocios en paralelo con el mismo motor.</p>
+        monto de jugada, su propio premio base garantizado, su propia cantidad de
+        números por jugada, y su propia numeración de ciclos. Son dos negocios en
+        paralelo con el mismo motor.</p>
     </div>
 
-    <h3 class="sub">Valores de hoy (los configura el administrador)</h3>
-    <div class="dato-clave"><span>Monto por jugada — semanal</span><span class="val">$2.000</span></div>
-    <div class="dato-clave"><span>Premio base garantizado — semanal</span><span class="val">$25.000</span></div>
-    <div class="dato-clave"><span>Monto por jugada — sábados</span><span class="val">$2.000</span></div>
-    <div class="dato-clave"><span>Premio base garantizado — sábados</span><span class="val">$25.000</span></div>
+    <div class="tarjeta tarjeta-roja" style="padding:10px 18px">
+        <b class="tit" style="color:#a52620">Menos números, más fácil ganar</b>
+        <p>Con 5 en vez de 10 (contra los mismos 20 del extracto), es mucho más probable
+        acertarlos — el sábado está pensado para tener ganadores más seguido que el
+        semanal. Si el admin cambia la cantidad, conviene revisar también el monto y el
+        premio base de sábados.</p>
+    </div>
 
-    <div class="tarjeta tarjeta-oro">
+    <h3 class="sub" style="margin-top:14px">Valores de hoy (los configura el administrador)</h3>
+    <div class="credenciales" style="grid-template-columns:1fr 1fr">
+        <div class="credencial" style="text-align:left">
+            <div class="rol">Semanal</div>
+            <div class="campo">Números por jugada: <b class="cifra">10</b></div>
+            <div class="campo">Monto por jugada: <b class="cifra">$2.000</b></div>
+            <div class="campo">Premio base: <b class="cifra">$25.000</b></div>
+        </div>
+        <div class="credencial" style="text-align:left">
+            <div class="rol">Sábados</div>
+            <div class="campo">Números por jugada: <b class="cifra">5</b></div>
+            <div class="campo">Monto por jugada: <b class="cifra">$2.000</b></div>
+            <div class="campo">Premio base: <b class="cifra">$25.000</b></div>
+        </div>
+    </div>
+
+    <div class="tarjeta tarjeta-oro" style="padding:10px 18px">
         <b class="tit">Horario límite de carga</b>
         <p>Nadie puede cargar jugadas fuera de este horario — ni cliente, ni supervisor,
-        ni administrador. Semanal (lunes a viernes): hasta las <b>18:00</b>. Sábados:
-        hasta las <b>11:00</b> del mismo sábado. Sábado y domingo no tienen límite para
-        el juego semanal; el resto de la semana no tiene límite para el de sábados.</p>
+        ni administrador. Semanal: hasta las <b>18:00</b> (lunes a viernes). Sábados:
+        hasta las <b>11:00</b> del mismo sábado. Fuera de esos días, cada juego queda
+        sin límite.</p>
     </div>
     <div class="pie"><span>Decena de Oro</span><span>3 · El negocio (2/3)</span></div>
 </section>
@@ -423,18 +445,20 @@ table.permisos td.centro { font-size: 14px; }
     <div class="paso">
         <div class="num">1</div>
         <div><h3>Elegí la modalidad</h3><p>Arriba del formulario de carga hay dos pestañas:
-        <b>Semanal</b> y <b>Sábados</b>. Cambia el monto, el ciclo al que entra la jugada, y
-        si está dentro de horario para cargar.</p></div>
+        <b>Semanal</b> y <b>Sábados</b>. Cambia el monto, el ciclo al que entra la jugada, la
+        cantidad de números a cargar (10 semanal, 5 sábados), y si está dentro de horario
+        para cargar.</p></div>
     </div>
     <div class="paso">
         <div class="num">2</div>
-        <div><h3>Elegí el cliente y cargá los 10 números</h3><p>Buscalo por nombre, DNI o
-        número de cliente. Los 10 números van distintos, entre 00 y 99.</p></div>
+        <div><h3>Elegí el cliente y cargá los números</h3><p>Buscalo por nombre, DNI o número
+        de cliente. Los números van distintos entre sí, entre 00 y 99 — el formulario ya
+        muestra la cantidad justa de casillas según la modalidad elegida.</p></div>
     </div>
     <div class="paso">
         <div class="num">3</div>
         <div><h3>¿Paga por varias de una?</h3><p>Tocá <b>"Agregar otra jugada"</b> para sumar
-        otro set de 10 números a la misma operación. Todas quedan asociadas al mismo
+        otro set de números a la misma operación. Todas quedan asociadas al mismo
         cliente y al ciclo activo, cada una con su propio importe.</p></div>
     </div>
     <div class="paso">
@@ -521,9 +545,9 @@ table.permisos td.centro { font-size: 14px; }
     </div>
     <div class="paso">
         <div class="num">2</div>
-        <div><h3>El cotejo es automático</h3><p>Al guardar, el sistema compara los 10 números
-        de cada jugada activa del ciclo contra los 20 del sorteo. No hace falta revisar
-        jugada por jugada.</p></div>
+        <div><h3>El cotejo es automático</h3><p>Al guardar, el sistema compara los números de
+        cada jugada activa del ciclo contra los 20 del sorteo. No hace falta revisar jugada
+        por jugada.</p></div>
     </div>
 
     <h3 class="sub">Juego de sábados</h3>
@@ -666,6 +690,7 @@ table.permisos td.centro { font-size: 14px; }
 
     <div class="item-check"><span class="check">✓</span> Monto de la jugada — semanal y sábados, por separado</div>
     <div class="item-check"><span class="check">✓</span> Premio base garantizado — semanal y sábados, por separado</div>
+    <div class="item-check"><span class="check">✓</span> Cantidad de números por jugada de sábados (hoy 5; el semanal es fijo en 10)</div>
     <div class="item-check"><span class="check">✓</span> Horario límite de carga — semanal (18:00) y sábados (11:00)</div>
     <div class="item-check"><span class="check">✓</span> Porcentaje de comisión por referidos (global, para vendedores y supervisores)</div>
 

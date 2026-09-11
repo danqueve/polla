@@ -28,6 +28,9 @@ $ultimoHorarioSabado  = $configuracion->ultimaActualizacion('horario_limite_saba
 $comisionPorcentaje = old('comision_jugada_porcentaje', (string) $configuracion->comisionJugadaPorcentaje());
 $ultimaComision     = $configuracion->ultimaActualizacion('comision_jugada_porcentaje');
 
+$cantidadSabado        = old('numeros_por_jugada_sabado', (string) $configuracion->numerosPorJugadaSabado());
+$ultimaCantidadSabado  = $configuracion->ultimaActualizacion('numeros_por_jugada_sabado');
+
 $pageTitle  = 'Configuración · ' . APP_NAME;
 $navSeccion = 'configuracion';
 $bodyClass  = 'con-accion-fija';
@@ -131,6 +134,30 @@ require __DIR__ . '/../../includes/topbar.php';
                     Último cambio: <?= e(formatFechaHora($ultimaMontoSabado['actualizado_en'])) ?>
                     <?php if ($ultimaMontoSabado['actualizado_por']): ?>
                         · por <?= e($ultimaMontoSabado['actualizado_por']) ?>
+                    <?php endif; ?>
+                </p>
+            <?php endif; ?>
+
+            <hr>
+
+            <div class="mb-2">
+                <label class="form-label" for="numeros_por_jugada_sabado">Números por jugada</label>
+                <input type="number" class="form-control cifra" id="numeros_por_jugada_sabado"
+                       name="numeros_por_jugada_sabado"
+                       value="<?= e($cantidadSabado) ?>"
+                       inputmode="numeric" min="1" max="20" step="1" required>
+                <div class="form-text">
+                    Cuántos números distintos elige el cliente para jugar el sábado
+                    (el semanal sigue en 10, fijo). El extracto de cada turno sigue
+                    sacando 20, sin cambios — bajar esto sube mucho la chance de ganar.
+                </div>
+            </div>
+
+            <?php if ($ultimaCantidadSabado): ?>
+                <p class="fila__meta mb-0">
+                    Último cambio: <?= e(formatFechaHora($ultimaCantidadSabado['actualizado_en'])) ?>
+                    <?php if ($ultimaCantidadSabado['actualizado_por']): ?>
+                        · por <?= e($ultimaCantidadSabado['actualizado_por']) ?>
                     <?php endif; ?>
                 </p>
             <?php endif; ?>

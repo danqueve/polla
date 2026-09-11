@@ -114,7 +114,7 @@ class JugadaService
         $errores          = [];
         foreach (array_values($listasDeNumeros) as $i => $crudos) {
             try {
-                $numerosPorJugada[] = $this->validarNumeros($crudos);
+                $numerosPorJugada[] = $this->validarNumeros($crudos, $tipoJuego);
             } catch (ValidacionException $e) {
                 $prefijo = count($listasDeNumeros) > 1 ? 'Jugada ' . ($i + 1) . ': ' : '';
                 foreach ($e->errores() as $error) {
@@ -311,16 +311,20 @@ class JugadaService
      * Normaliza y valida los numeros del formulario.
      *
      * Acepta "7", "07" y " 7 " como el mismo numero 7; rechaza vacios,
-     * no numericos, fuera de rango, repetidos y cantidad distinta a 10.
+     * no numericos, fuera de rango, repetidos y cantidad distinta a la
+     * esperada para ese tipo de juego (10 en el semanal, 5 en sabados —
+     * ver ParametroService::numerosPorJugada()/numerosPorJugadaSabado()).
      * Devuelve enteros 0..99 ordenados de menor a mayor.
      *
      * @param string[] $crudos
      * @return int[]
      * @throws ValidacionException
      */
-    public function validarNumeros(array $crudos): array
+    public function validarNumeros(array $crudos, string $tipoJuego = CicloService::TIPO_SEMANAL): array
     {
-        $esperados = $this->parametros->numerosPorJugada();
+        $esperados = $tipoJuego === CicloService::TIPO_SABADO
+            ? $this->parametros->numerosPorJugadaSabado()
+            : $this->parametros->numerosPorJugada();
 
         $numeros    = [];
         $repetidos  = [];

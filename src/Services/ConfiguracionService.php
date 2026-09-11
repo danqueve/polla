@@ -62,6 +62,11 @@ class ConfiguracionService
         return $this->parametros->comisionJugadaPorcentaje();
     }
 
+    public function numerosPorJugadaSabado(): int
+    {
+        return $this->parametros->numerosPorJugadaSabado();
+    }
+
     /**
      * Quien cambio un parametro por ultima vez y cuando, para mostrarlo
      * en la pantalla. Null si nunca se toco desde que existe la columna.
@@ -117,5 +122,11 @@ class ConfiguracionService
     public function actualizarComisionJugadaPorcentaje(string $porcentaje, int $actualizadoPor): void
     {
         $this->parametros->actualizar(['comision_jugada_porcentaje' => $porcentaje], $actualizadoPor);
+    }
+
+    /** @throws ValidacionException */
+    public function actualizarNumerosPorJugadaSabado(string $cantidad, int $actualizadoPor): void
+    {
+        $this->parametros->actualizar(['numeros_por_jugada_sabado' => $cantidad], $actualizadoPor);
     }
 }

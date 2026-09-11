@@ -1,13 +1,15 @@
 <?php
 /**
- * Carga de jugada: cliente + una o varias jugadas de 10 numeros + pago.
+ * Carga de jugada: cliente + una o varias jugadas + pago. La cantidad de
+ * numeros por jugada depende de la modalidad (10 en el semanal, 5 en
+ * sabados — ver $cantidad mas abajo).
  *
  * Pensada para hacerse de pie y con una mano: el cliente dicta los
- * numeros y el supervisor los tipea de corrido en las 10 casillas,
- * que saltan solas. "Agregar otra jugada" repite el bloque de 10
- * casillas para cargar varias jugadas del mismo cliente en una sola
- * operacion (ej. paga 3 de una vez); cada bloque valida sus propios
- * repetidos por separado.
+ * numeros y el supervisor los tipea de corrido en las casillas, que
+ * saltan solas. "Agregar otra jugada" repite el bloque de casillas
+ * para cargar varias jugadas del mismo cliente en una sola operacion
+ * (ej. paga 3 de una vez); cada bloque valida sus propios repetidos
+ * por separado.
  */
 require_once __DIR__ . '/../../config/app.php';
 
@@ -35,7 +37,7 @@ $horaAbierto = $horario->abierto($tipoJuego);
 
 $importe  = $esSabado ? $parametros->importeJugadaSabado() : $parametros->importeJugada();
 $reparto  = $parametros->repartir($importe);
-$cantidad = $parametros->numerosPorJugada();
+$cantidad = $esSabado ? $parametros->numerosPorJugadaSabado() : $parametros->numerosPorJugada();
 
 // Promociones exclusivas del juego semanal: en sabados ni se calculan.
 // Indexadas por cantidad_jugadas, para que promociones.js sugiera el

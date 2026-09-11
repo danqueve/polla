@@ -39,6 +39,10 @@ falta un `--user-data-dir` propio y `--headless=new`:
   --user-data-dir="$env:TEMP\chrome-pdf-profile" `
   --print-to-pdf="..\Manual del Equipo.pdf" `
   --print-to-pdf-no-header --no-pdf-header-footer `
-  --virtual-time-budget=5000 `
   "file:///C:/wamp64/www/polla/doc/fuentes/manual-equipo.html"
 ```
+
+No agregar `--virtual-time-budget`: en documentos grandes (varias páginas,
+como `manual-equipo.html`) corta el renderizado antes de tiempo y Chrome
+falla con "Multiple targets are not supported in headless mode". Sin esa
+flag, Chrome espera a que termine de cargar solo y genera bien.

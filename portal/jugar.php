@@ -2,10 +2,11 @@
 /**
  * El cliente arma su jugada (Fase 6).
  *
- * Mismo widget de siempre (numeros.js: 10 casillas + "Agregar otra
+ * Mismo widget de siempre (numeros.js: casillas + "Agregar otra
  * jugada"), pero ahora lo completa el cliente sobre su propia sesion
- * en vez de un supervisor tipeandole los numeros. requireCliente() sin
- * flags exige sesion + activo + estado='aprobado' + clave ya cambiada:
+ * en vez de un supervisor tipeandole los numeros. La cantidad de
+ * casillas depende de la modalidad (10 semanal, 5 sabados). requireCliente()
+ * sin flags exige sesion + activo + estado='aprobado' + clave ya cambiada:
  * un cliente pendiente de aprobacion no llega a esta pantalla, lo
  * manda derecho a portal/pendiente.php.
  *
@@ -35,7 +36,7 @@ $esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
 $horaAbierto = $horario->abierto($tipoJuego);
 
 $importe  = $esSabado ? $parametros->importeJugadaSabado() : $parametros->importeJugada();
-$cantidad = $parametros->numerosPorJugada();
+$cantidad = $esSabado ? $parametros->numerosPorJugadaSabado() : $parametros->numerosPorJugada();
 
 // Promociones exclusivas del juego semanal: en sabados ni se calculan.
 // Indexadas por cantidad_jugadas, para que promociones.js sugiera el

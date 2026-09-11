@@ -140,7 +140,7 @@ class SolicitudService
         $errores          = [];
         foreach (array_values($listasDeNumeros) as $i => $crudos) {
             try {
-                $numerosPorJugada[] = $this->jugadas->validarNumeros($crudos);
+                $numerosPorJugada[] = $this->jugadas->validarNumeros($crudos, $tipoJuego);
             } catch (ValidacionException $e) {
                 $prefijo = count($listasDeNumeros) > 1 ? 'Jugada ' . ($i + 1) . ': ' : '';
                 foreach ($e->errores() as $error) {

@@ -30,6 +30,7 @@ class ParametroService
         'horario_limite_semanal' => '18:00',
         'horario_limite_sabado'  => '11:00',
         'comision_jugada_porcentaje' => '0',
+        'numeros_por_jugada_sabado'  => '5',
     ];
 
     public function __construct(PDO $db)
@@ -79,6 +80,18 @@ class ParametroService
     public function numerosPorJugada(): int
     {
         return $this->getInt('numeros_por_jugada');
+    }
+
+    /**
+     * Cantidad de numeros por jugada del juego de sabados — caja separada
+     * del semanal, así que puede (y hoy sí) valer distinto: 5 en vez de
+     * los 10 del semanal. El extracto de cada turno sigue sacando la
+     * misma cantidad de siempre (numeros_por_sorteo, hoy 20): esto solo
+     * cambia cuantos numeros elige el CLIENTE.
+     */
+    public function numerosPorJugadaSabado(): int
+    {
+        return $this->getInt('numeros_por_jugada_sabado');
     }
 
     /**
@@ -167,6 +180,12 @@ class ParametroService
             $comision = (float) $valores['comision_jugada_porcentaje'];
             if ($comision < 0 || $comision > 100) {
                 $errores[] = 'El porcentaje de comisión tiene que estar entre 0 y 100.';
+            }
+        }
+        if (isset($valores['numeros_por_jugada_sabado'])) {
+            $cantidadSabado = (int) $valores['numeros_por_jugada_sabado'];
+            if ($cantidadSabado < 1 || $cantidadSabado > 20) {
+                $errores[] = 'La cantidad de números por jugada de sábados tiene que estar entre 1 y 20.';
             }
         }
         if (isset($valores['porcentaje_pozo'])) {

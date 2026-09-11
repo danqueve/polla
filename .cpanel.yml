@@ -9,5 +9,6 @@ deployment:
     - /bin/cp -R includes $DEPLOYPATH
     - /bin/cp -R portal $DEPLOYPATH
     - /bin/cp -R src $DEPLOYPATH
+    - /bin/cp -R vendedor $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp registro.php $DEPLOYPATH

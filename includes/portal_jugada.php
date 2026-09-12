@@ -10,6 +10,12 @@
  *   $evaluacion   salida de PortalService::evaluar()
  *   $cicloAbierto bool
  *   $totalSorteos cantidad de sorteos cargados en el ciclo
+ *   $sorteos      salida de PortalService::sorteosDelCiclo() -- el
+ *                 MISMO array que se le paso a evaluar() para armar
+ *                 $evaluacion, en el mismo orden: $sorteos[$i] y
+ *                 $evaluacion['porSorteo'][$i] son el mismo sorteo por
+ *                 indice, asi que no hace falta cruzar por fecha para
+ *                 mostrar el extracto completo de cada fila.
  *
  * Los numeros se marcan contra UN sorteo (el mejor), nunca contra la
  * union de la semana: ganar exige los 10 en un mismo sorteo.
@@ -111,17 +117,45 @@ $marcados = $mejor['acertados'] ?? [];
         <?php if ($totalSorteos > 0): ?>
             <hr class="my-3">
             <p class="rotulo mb-2">Cómo te fue en cada sorteo</p>
+            <p class="form-text mt-0 mb-2">Tocá un sorteo para ver el extracto completo.</p>
 
-            <?php foreach ($evaluacion['porSorteo'] as $entrada): ?>
-                <?php $esMejor = $mejor && $entrada['fecha'] === $mejor['fecha'] && $mejorN > 0; ?>
-                <div class="reng-sorteo <?= $esMejor ? 'reng-sorteo--mejor' : '' ?>">
+            <?php foreach ($evaluacion['porSorteo'] as $idx => $entrada): ?>
+                <?php
+                $esMejor        = $mejor && $entrada['fecha'] === $mejor['fecha'] && $mejorN > 0;
+                $numerosSorteo  = $sorteos[$idx]['numeros'] ?? [];
+                $hayRepetidos   = count($numerosSorteo) !== count(array_unique($numerosSorteo));
+                $idCollapse     = 'sorteo-' . (int) $jugada['id'] . '-' . $idx;
+                ?>
+                <button type="button"
+                        class="reng-sorteo reng-sorteo--clic <?= $esMejor ? 'reng-sorteo--mejor' : '' ?> collapsed"
+                        data-bs-toggle="collapse" data-bs-target="#<?= e($idCollapse) ?>"
+                        aria-expanded="false" aria-controls="<?= e($idCollapse) ?>">
                     <span><?= e(formatFechaDia($entrada['fecha'])) ?></span>
                     <span class="reng-sorteo__conteo">
                         <?= $entrada['aciertos'] ?> de <?= $total ?>
                         <?php if ($esMejor): ?>
                             <i class="bi bi-star-fill ms-1" aria-label="tu mejor sorteo"></i>
                         <?php endif; ?>
+                        <i class="bi bi-chevron-down ms-1 reng-sorteo__flecha" aria-hidden="true"></i>
                     </span>
+                </button>
+                <div class="collapse" id="<?= e($idCollapse) ?>">
+                    <div class="pt-2 pb-1 px-1">
+                        <p class="fila__meta mb-2">Números que salieron ese día:</p>
+                        <div class="bolillas mb-2">
+                            <?php foreach ($numerosSorteo as $numero): ?>
+                                <span class="bolilla <?= isset($entrada['acertados'][$numero]) ? 'bolilla--acertada' : '' ?>">
+                                    <?= e(num2($numero)) ?>
+                                </span>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php if ($hayRepetidos): ?>
+                            <p class="fila__meta mb-0">
+                                <i class="bi bi-info-circle"></i>
+                                Un número repetido en el extracto cuenta una sola vez.
+                            </p>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
 

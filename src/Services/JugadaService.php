@@ -126,7 +126,7 @@ class JugadaService
             throw new ValidacionException($errores);
         }
 
-        $ciclo    = $this->ciclos->obtenerCicloActivo($tipoJuego);
+        $ciclo    = $this->ciclos->obtenerCicloParaCarga($tipoJuego);
         $importes = $this->resolverImportes(count($numerosPorJugada), $promocionId, $tipoJuego);
         $grupo    = self::uuid4();
 

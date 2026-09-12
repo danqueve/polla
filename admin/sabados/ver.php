@@ -32,10 +32,11 @@ $lista     = $sorteos->listarPorCiclo($cicloId);
 $ganadores = $sorteos->ganadoresDeCiclo($cicloId);
 $jugadas   = JugadaService::crearDesde($db)->listarPorCiclo($cicloId);
 
-$abierto    = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
-$conGanador = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
-$arrastre   = (float) ($ciclo['monto_arrastrado'] ?? 0);
-$pozoReal   = (float) ($ciclo['monto_acumulado'] ?? 0);
+$abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
+$conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
+$esProgramado = $ciclo['estado'] === CicloService::ESTADO_PROGRAMADO;
+$arrastre     = (float) ($ciclo['monto_arrastrado'] ?? 0);
+$pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 
 if ($abierto) {
     $premioBase   = (new ParametroService($db))->premioBaseSabado();
@@ -78,7 +79,11 @@ require __DIR__ . '/../../includes/topbar.php';
             <span class="rotulo">Sábado <?= (int) $ciclo['numero'] ?></span>
             <h1 class="pantalla__titulo"><?= e(CicloService::rotulo($ciclo)) ?></h1>
         </div>
-        <?php if ($abierto): ?>
+        <?php if ($esProgramado): ?>
+            <span class="etiqueta etiqueta--gris">
+                <i class="bi bi-clock-history"></i> Próximo sábado (en formación)
+            </span>
+        <?php elseif ($abierto): ?>
             <span class="etiqueta etiqueta--verde">Abierto</span>
         <?php elseif ($conGanador): ?>
             <span class="etiqueta etiqueta--oro">Con ganador</span>
@@ -89,7 +94,13 @@ require __DIR__ . '/../../includes/topbar.php';
 
     <section class="pozo mb-3">
         <div class="pozo__rotulo mb-1">
-            <?= $abierto ? 'Pozo acumulado' : 'Pozo al cierre' ?>
+            <?php if ($abierto): ?>
+                Pozo acumulado
+            <?php elseif ($esProgramado): ?>
+                Pozo acumulado (sábado en formación)
+            <?php else: ?>
+                Pozo al cierre
+            <?php endif; ?>
         </div>
         <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
 

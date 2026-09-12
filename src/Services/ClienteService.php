@@ -69,7 +69,7 @@ class ClienteService
     public function buscarPorId(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, nro_cliente, dni, nombre, telefono, activo,
+            'SELECT id, nro_cliente, dni, nombre, telefono, activo, estado,
                     fecha_alta, ultimo_acceso
                FROM clientes WHERE id = :id LIMIT 1'
         );

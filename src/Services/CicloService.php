@@ -30,11 +30,13 @@ use Polla\Support\ValidacionException;
  */
 class CicloService
 {
-    public const ESTADO_ABIERTO    = 'abierto';
-    public const ESTADO_CON_GANADOR = 'cerrado_con_ganador';
-    public const ESTADO_SIN_GANADOR = 'cerrado_sin_ganador';
+    public const ESTADO_PROGRAMADO   = 'programado';
+    public const ESTADO_ABIERTO      = 'abierto';
+    public const ESTADO_CON_GANADOR  = 'cerrado_con_ganador';
+    public const ESTADO_SIN_GANADOR  = 'cerrado_sin_ganador';
 
     public const ESTADOS = [
+        self::ESTADO_PROGRAMADO  => 'Próxima semana (en formación)',
         self::ESTADO_ABIERTO     => 'Abierto',
         self::ESTADO_CON_GANADOR => 'Cerrado con ganador',
         self::ESTADO_SIN_GANADOR => 'Cerrado sin ganador',
@@ -101,6 +103,26 @@ class CicloService
     }
 
     /**
+     * Ciclo "programado" de un tipo: la semana (o el sabado) siguiente,
+     * ya recibiendo jugadas por anticipado porque el ciclo abierto de
+     * hoy ya tiene un sorteo/turno cargado. Null si todavia no hizo
+     * falta crearlo.
+     */
+    public function buscarProgramado(string $tipo = self::TIPO_SEMANAL): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT c.*, p.monto_acumulado, p.monto_pagado, p.monto_arrastrado
+               FROM ciclos c
+               LEFT JOIN pozo_ciclo p ON p.ciclo_id = c.id
+              WHERE c.estado = 'programado' AND c.tipo = :tipo
+              LIMIT 1"
+        );
+        $stmt->execute([':tipo' => $tipo]);
+
+        return $stmt->fetch() ?: null;
+    }
+
+    /**
      * Igual que buscarAbierto(), pero deja la fila del ciclo bloqueada
      * hasta el commit.
      *
@@ -124,6 +146,82 @@ class CicloService
         $stmt->execute([':tipo' => $tipo]);
 
         return $stmt->fetch() ?: null;
+    }
+
+    /**
+     * Ciclo donde debe caer una jugada nueva: el abierto normalmente, o
+     * el "programado" de la semana/sabado siguiente si el abierto ya
+     * tiene al menos un sorteo/turno cargado. Regla de negocio: una vez
+     * que arranco a jugarse la secuencia, las jugadas nuevas no se
+     * mezclan con las que ya estaban compitiendo desde el principio.
+     *
+     * Usado por JugadaService::crearVarias() (carga directa del staff).
+     */
+    public function obtenerCicloParaCarga(string $tipo = self::TIPO_SEMANAL): array
+    {
+        $abierto = $this->obtenerCicloActivo($tipo);
+        if (!$this->yaTieneSorteoCargado((int) $abierto['id'])) {
+            return $abierto;
+        }
+
+        return $this->obtenerOCrearProgramado($tipo, $abierto);
+    }
+
+    /**
+     * Igual que obtenerCicloParaCarga(), pero bloqueando el ciclo
+     * abierto (FOR UPDATE) para el camino de
+     * SolicitudService::confirmar(), que necesita el mismo candado que
+     * ya usaba bloquearAbierto().
+     */
+    public function bloquearCicloParaCarga(string $tipo = self::TIPO_SEMANAL): ?array
+    {
+        $abierto = $this->bloquearAbierto($tipo);
+        if (!$abierto) {
+            return null;
+        }
+        if (!$this->yaTieneSorteoCargado((int) $abierto['id'])) {
+            return $abierto;
+        }
+
+        return $this->obtenerOCrearProgramado($tipo, $abierto);
+    }
+
+    private function yaTieneSorteoCargado(int $cicloId): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM sorteos WHERE ciclo_id = :id LIMIT 1');
+        $stmt->execute([':id' => $cicloId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Ciclo "programado" de un tipo, creandolo si todavia no existe --
+     * mismo patron idempotente que obtenerCicloActivo(): si dos
+     * requests lo necesitan a la vez, el UNIQUE uk_ciclo_tipo_programado
+     * frena al segundo insert y nos quedamos con el que ya quedo
+     * insertado.
+     */
+    private function obtenerOCrearProgramado(string $tipo, array $cicloAbierto): array
+    {
+        $programado = $this->buscarProgramado($tipo);
+        if ($programado) {
+            return $programado;
+        }
+
+        try {
+            $this->crearProgramadoTrasCiclo($tipo, $cicloAbierto);
+        } catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'uk_ciclo_tipo_programado') === false) {
+                throw $e;
+            }
+        }
+
+        $programado = $this->buscarProgramado($tipo);
+        if (!$programado) {
+            throw ValidacionException::de('No se pudo crear el ciclo programado. Revisá la base de datos.');
+        }
+
+        return $programado;
     }
 
     public function buscarPorId(int $id): ?array
@@ -218,6 +316,121 @@ class CicloService
             }
             throw $e;
         }
+    }
+
+    /**
+     * Crea el ciclo "programado" siguiente a $cicloReferencia (el que
+     * hoy esta abierto), para cuando ese ciclo ya tiene sorteo cargado
+     * y las jugadas nuevas tienen que desviarse a la semana/sabado que
+     * sigue. A diferencia de abrirSiguiente(), no puede calcular la
+     * fecha a partir del ULTIMO CICLO CERRADO (fechasDelProximoCicloSemanal()/
+     * fechaDelProximoSabado() filtran WHERE estado <> 'abierto'): el
+     * ciclo de referencia sigue abierto, asi que se parte directo de su
+     * fecha_fin.
+     *
+     * Mismo patron de transaccion que abrirSiguiente(): se suma a una
+     * transaccion en curso si ya hay una (el caso normal, llamado desde
+     * dentro de SolicitudService::confirmar() o
+     * SorteoService::cotejarYCerrar()), o abre la suya si no.
+     *
+     * @return int Id del ciclo programado nuevo.
+     */
+    private function crearProgramadoTrasCiclo(string $tipo, array $cicloReferencia): int
+    {
+        $referenciaFin = new DateTimeImmutable($cicloReferencia['fecha_fin']);
+
+        if ($tipo === self::TIPO_SABADO) {
+            $inicio = $referenciaFin->modify('next saturday');
+            $fin    = $inicio;
+        } else {
+            $inicio = $referenciaFin->modify('next monday');
+            $fin    = $inicio->modify('+4 days');
+        }
+
+        $propia = !$this->db->inTransaction();
+        if ($propia) {
+            $this->db->beginTransaction();
+        }
+
+        try {
+            $stmtNumero = $this->db->prepare('SELECT COALESCE(MAX(numero), 0) FROM ciclos WHERE tipo = :tipo');
+            $stmtNumero->execute([':tipo' => $tipo]);
+            $numero = (int) $stmtNumero->fetchColumn() + 1;
+
+            $stmt = $this->db->prepare(
+                "INSERT INTO ciclos (tipo, numero, fecha_inicio, fecha_fin, estado)
+                 VALUES (:tipo, :numero, :inicio, :fin, 'programado')"
+            );
+            $stmt->execute([
+                ':tipo'   => $tipo,
+                ':numero' => $numero,
+                ':inicio' => $inicio->format('Y-m-d'),
+                ':fin'    => $fin->format('Y-m-d'),
+            ]);
+
+            $cicloId = (int) $this->db->lastInsertId();
+
+            $this->db->prepare(
+                'INSERT INTO pozo_ciclo (ciclo_id, monto_arrastrado, monto_acumulado, monto_pagado)
+                 VALUES (:id, 0, 0, 0)'
+            )->execute([':id' => $cicloId]);
+
+            if ($propia) {
+                $this->db->commit();
+            }
+            return $cicloId;
+        } catch (PDOException $e) {
+            if ($propia) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Cierre de ciclo: promueve el "programado" que ya exista a
+     * abierto (con todo lo que se le cargo por anticipado, sumandole
+     * el arrastre a su pozo) y crea uno nuevo, vacio, para la
+     * semana/sabado que sigue. Si no hay ningun programado (nadie
+     * cargo una jugada despues del primer sorteo de este ciclo), se
+     * comporta exactamente igual que antes: abrirSiguiente() liso y
+     * llano.
+     *
+     * Llamado siempre desde dentro de la transaccion que ya tiene el
+     * candado FOR UPDATE del ciclo que se esta cerrando
+     * (CicloService::bloquearAbierto() en SorteoService), asi que no
+     * hace falta lock adicional: solo un request puede estar cerrando
+     * ese ciclo a la vez.
+     *
+     * @return int Id del ciclo que queda abierto.
+     */
+    public function promoverOAbrirSiguiente(string $tipo, float $saldoInicial = 0.0): int
+    {
+        $programado = $this->buscarProgramado($tipo);
+        if (!$programado) {
+            return $this->abrirSiguiente($tipo, $saldoInicial);
+        }
+
+        $programadoId = (int) $programado['id'];
+
+        $this->db->prepare(
+            "UPDATE ciclos SET estado = 'abierto' WHERE id = :id AND estado = 'programado'"
+        )->execute([':id' => $programadoId]);
+
+        if ($saldoInicial > 0) {
+            // Sin emulacion de prepares, cada aparicion necesita su propio
+            // placeholder: PDO no reutiliza el mismo nombre dos veces.
+            $this->db->prepare(
+                'UPDATE pozo_ciclo
+                    SET monto_arrastrado = monto_arrastrado + :monto1,
+                        monto_acumulado  = monto_acumulado  + :monto2
+                  WHERE ciclo_id = :id'
+            )->execute([':monto1' => $saldoInicial, ':monto2' => $saldoInicial, ':id' => $programadoId]);
+        }
+
+        $this->crearProgramadoTrasCiclo($tipo, $this->buscarPorId($programadoId));
+
+        return $programadoId;
     }
 
     /**

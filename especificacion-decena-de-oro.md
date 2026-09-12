@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.9 (Fase 11 suma el vínculo cliente ↔ vendedor: dar de alta un vendedor resuelve o crea su cuenta de cliente sola por DNI, y cada panel tiene un botón para saltar al otro sin pedir contraseña de nuevo — ver 17.11. Ya estaban implementadas la Fase 9: horario límite de carga, y la Fase 10: juego de sábados. Sigue el borrador de Fase 8: carga anticipada para la próxima semana, en revisión, sin dependencia con las fases nuevas)
+**Versión:** 1.10 (Fase 12 agrega el corte automático de ciclo ya iniciado: en cuanto corre el primer sorteo/turno de la semana o el sábado, las jugadas nuevas se desvían solas a un ciclo "programado" de la semana/sábado siguiente — ver sección 18. También se agregó el botón "Convertir en vendedor" en la ficha del cliente, que faltaba desde la Fase 11 — ver 17.11. Fase 11 sigue vigente sin cambios: vínculo cliente ↔ vendedor, dar de alta un vendedor resuelve o crea su cuenta de cliente sola por DNI. Ya estaban implementadas la Fase 9: horario límite de carga, y la Fase 10: juego de sábados. El borrador original de Fase 8 —selector manual "¿para esta semana o la próxima?"— queda sin implementar: la Fase 12 cubre el caso de uso real con una regla automática en vez de esa opción manual)
 
 ---
 
@@ -143,7 +143,7 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 `id, nro_cliente (formato AAAA-NNNNNN, año + 6 dígitos aleatorios, UNIQUE), dni, nombre, telefono, password_hash (siempre = hash del DNI, se regenera si el DNI se edita), estado (pendiente | aprobado | rechazado), origen_alta (manual | autorregistro), fecha_alta`
 
 **ciclos** *(semana de juego, o sábado de juego — Fase 10)*
-`id, tipo (semanal | sabado — Fase 10, cada uno con su propia numeración y su propio "un ciclo abierto a la vez"), fecha_inicio, fecha_fin (para un ciclo de sábado, iguales: dura un solo día), estado (programado | abierto | cerrado_con_ganador | cerrado_sin_ganador)`
+`id, tipo (semanal | sabado — Fase 10, cada uno con su propia numeración y su propio "un ciclo abierto a la vez"), fecha_inicio, fecha_fin (para un ciclo de sábado, iguales: dura un solo día), estado (programado — Fase 12 | abierto | cerrado_con_ganador | cerrado_sin_ganador)`
 
 **jugadas**
 `id, cliente_id, tipo_juego (semanal | sabado — Fase 10, para saber a qué caja pertenece mientras esta pendiente_pago sin ciclo_id todavía), ciclo_id (nullable — ver 14.3), importe, pagada, estado_pago (pendiente_pago | confirmada | rechazada — ver 14.3), origen_carga (staff | cliente), solicitud_id (nullable, FK a solicitudes — ver 14.4), grupo_compra (id o UUID, para agrupar jugadas cargadas juntas por el staff), promocion_id (nullable, FK a promociones si el paquete se cargó con descuento — Fase 7, exclusiva del juego semanal), estado (activa | ganadora | perdedora | anulada — veredicto del cotejo, no confundir con estado_pago), fecha_carga, cargado_por (usuario_id, nullable — vacío cuando origen_carga = cliente)`
@@ -190,10 +190,11 @@ El cliente **no es un usuario administrativo**: tiene su propio login de solo le
 | 5. Ampliación | Autorregistro con aprobación, monto configurable, carga múltiple de jugadas | 1 semana |
 | 6. Selección propia de jugadas | Selección propia de jugadas por el cliente, con autorización de pago por staff | Implementada |
 | 7. Premio base y promociones | Piso garantizado de pozo por ciclo, paquetes promocionales de jugadas | Implementada |
-| 8. Carga anticipada | Ciclo "programado" para cargar jugadas de la próxima semana por adelantado | A implementar |
+| 8. Carga anticipada (selector manual) | Ciclo "programado" con selector "¿para esta semana o la próxima?" al cargar | Reemplazada por la Fase 12 (automática) |
 | 9. Horario límite de carga | Corte de carga a las 18:00 (lunes a viernes) y 11:00 (sábados), configurable, aplica a cliente y staff por igual | Implementada |
 | 10. Juego de sábados | Mini-ciclo de 5 turnos el mismo sábado, pozo propio, mismo mecanismo de corte y arrastre que el semanal | Implementada |
 | 11. Vendedores y referidos | Rol vendedor con link de referido, comisión por % de cada jugada del referido, supervisores también refieren (arrancan en 0%), liquidación manual por admin | Implementada |
+| 12. Corte automático de ciclo ya iniciado | Ciclo "programado" que se activa solo (sin selector) apenas corre el primer sorteo/turno de la semana o el sábado | Implementada |
 
 ## 13. Puntos abiertos antes de programar
 
@@ -345,9 +346,32 @@ El vendedor entra por la misma pantalla unificada de login (`auth/login.php`) qu
 
 Una persona que ya es clienta puede pasar a ser vendedora reusando sus datos, y todo vendedor —exista o no como cliente previamente— puede también jugar:
 
-- `VendedorService::crear()` resuelve automáticamente `cliente_id` **por DNI**, sin ninguna pantalla de "convertir": si ya existe un cliente con ese DNI se vincula tal cual (sin tocarle nombre/teléfono); si no existe, se le crea un cliente nuevo con esos mismos datos (alta manual de siempre: aprobado, clave = DNI).
+- `VendedorService::crear()` resuelve automáticamente `cliente_id` **por DNI**: si ya existe un cliente con ese DNI se vincula tal cual (sin tocarle nombre/teléfono); si no existe, se le crea un cliente nuevo con esos mismos datos (alta manual de siempre: aprobado, clave = DNI).
+- **Botón "Convertir en vendedor" [Fase 12]**: en la ficha de un cliente activo y aprobado que todavía no tiene vendedor vinculado, `admin/clientes/form.php` muestra un botón que lleva a `admin/vendedores/form.php?cliente_id=N`. Esa pantalla precarga nombre/DNI/teléfono del cliente (DNI de solo lectura, para que no se pueda enganchar por error a otra persona) y solo pide la contraseña nueva del panel de vendedor. El submit reutiliza el alta de siempre sin ningún cambio: `resolverClienteId()` detecta el DNI ya existente y vincula, no duplica nada.
 - Editar un vendedor (`actualizar()`) **no** re-resuelve el vínculo, aunque cambie el DNI — evita re-enganchar por error a otra persona si el admin corrige un DNI mal tipeado.
 - Los vendedores que ya existían antes de esta mejora se vinculan con el script de una sola corrida `db/migrations/2026-09-11_vincular_vendedores_existentes.php`.
 - **Salto sin contraseña entre paneles**: `vendedor/jugar.php` y `portal/panel_vendedor.php` cambian de sesión (`cambiarASesion()`, ahora en `config/bootstrap.php` para que la puedan usar los dos) y abren la sesión de la cuenta vinculada llamando directo a `ClienteAuthService::abrirSesion()` / `VendedorAuthService::abrirSesion()` — nunca piden la otra clave, porque el vínculo se resuelve siempre a partir de quien ya está autenticado en la sesión activa, nunca de un id que llegue por parámetro. Cada cuenta sigue teniendo su propia contraseña para el login normal.
 - El botón aparece solo si corresponde: "Jugar" en el dropdown del panel del vendedor (si tiene `cliente_id`), "Mi panel de vendedor" en el dropdown del portal (si el cliente logueado tiene un vendedor vinculado y activo).
 - `ClienteService::eliminar()` desactiva en vez de borrar si el cliente tiene jugadas **o** un vendedor vinculado, para no chocar nunca con el `FOREIGN KEY ... ON DELETE RESTRICT` de `vendedores.cliente_id`.
+
+## 18. Fase 12: corte automático de ciclo ya iniciado
+
+### 18.1 Regla de negocio
+
+Dentro de una misma semana (o un mismo sábado), las jugadas cargadas en distintos momentos ya no compiten todas por igual contra cualquier sorteo/turno restante: en cuanto corre el **primer** sorteo (semanal) o turno (sábado) de un ciclo, ese ciclo queda "en curso" y cualquier jugada nueva —cargada por staff o confirmada desde una solicitud de portal— pasa automáticamente al ciclo de la semana/sábado **siguiente**, sin que nadie tenga que elegirlo a mano. El cliente paga y juega igual que siempre; el sistema decide solo a qué ciclo pertenece.
+
+Es la generalización automática del corte que ya existía para "hubo ganador a mitad de semana" (sección 3.2): antes esa era la única frontera entre ciclos; ahora cualquier sorteo ya corrido —haya ganador o no— también corta la entrada de jugadas nuevas al ciclo en curso.
+
+### 18.2 Mecanismo: ciclo "programado"
+
+- Cada tipo (`semanal` | `sabado`) puede tener, además del ciclo `abierto`, un ciclo `programado`: la semana/sábado siguiente, creado la primera vez que hace falta (no de entrada al abrir cada ciclo). Mismo patrón que garantiza un solo `abierto` por tipo (`ciclos.abierto_flag` + `uk_ciclo_tipo_abierto`): una columna generada `programado_flag` + `uk_ciclo_tipo_programado` garantizan un solo `programado` por tipo.
+- `CicloService::obtenerCicloParaCarga($tipo)` (carga directa del staff) y `bloquearCicloParaCarga($tipo)` (confirmación de pago de una solicitud de portal, con el mismo `FOR UPDATE` que ya usaba `bloquearAbierto()`) resuelven el ciclo real donde cae una jugada nueva: el `abierto`, salvo que ya tenga al menos un sorteo cargado (`SELECT 1 FROM sorteos WHERE ciclo_id = ...`, sin importar de qué día), en cuyo caso devuelven (creando si hace falta) el `programado`.
+- El pozo de un `programado` acumula con total normalidad a medida que se le cargan jugadas (mismo cálculo de 60%/40% y premio base), aunque todavía no sea el ciclo activo para el cotejo — igual que en el borrador original de la Fase 8.
+- Al cerrarse el ciclo `abierto` (con ganador a mitad de semana, o sin ganador al final de la secuencia), `CicloService::promoverOAbrirSiguiente()` reemplaza a `abrirSiguiente()` en `SorteoService::cotejarYCerrar()`: si existe un `programado`, lo promueve a `abierto` (sumándole el arrastre del ciclo que cierra a su pozo ya acumulado, en vez de reemplazarlo) y crea un `programado` nuevo, vacío, para la semana/sábado que sigue. Si no había ningún `programado` (nadie cargó nada después del primer sorteo), se comporta exactamente igual que antes.
+- Aplica por igual a `semanal` y a `sabado`: en sábados, "el primer sorteo" es el turno 1 de los 5 del día.
+
+### 18.3 Notas de implementación
+
+- **Archivos tocados**: `src/Services/CicloService.php` (métodos nuevos), `src/Services/SorteoService.php` (`cotejarYCerrar()` usa `promoverOAbrirSiguiente()`), `src/Services/JugadaService.php` (`crearVarias()` usa `obtenerCicloParaCarga()`), `src/Services/SolicitudService.php` (`confirmar()` usa `bloquearCicloParaCarga()`), `admin/jugadas/nueva.php` (muestra el ciclo real donde va a caer la jugada, con aviso si es el programado), `admin/ciclos/index.php`, `admin/ciclos/ver.php`, `admin/sabados/ciclos.php`, `admin/sabados/ver.php` (etiqueta y textos para distinguir un ciclo `programado` de uno `abierto`).
+- **Migración**: `db/migrations/2026-09-11_ciclo_programado.sql`.
+- **Sin cambios en el cotejo**: `SorteoService::jugadasGanadoras()` y `validarFechaContraCiclo()` siguen operando solo sobre el ciclo `abierto` bloqueado; un `programado` nunca tiene sorteos propios hasta que se promueve, así que no hay forma de que compita antes de tiempo.

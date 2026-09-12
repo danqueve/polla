@@ -31,7 +31,7 @@ $tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
     : CicloService::TIPO_SEMANAL;
 $esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
 
-$ciclo      = $ciclos->obtenerCicloActivo($tipoJuego);
+$ciclo      = $ciclos->obtenerCicloParaCarga($tipoJuego);
 $clientes   = (new ClienteService($db))->listarActivosParaSelect();
 $horaAbierto = $horario->abierto($tipoJuego);
 
@@ -122,7 +122,16 @@ require __DIR__ . '/../../includes/topbar.php';
     </div>
     <p class="pantalla__bajada">
         <?= $esSabado ? '' : 'Semana del ' ?><?= e(CicloService::rotulo($ciclo)) ?>
+        <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
+            <span class="badge text-bg-info">Próxima <?= $esSabado ? 'sábado' : 'semana' ?></span>
+        <?php endif; ?>
     </p>
+    <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
+        <div class="alert alert-info py-2" style="font-size:.875rem">
+            Ya se cargó el primer <?= $esSabado ? 'turno' : 'sorteo' ?> de la semana en curso:
+            esta jugada queda anotada para <?= $esSabado ? 'el próximo sábado' : 'la semana que viene' ?>.
+        </div>
+    <?php endif; ?>
 
     <ul class="nav nav-pills mb-3">
         <li class="nav-item">

@@ -25,11 +25,28 @@ if (!$esAlta && $vendedor['cliente_id'] !== null) {
     $clienteVinculado = (new ClienteService(getPDO()))->buscarPorId((int) $vendedor['cliente_id']);
 }
 
-$valor = static function (string $campo, $default = '') use ($vendedor) {
-    return old($campo, $vendedor[$campo] ?? $default);
+// Alta iniciada desde "Convertir en vendedor" en la ficha del cliente.
+// old() cubre el rebote por error de validacion sin perder el contexto.
+$clienteOrigen = null;
+if ($esAlta) {
+    $clienteOrigenId = isset($_GET['cliente_id']) ? (int) $_GET['cliente_id'] : (int) old('cliente_id_origen', 0);
+    if ($clienteOrigenId > 0) {
+        $clienteOrigen = (new ClienteService(getPDO()))->buscarPorId($clienteOrigenId);
+        if (!$clienteOrigen) {
+            setFlash('danger', 'Ese cliente no existe.');
+            header('Location: ' . APP_URL . '/admin/clientes/index.php');
+            exit;
+        }
+    }
+}
+
+$valor = static function (string $campo, $default = '') use ($vendedor, $clienteOrigen) {
+    return old($campo, $vendedor[$campo] ?? $clienteOrigen[$campo] ?? $default);
 };
 
-$pageTitle  = ($esAlta ? 'Nuevo vendedor' : 'Editar vendedor') . ' · ' . APP_NAME;
+$pageTitle = ($esAlta
+    ? ($clienteOrigen ? 'Convertir en vendedor' : 'Nuevo vendedor')
+    : 'Editar vendedor') . ' · ' . APP_NAME;
 $navSeccion = '';
 $bodyClass  = 'con-accion-fija';
 require __DIR__ . '/../../includes/head.php';
@@ -44,7 +61,17 @@ require __DIR__ . '/../../includes/topbar.php';
 
     <?php require __DIR__ . '/../../includes/flash.php'; ?>
 
-    <h1 class="pantalla__titulo"><?= $esAlta ? 'Nuevo vendedor' : e($vendedor['nombre']) ?></h1>
+    <h1 class="pantalla__titulo">
+        <?= $esAlta ? ($clienteOrigen ? 'Convertir en vendedor' : 'Nuevo vendedor') : e($vendedor['nombre']) ?>
+    </h1>
+
+    <?php if ($clienteOrigen): ?>
+        <p class="pantalla__bajada">
+            Convirtiendo a <?= e($clienteOrigen['nombre']) ?>
+            (cliente N° <?= e($clienteOrigen['nro_cliente']) ?>) en vendedor.
+            Sigue jugando igual que antes. Solo falta la contraseña del panel de vendedor.
+        </p>
+    <?php endif; ?>
 
     <?php if (!$esAlta): ?>
         <p class="pantalla__bajada">
@@ -67,6 +94,9 @@ require __DIR__ . '/../../includes/topbar.php';
         <?php if (!$esAlta): ?>
             <input type="hidden" name="id" value="<?= (int) $vendedor['id'] ?>">
         <?php endif; ?>
+        <?php if ($clienteOrigen): ?>
+            <input type="hidden" name="cliente_id_origen" value="<?= (int) $clienteOrigen['id'] ?>">
+        <?php endif; ?>
 
         <div class="mb-3">
             <label class="form-label" for="nombre">Nombre y apellido</label>
@@ -80,8 +110,12 @@ require __DIR__ . '/../../includes/topbar.php';
             <input type="text" class="form-control cifra" id="dni" name="dni"
                    value="<?= e($valor('dni')) ?>"
                    inputmode="numeric" pattern="[0-9]*" maxlength="9"
-                   autocomplete="off" required>
-            <div class="form-text">Sin puntos. Es también el usuario para entrar a su panel.</div>
+                   autocomplete="off" required <?= $clienteOrigen ? 'readonly' : '' ?>>
+            <div class="form-text">
+                <?= $clienteOrigen
+                    ? 'Tiene que coincidir con el DNI del cliente para vincularse correctamente.'
+                    : 'Sin puntos. Es también el usuario para entrar a su panel.' ?>
+            </div>
         </div>
 
         <div class="mb-3">
@@ -143,7 +177,7 @@ require __DIR__ . '/../../includes/topbar.php';
     <div class="accion-fija__interior">
         <button type="submit" form="form-vendedor" class="btn btn-primary w-100">
             <i class="bi bi-check-lg"></i>
-            <?= $esAlta ? 'Crear vendedor' : 'Guardar cambios' ?>
+            <?= $esAlta ? ($clienteOrigen ? 'Convertir en vendedor' : 'Crear vendedor') : 'Guardar cambios' ?>
         </button>
     </div>
 </div>

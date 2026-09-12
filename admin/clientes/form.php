@@ -61,6 +61,13 @@ require __DIR__ . '/../../includes/topbar.php';
                     <span class="cifra"><?= e($vendedorVinculado['codigo_referido']) ?></span>
                 </a>
             </p>
+        <?php elseif (isAdmin() && (int) $cliente['activo'] === 1 && $cliente['estado'] === 'aprobado'): ?>
+            <p class="pantalla__bajada">
+                <a href="<?= APP_URL ?>/admin/vendedores/form.php?cliente_id=<?= (int) $cliente['id'] ?>"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-person-badge"></i> Convertir en vendedor
+                </a>
+            </p>
         <?php endif; ?>
     <?php endif; ?>
 

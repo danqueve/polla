@@ -34,6 +34,7 @@ $jugadas   = JugadaService::crearDesde($db)->listarPorCiclo($cicloId);
 
 $abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
 $conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
+$esProgramado = $ciclo['estado'] === CicloService::ESTADO_PROGRAMADO;
 $arrastre     = (float) ($ciclo['monto_arrastrado'] ?? 0);
 $pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 
@@ -42,6 +43,9 @@ $pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 // liquido (monto_pagado ya quedo fijado con el piso vigente en ese
 // momento — ver PozoService::liquidar()). Un ciclo cerrado SIN
 // ganador no pago nada: se muestra el real tal cual, sin ningun piso.
+// Un ciclo "programado" tampoco aplico nunca ningun piso: todavia no
+// es el ciclo vigente para el cotejo, solo va acumulando lo que se le
+// carga por anticipado.
 if ($abierto) {
     $premioBase   = (new ParametroService($db))->premioBase();
     $pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
@@ -83,9 +87,13 @@ require __DIR__ . '/../../includes/topbar.php';
             <span class="rotulo">Ciclo <?= (int) $ciclo['numero'] ?></span>
             <h1 class="pantalla__titulo"><?= e(CicloService::rotulo($ciclo)) ?></h1>
         </div>
-        <?php if ($abierto): ?>
+        <?php if ($esProgramado): ?>
+            <span class="etiqueta etiqueta--gris">
+                <i class="bi bi-clock-history"></i> Próxima semana (en formación)
+            </span>
+        <?php elseif ($abierto): ?>
             <span class="etiqueta etiqueta--verde">Abierto</span>
-        <?php elseif ($ciclo['estado'] === CicloService::ESTADO_CON_GANADOR): ?>
+        <?php elseif ($conGanador): ?>
             <span class="etiqueta etiqueta--oro">Con ganador</span>
         <?php else: ?>
             <span class="etiqueta etiqueta--gris">Sin ganador</span>
@@ -95,7 +103,13 @@ require __DIR__ . '/../../includes/topbar.php';
     <!-- Pozo -->
     <section class="pozo mb-3">
         <div class="pozo__rotulo mb-1">
-            <?= $abierto ? 'Pozo acumulado' : 'Pozo al cierre' ?>
+            <?php if ($abierto): ?>
+                Pozo acumulado
+            <?php elseif ($esProgramado): ?>
+                Pozo acumulado (semana en formación)
+            <?php else: ?>
+                Pozo al cierre
+            <?php endif; ?>
         </div>
         <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
 

@@ -58,7 +58,11 @@ require __DIR__ . '/../../includes/topbar.php';
                     </div>
 
                     <div class="text-end text-nowrap">
-                        <?php if ($ciclo['estado'] === CicloService::ESTADO_ABIERTO): ?>
+                        <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
+                            <span class="etiqueta etiqueta--gris">
+                                <i class="bi bi-clock-history"></i> Próxima semana
+                            </span>
+                        <?php elseif ($ciclo['estado'] === CicloService::ESTADO_ABIERTO): ?>
                             <span class="etiqueta etiqueta--verde">Abierto</span>
                         <?php elseif ($ciclo['estado'] === CicloService::ESTADO_CON_GANADOR): ?>
                             <span class="etiqueta etiqueta--oro">

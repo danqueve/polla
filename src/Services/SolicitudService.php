@@ -388,7 +388,7 @@ class SolicitudService
             // Bloquear el ciclo abierto DEL TIPO DE LA SOLICITUD -- si no,
             // confirmar una solicitud de sabado asignaria sus jugadas al
             // ciclo semanal abierto.
-            $ciclo = $this->ciclos->bloquearAbierto($solicitud['tipo_juego']);
+            $ciclo = $this->ciclos->bloquearCicloParaCarga($solicitud['tipo_juego']);
             if (!$ciclo) {
                 throw ValidacionException::de(
                     'No hay ningún ciclo abierto. Entrá al tablero para que se abra el de esta semana.'

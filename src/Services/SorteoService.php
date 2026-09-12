@@ -251,8 +251,9 @@ class SorteoService
 
             $this->ciclos->cerrar($cicloId, CicloService::ESTADO_CON_GANADOR);
 
-            // El pozo se repartio entero: el ciclo nuevo arranca en $0.
-            $nuevoId = $this->ciclos->abrirSiguiente($tipo, 0.0);
+            // El pozo se repartio entero: el ciclo nuevo arranca en $0
+            // (salvo que ya hubiera un programado con jugadas propias).
+            $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, 0.0);
 
             return [
                 'ganadores'      => $premios,
@@ -276,7 +277,7 @@ class SorteoService
         $arrastre = $this->pozo->montoAcumulado($cicloId);
 
         $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
-        $nuevoId = $this->ciclos->abrirSiguiente($tipo, $arrastre);
+        $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, $arrastre);
 
         return [
             'ganadores'      => [],

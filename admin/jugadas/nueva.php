@@ -123,7 +123,7 @@ require __DIR__ . '/../../includes/topbar.php';
     <p class="pantalla__bajada">
         <?= $esSabado ? '' : 'Semana del ' ?><?= e(CicloService::rotulo($ciclo)) ?>
         <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
-            <span class="badge text-bg-info">Próxima <?= $esSabado ? 'sábado' : 'semana' ?></span>
+            <span class="etiqueta etiqueta--gris">Próxima <?= $esSabado ? 'sábado' : 'semana' ?></span>
         <?php endif; ?>
     </p>
     <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>

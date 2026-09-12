@@ -64,7 +64,7 @@ require __DIR__ . '/../../includes/topbar.php';
         <?php elseif (isAdmin() && (int) $cliente['activo'] === 1 && $cliente['estado'] === 'aprobado'): ?>
             <p class="pantalla__bajada">
                 <a href="<?= APP_URL ?>/admin/vendedores/form.php?cliente_id=<?= (int) $cliente['id'] ?>"
-                   class="btn btn-sm btn-outline-primary">
+                   class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-person-badge"></i> Convertir en vendedor
                 </a>
             </p>

@@ -303,6 +303,18 @@ a { color: var(--verde); }
 
 .form-text { font-size: .8125rem; color: var(--tinta-suave); }
 
+/* Switches "activo" (clientes, usuarios, vendedores, promociones):
+   sin esto, Bootstrap los pinta en azul cuando estan en ON. */
+.form-check-input:checked {
+    background-color: var(--verde);
+    border-color: var(--verde);
+}
+
+.form-check-input:focus {
+    border-color: var(--verde);
+    box-shadow: 0 0 0 .2rem rgba(20, 102, 63, .15);
+}
+
 /* ── Botones ──────────────────────────────────────────────── */
 
 .btn {
@@ -363,6 +375,45 @@ a { color: var(--verde); }
 }
 
 .btn-outline-danger { border-color: #ddb3b0; color: var(--rojo); }
+
+/* ── Pestañas Semana/Sábado (nav-pills) ──────────────────────
+   Sin esto, la pestaña activa sale con el azul por defecto de
+   Bootstrap en vez del verde del sistema. */
+
+.nav-pills .nav-link {
+    color: var(--tinta-suave);
+    font-weight: 600;
+    border-radius: 999px;
+}
+
+.nav-pills .nav-link:hover { color: var(--verde-oscuro); }
+
+.nav-pills .nav-link.active {
+    background: var(--verde);
+    color: #fff;
+}
+
+/* ── Menús de usuario (topbar, portal, vendedor) ─────────────
+   El dropdown de Bootstrap trae su propio azul para hover/activo;
+   estos tres menus lo usan sin ningun override propio. */
+
+.dropdown-menu {
+    border-color: var(--borde);
+    border-radius: var(--radio-sm);
+    box-shadow: var(--sombra-card);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+    background: var(--verde-claro);
+    color: var(--verde-oscuro);
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background: var(--verde);
+    color: #fff;
+}
 
 /* ── Acción principal fija al pulgar ──────────────────────── */
 

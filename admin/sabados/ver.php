@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/app.php';
 use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
+use Polla\Services\PortalService;
 use Polla\Services\PozoService;
 use Polla\Services\SorteoService;
 
@@ -52,13 +53,9 @@ if ($abierto) {
 $subsidio = max(0.0, $pisoAplicado - $pozoReal);
 
 // Numeros que ya salieron en los turnos cargados, para marcar los
-// aciertos parciales de cada jugada en el listado.
-$salidos = [];
-foreach ($lista as $sorteo) {
-    foreach ($sorteo['numeros'] as $numero) {
-        $salidos[$numero] = true;
-    }
-}
+// aciertos parciales de cada jugada en el listado y armar el ranking.
+$salidos  = PortalService::numerosSalidos($lista);
+$ranking  = PortalService::ranking($jugadas, $salidos);
 
 $pageTitle  = 'Sábado ' . (int) $ciclo['numero'] . ' · ' . APP_NAME;
 $navSeccion = 'sabados';
@@ -261,6 +258,45 @@ require __DIR__ . '/../../includes/topbar.php';
                             </button>
                         </form>
                     <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- Ranking por aciertos acumulados -->
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="rotulo">Ranking del sábado</span>
+        <span class="fila__meta">quién va anotando más</span>
+    </div>
+
+    <?php if (!$lista): ?>
+        <div class="vacio tarjeta mb-4">
+            <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
+            Todavía no hay resultados para armar el ranking: falta cargar el primer turno.
+        </div>
+    <?php elseif (!$ranking): ?>
+        <div class="vacio tarjeta mb-4">
+            <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
+            No hay jugadas en este sábado.
+        </div>
+    <?php else: ?>
+        <div class="mb-4">
+            <?php foreach ($ranking as $i => $puesto): ?>
+                <div class="fila">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2 min-w-0">
+                            <span class="cifra fw-bold text-secondary" style="width:1.75rem;flex-shrink:0">
+                                <?= $i === 0 ? '🏆' : ($i + 1) . '°' ?>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="fila__titulo mb-0"><?= e($puesto['nombre']) ?></p>
+                                <p class="fila__meta mb-0">N° <?= e($puesto['nro_cliente']) ?></p>
+                            </div>
+                        </div>
+                        <span class="etiqueta <?= $puesto['aciertos'] > 0 ? 'etiqueta--verde' : 'etiqueta--gris' ?> text-nowrap">
+                            <?= (int) $puesto['aciertos'] ?>/<?= (int) $puesto['total'] ?>
+                        </span>
+                    </div>
                 </div>
             <?php endforeach; ?>
         </div>

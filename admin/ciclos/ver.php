@@ -8,6 +8,7 @@ require_once __DIR__ . '/../../config/app.php';
 use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
+use Polla\Services\PortalService;
 use Polla\Services\PozoService;
 use Polla\Services\SorteoService;
 
@@ -61,12 +62,7 @@ $subsidio = max(0.0, $pisoAplicado - $pozoReal);
 
 // Numeros que ya salieron en la semana, para marcar los aciertos parciales
 // de cada jugada en el listado.
-$salidos = [];
-foreach ($lista as $sorteo) {
-    foreach ($sorteo['numeros'] as $numero) {
-        $salidos[$numero] = true;
-    }
-}
+$salidos = PortalService::numerosSalidos($lista);
 
 $pageTitle  = 'Ciclo ' . (int) $ciclo['numero'] . ' · ' . APP_NAME;
 $navSeccion = 'ciclos';

@@ -183,6 +183,86 @@ class PortalService
     }
 
     /**
+     * Numeros ya salidos, union de TODOS los sorteos/turnos recibidos (a
+     * diferencia de evaluar(), que los mira uno por uno). Sirve para un
+     * indicador de progreso informal (pintar bolillas, armar un ranking
+     * de "quien va anotando mas" mientras el ciclo avanza) -- nunca para
+     * decidir si una jugada gano, que es y sigue siendo responsabilidad
+     * de evaluar() / SorteoService::jugadasGanadoras().
+     *
+     * Centraliza lo que hasta ahora armaban a mano, cada una por su
+     * lado, admin/sabados/ver.php y admin/ciclos/ver.php.
+     *
+     * @param array $sorteos Salida de sorteosDelCiclo() o SorteoService::listarPorCiclo().
+     * @return array<int,bool>
+     */
+    public static function numerosSalidos(array $sorteos): array
+    {
+        $salidos = [];
+        foreach ($sorteos as $sorteo) {
+            foreach ($sorteo['numeros'] as $numero) {
+                $salidos[$numero] = true;
+            }
+        }
+        return $salidos;
+    }
+
+    /**
+     * Ranking de clientes por aciertos acumulados en un ciclo (union de
+     * todos los turnos ya cargados, ver numerosSalidos() de por que esta
+     * semantica es distinta de evaluar() y no sirve para decidir un
+     * ganador -- acá es a propósito, es un ranking informal de "quien va
+     * anotando más" mientras el día avanza, no una definición de premio).
+     *
+     * Excepción deliberada a la regla de la clase (arriba): no recibe un
+     * $clienteId ni hace ninguna consulta -- es una funcion pura sobre
+     * datos de TODOS los clientes de un ciclo que el llamador ya trajo
+     * (JugadaService::listarPorCiclo() no filtra por cliente), pensada
+     * para pantallas de ranking donde ver a los demás es la idea misma
+     * de la pantalla (mostrar solo nombre y N° de cliente, nunca DNI,
+     * teléfono ni los números jugados de otro).
+     *
+     * Un cliente con más de una jugada aparece una sola vez, con su
+     * mejor resultado.
+     *
+     * @param array $jugadas        Salida de JugadaService::listarPorCiclo()
+     *                              (trae cliente_id, cliente_nombre, nro_cliente, numeros).
+     * @param array $numerosSalidos Salida de numerosSalidos().
+     * @return array<int,array{cliente_id:int, nombre:string, nro_cliente:string, aciertos:int, total:int}>
+     */
+    public static function ranking(array $jugadas, array $numerosSalidos): array
+    {
+        $porCliente = [];
+
+        foreach ($jugadas as $jugada) {
+            $aciertos = 0;
+            foreach ($jugada['numeros'] as $numero) {
+                if (isset($numerosSalidos[$numero])) {
+                    $aciertos++;
+                }
+            }
+
+            $clienteId = (int) $jugada['cliente_id'];
+            if (!isset($porCliente[$clienteId]) || $aciertos > $porCliente[$clienteId]['aciertos']) {
+                $porCliente[$clienteId] = [
+                    'cliente_id'  => $clienteId,
+                    'nombre'      => $jugada['cliente_nombre'],
+                    'nro_cliente' => $jugada['nro_cliente'],
+                    'aciertos'    => $aciertos,
+                    'total'       => count($jugada['numeros']),
+                ];
+            }
+        }
+
+        $ranking = array_values($porCliente);
+        usort($ranking, static function (array $a, array $b): int {
+            return $b['aciertos'] <=> $a['aciertos'] ?: strcmp($a['nombre'], $b['nombre']);
+        });
+
+        return $ranking;
+    }
+
+    /**
      * Total ganado por el cliente en toda su historia, para el encabezado
      * del historial.
      */

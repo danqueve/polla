@@ -75,6 +75,12 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         </div>
     </section>
 
+    <?php if ($esSabado): ?>
+        <a href="<?= APP_URL ?>/portal/ranking_sabado.php" class="btn btn-outline-secondary w-100 mb-4">
+            <i class="bi bi-bar-chart-line"></i> Ver ranking del sábado
+        </a>
+    <?php endif; ?>
+
     <?php if ($pendiente): ?>
         <a href="<?= APP_URL ?>/portal/solicitud.php?id=<?= (int) $pendiente['id'] ?>"
            class="tarjeta tarjeta--oro p-3 mb-3 d-flex align-items-center justify-content-between gap-2"

@@ -14,11 +14,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#0d4a2d">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Decena de Oro">
     <meta name="robots" content="noindex, nofollow">
 
     <title><?= e($pageTitle ?? APP_NAME) ?></title>
+
+    <link rel="manifest" href="<?= APP_URL ?>/manifest.json">
+    <link rel="icon" href="<?= APP_URL ?>/assets/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/icons/icon-512.png">
 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 

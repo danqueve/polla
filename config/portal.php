@@ -46,6 +46,32 @@ function clienteActual(): array
 }
 
 /**
+ * Sesion persistente ("recordarme") [PWA]: si no hay sesion activa
+ * pero el navegador trae una cookie remember_token valida, abre
+ * sesion sola sin pedir clave de nuevo. La usan requireCliente() y el
+ * chequeo de "ya estoy logueado" de auth/login.php, para que la PWA
+ * pueda abrir directo en Mis jugadas en vez de mostrar el login cada
+ * vez que se cierra y se vuelve a abrir.
+ *
+ * No hace nada (ni toca la cookie) si ya hay sesion: solo entra en
+ * juego cuando clienteLogueado() es false.
+ */
+function intentarRecordarme(): bool
+{
+    if (clienteLogueado()) {
+        return true;
+    }
+
+    $cliente = \Polla\Services\RememberTokenService::crearDesde(getPDO())->validarYRotar();
+    if (!$cliente) {
+        return false;
+    }
+
+    (new \Polla\Services\ClienteAuthService(getPDO()))->abrirSesion($cliente);
+    return true;
+}
+
+/**
  * Guarda de todas las pantallas del portal.
  *
  * Ademas de exigir sesion, relee de la base en cada request `activo`:
@@ -60,7 +86,7 @@ function clienteActual(): array
  */
 function requireCliente(bool $permitirPendiente = false): void
 {
-    if (!clienteLogueado()) {
+    if (!clienteLogueado() && !intentarRecordarme()) {
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }

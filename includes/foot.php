@@ -7,5 +7,18 @@
     <?php foreach (($pageScripts ?? []) as $_src): ?>
         <script src="<?= APP_URL ?>/assets/js/<?= e($_src) ?>?v=<?= APP_VERSION ?>"></script>
     <?php endforeach; ?>
+
+    <script>
+        // APP_URL en vez de una ruta fija "/service-worker.js": el
+        // sitio vive en la raiz en produccion pero en una subcarpeta
+        // en local, mismo motivo que en service-worker.js.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('<?= APP_URL ?>/service-worker.js', {
+                    scope: '<?= APP_URL ?>/',
+                });
+            });
+        }
+    </script>
 </body>
 </html>

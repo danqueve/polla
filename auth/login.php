@@ -19,6 +19,7 @@ require_once __DIR__ . '/../config/bootstrap.php';
 
 use Polla\Services\AuthService;
 use Polla\Services\ClienteAuthService;
+use Polla\Services\RememberTokenService;
 use Polla\Services\VendedorAuthService;
 use Polla\Support\CuentaInactivaException;
 use Polla\Support\ValidacionException;
@@ -46,7 +47,7 @@ if (isLoggedIn()) {
 // las funciones (clienteLogueado, etc.).
 cambiarASesion('POLLA_CLIENTE');
 require_once __DIR__ . '/../config/portal.php';
-if (clienteLogueado()) {
+if (clienteLogueado() || intentarRecordarme()) {
     header('Location: ' . APP_URL . '/portal/index.php');
     exit;
 }
@@ -106,6 +107,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 // en eso.
                 cambiarASesion('POLLA_CLIENTE');
                 (new ClienteAuthService($db))->abrirSesion($cliente);
+                RememberTokenService::crearDesde($db)->emitir((int) $cliente['id']);
 
                 header('Location: ' . APP_URL . '/portal/index.php');
                 exit;

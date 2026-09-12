@@ -2,7 +2,7 @@
 ## Decena de Oro
 
 **Fecha:** Septiembre 2026
-**Versión:** 1.10 (Fase 12 agrega el corte automático de ciclo ya iniciado: en cuanto corre el primer sorteo/turno de la semana o el sábado, las jugadas nuevas se desvían solas a un ciclo "programado" de la semana/sábado siguiente — ver sección 18. También se agregó el botón "Convertir en vendedor" en la ficha del cliente, que faltaba desde la Fase 11 — ver 17.11. Fase 11 sigue vigente sin cambios: vínculo cliente ↔ vendedor, dar de alta un vendedor resuelve o crea su cuenta de cliente sola por DNI. Ya estaban implementadas la Fase 9: horario límite de carga, y la Fase 10: juego de sábados. El borrador original de Fase 8 —selector manual "¿para esta semana o la próxima?"— queda sin implementar: la Fase 12 cubre el caso de uso real con una regla automática en vez de esa opción manual)
+**Versión:** 1.11 (se suma la PWA instalable en Android — manifest, íconos con el logo real, service worker de assets estáticos — y la sesión persistente ("recordarme") exclusiva del portal del cliente, con rotación de token en cada uso — ver sección 19. De paso, auditoría de componentes Bootstrap sin repintar (nav-pills, dropdowns, switches) contra un prototipo de referencia que resultó ser una recreación fiel del sistema visual ya existente, no un rediseño — ver 19.1. Fase 12 sigue vigente sin cambios: corte automático de ciclo ya iniciado — ver sección 18)
 
 ---
 
@@ -376,3 +376,32 @@ Es la generalización automática del corte que ya existía para "hubo ganador a
 - **Archivos tocados**: `src/Services/CicloService.php` (métodos nuevos), `src/Services/SorteoService.php` (`cotejarYCerrar()` usa `promoverOAbrirSiguiente()`), `src/Services/JugadaService.php` (`crearVarias()` usa `obtenerCicloParaCarga()`), `src/Services/SolicitudService.php` (`confirmar()` usa `bloquearCicloParaCarga()`), `admin/jugadas/nueva.php` (muestra el ciclo real donde va a caer la jugada, con aviso si es el programado), `admin/ciclos/index.php`, `admin/ciclos/ver.php`, `admin/sabados/ciclos.php`, `admin/sabados/ver.php` (etiqueta y textos para distinguir un ciclo `programado` de uno `abierto`).
 - **Migración**: `db/migrations/2026-09-11_ciclo_programado.sql`.
 - **Sin cambios en el cotejo**: `SorteoService::jugadasGanadoras()` y `validarFechaContraCiclo()` siguen operando solo sobre el ciclo `abierto` bloqueado; un `programado` nunca tiene sorteos propios hasta que se promueve, así que no hay forma de que compita antes de tiempo.
+
+## 19. PWA (instalable en Android) + sesión persistente del cliente
+
+### 19.1 Auditoría visual previa
+
+Antes de la PWA, se revisó un prototipo clickeable (`Decena de Oro - Prototipo.dc.html`, hecho con Claude Design) que el usuario pidió usar como referencia de diseño. Comparando sus valores contra `assets/css/app.css`, resultó ser una recreación fiel del sistema visual **ya existente** (misma paleta, tipografías, radios y sombras) — no una propuesta nueva. El trabajo real fue una auditoría de componentes de Bootstrap sin repintar, que se veían con el azul por defecto en vez del verde del sistema:
+
+- `.nav-pills .nav-link.active` (pestañas Semana/Sábado, 4 pantallas).
+- `.dropdown-menu`/`.dropdown-item` (menú de usuario en las 3 cabeceras: admin, portal, vendedor).
+- `.form-check-input:checked` (switches "activo", 6 pantallas).
+- Un `badge text-bg-info` suelto en `admin/jugadas/nueva.php`, reemplazado por el componente propio `.etiqueta--gris`.
+- Un `btn-outline-primary` suelto en `admin/clientes/form.php` (botón "Convertir en vendedor"), alineado a `btn-outline-secondary`.
+
+Todo el ajuste vive en `assets/css/app.css` más esos dos swaps de clase puntuales — sin tocar estructura HTML ni lógica PHP.
+
+### 19.2 Manifest, íconos y service worker
+
+- `manifest.json` en la raíz del proyecto, con rutas **relativas** (`assets/icons/...`, `start_url: "auth/login.php"`, `scope: "./"`) a propósito: el sitio vive en la raíz del dominio en producción pero en una subcarpeta (`/polla/`) en desarrollo local, y una ruta relativa se resuelve bien contra la ubicación real del manifest en los dos casos — una ruta absoluta (`/manifest.json`) rompería el entorno local.
+- Íconos generados a partir del logo real del proyecto (`img/logo.png`, provisto por el usuario) compuesto sobre el fondo verde del sistema: `icon-192.png`, `icon-512.png` (uso general) e `icon-maskable-512.png` (con el logo reducido para entrar en la zona segura del 40% de radio que exige el formato maskable de Android, así el launcher no le recorta el aro dorado al aplicar la máscara circular/squircle).
+- `service-worker.js` en la raíz: cachea únicamente los assets estáticos propios del sitio (`assets/css/app.css`, los 4 JS de `assets/js/`, los 3 íconos, el manifest) con estrategia cache-first + actualización en segundo plano. A propósito **no** cachea ninguna página `.php` ni las librerías de CDN (Bootstrap, Bootstrap Icons, Google Fonts): cachear HTML dinámico mostraría datos viejos (pozo, jugadas, sorteos cambian todo el tiempo), y las CDN ya tienen su propio cache HTTP de larga duración. Mismo criterio de rutas relativas que el manifest, calculadas contra `self.registration.scope` en vez de la raíz del dominio.
+- `includes/head.php` suma `<link rel="manifest">`, `<link rel="icon">`, `<link rel="apple-touch-icon">` y `apple-mobile-web-app-capable` (ya tenía `theme-color` y el resto de las meta de Apple desde antes). `includes/foot.php` registra el service worker en todas las pantallas (admin, portal, vendedor, auth) usando `APP_URL` para que la ruta de registro también funcione en los dos entornos.
+
+### 19.3 Sesión persistente ("recordarme") — exclusiva del portal del cliente
+
+Para que la PWA abra ya logueada en vez de pedir DNI cada vez, sin aplicar esto a `usuarios` (admin/supervisor) ni a `vendedores`, que siguen logueándose siempre a mano:
+
+- **Tabla nueva `remember_tokens`** (`db/migrations/2026-09-12_remember_tokens.sql`): `id, cliente_id (FK a clientes, ON DELETE CASCADE), token_hash (sha256, único), expira_en, creado_en`. Nunca se guarda el token en texto plano, solo su hash — el token real vive únicamente en la cookie `remember_token` (`HttpOnly`, `SameSite=Lax`, `Secure` solo en producción porque en local el sitio corre sobre HTTP llano, mismo criterio que ya usa la cookie de sesión).
+- **`src/Services/RememberTokenService.php`** (nuevo): `emitir()` genera el token al loguearse; `validarYRotar()` valida la cookie contra la tabla y, si es válida, **rota** el token (borra la fila vieja, emite una nueva) antes de devolver el cliente — así una cookie usada una sola vez nunca vuelve a servir, y una copiada de un dispositivo perdido deja de funcionar en cuanto el dueño legítimo vuelve a abrir la app. `olvidar()` la usa el logout.
+- **Enganche**: `config/portal.php` suma `intentarRecordarme()`, que abre sesión sola (`ClienteAuthService::abrirSesion()`, sin pedir clave) si no hay sesión activa pero la cookie es válida. La llaman `requireCliente()` (antes de rebotar al login) y el chequeo de "ya estoy logueado" de `auth/login.php` (para que abrir la PWA en frío entre directo a "Mis jugadas"). La emisión del token pasa en `auth/login.php`, únicamente en la rama que ya hace `ClienteAuthService::abrirSesion()` — nunca en las de `usuarios` ni `vendedores`. `portal/logout.php` llama `olvidar()` antes de cerrar la sesión.

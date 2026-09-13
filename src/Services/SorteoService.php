@@ -418,16 +418,38 @@ class SorteoService
     // ── Cotejo ──────────────────────────────────────────────
 
     /**
-     * Jugadas del ciclo cuyos numeros salieron TODOS en este sorteo.
+     * Jugadas del ciclo cuyos numeros salieron TODOS, acumulados entre
+     * todos los sorteos/turnos cargados hasta este (inclusive) dentro
+     * del mismo ciclo. No hace falta que salgan juntos en un mismo
+     * sorteo/turno: alcanza con que cada numero de la jugada haya
+     * salido en cualquiera de los sorteos ya cargados hasta ahora de
+     * esa semana o sabado (hasta 100 numeros entre los 5 sorteos o
+     * turnos). Mismo criterio para semanal y sabado -- confirmado con
+     * el cliente, reemplaza la regla anterior de "todos en un mismo
+     * sorteo" para las dos modalidades.
+     *
+     * El orden cronologico se define por (fecha, turno): en el semanal
+     * el turno es siempre 1 y lo que ordena es la fecha; en sabado
+     * todos los turnos comparten la misma fecha y lo que ordena es el
+     * turno. Acotar a "hasta este sorteo" (nunca a todos los del ciclo
+     * aunque ya esten cargados en la tabla) es necesario para que
+     * recotejarCiclo() reproduzca la secuencia real paso a paso al
+     * recotejar un ciclo ya jugado entero -- si no, el primer sorteo
+     * del recorrido veria de entrada el acumulado completo de toda la
+     * semana. Con la carga en vivo (registrar()/registrarTurnoSabado())
+     * esto no cambia nada: ahi solo existen los sorteos ya jugados
+     * hasta el momento, nunca los que faltan.
      *
      * El COUNT(DISTINCT) no es decorativo: el extracto puede repetir un
-     * numero entre sus 20 posiciones, y con un COUNT(*) comun esa jugada
-     * sumaria 11 coincidencias y quedaria descartada por pasarse. Es decir,
-     * la version ingenua no falla de menos: descarta al ganador legitimo.
+     * numero entre sus posiciones (dentro de un sorteo, o entre
+     * sorteos/turnos distintos del mismo ciclo), y con un COUNT(*)
+     * comun esa jugada sumaria de mas y quedaria descartada por
+     * pasarse. Es decir, la version ingenua no falla de menos: descarta
+     * al ganador legitimo.
      *
      * Y el total se compara contra los numeros que esa jugada realmente
-     * tiene, no contra un 10 fijo: si algun dia cambia el parametro, las
-     * jugadas viejas se siguen juzgando por lo que jugaron.
+     * tiene, no contra un valor fijo: si algun dia cambia el parametro,
+     * las jugadas viejas se siguen juzgando por lo que jugaron.
      *
      * @return int[] Ids de las jugadas ganadoras.
      */
@@ -437,16 +459,23 @@ class SorteoService
             "SELECT j.id
                FROM jugadas j
                JOIN jugada_numeros jn ON jn.jugada_id = j.id
-               JOIN sorteo_numeros sn ON sn.sorteo_id = :sorteo AND sn.numero = jn.numero
-              WHERE j.ciclo_id = :ciclo
+              WHERE j.ciclo_id = :ciclo1
                 AND j.estado   = 'activa'
                 AND j.pagada   = 1
+                AND jn.numero IN (
+                    SELECT DISTINCT sn.numero
+                      FROM sorteo_numeros sn
+                      JOIN sorteos s   ON s.id = sn.sorteo_id
+                      JOIN sorteos ref ON ref.id = :sorteo
+                     WHERE s.ciclo_id = :ciclo2
+                       AND (s.fecha < ref.fecha OR (s.fecha = ref.fecha AND s.turno <= ref.turno))
+                )
               GROUP BY j.id
              HAVING COUNT(DISTINCT jn.numero)
                   = (SELECT COUNT(*) FROM jugada_numeros x WHERE x.jugada_id = j.id)
               ORDER BY j.id ASC"
         );
-        $stmt->execute([':sorteo' => $sorteoId, ':ciclo' => $cicloId]);
+        $stmt->execute([':ciclo1' => $cicloId, ':ciclo2' => $cicloId, ':sorteo' => $sorteoId]);
 
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }

@@ -742,6 +742,42 @@ a.fila:hover { border-color: var(--verde); }
     font-weight: 700;
 }
 
+/* Mapa de calor de frecuencia (admin/reportes/numeros.php).
+   Escala secuencial de un solo matiz -verde, la marca-, reusando los
+   3 tonos ya existentes en vez de inventar colores nuevos: mas claro
+   que el esperado, el esperado (mismo par bg/texto que .marcada,
+   ya probado), y mas oscuro que el esperado. El default de
+   .tablero__celda (arriba) cubre "nunca salio en el periodo": no
+   hace falta una clase mas para eso. El acento dorado se reserva para
+   marcar el numero mas caliente puntual (--record), nunca como un
+   escalon mas de la escala -mezclar matices en una escala secuencial
+   confunde magnitud con identidad. */
+.tablero__celda--n1 { background: var(--verde-claro); color: var(--verde-oscuro); }
+.tablero__celda--n2 { background: var(--verde); color: #fff; font-weight: 700; }
+.tablero__celda--n3 { background: var(--verde-oscuro); color: #fff; font-weight: 700; }
+
+.tablero__celda--record {
+    outline: 2px solid var(--oro);
+    outline-offset: -2px;
+}
+
+.leyenda-calor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    font-size: .75rem;
+    color: var(--tinta-suave);
+}
+
+.leyenda-calor__marca {
+    display: inline-block;
+    width: .75rem;
+    height: .75rem;
+    border-radius: 2px;
+    vertical-align: middle;
+}
+
 /* Contador de la barra fija: 7/10 */
 .contador {
     font-family: var(--ff-cifra);

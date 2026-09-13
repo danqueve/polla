@@ -479,6 +479,134 @@ class ReporteService
         return $stmt->fetchAll();
     }
 
+    // ── Estadísticas de números ─────────────────────────────
+
+    /**
+     * Frecuencia, ranking calientes/frios y atraso de cada numero
+     * (00-99) dentro del periodo filtrado. Se recalcula en cada llamada
+     * -sin cache-: el volumen de sorteos/sorteo_numeros es chico incluso
+     * con años de historial, asi que un GROUP BY simple alcanza.
+     *
+     * Sin acotar por alcance ni por $filtro->clienteId/usuarioId a
+     * proposito: los numeros que salieron en un sorteo son un dato del
+     * sorteo, no de quien tipeo el extracto ni de que cliente jugo. Por
+     * eso esta pantalla se instancia siempre con AlcanceReporte::total()
+     * (ver admin/reportes/numeros.php), para que la vea el supervisor
+     * igual que el admin.
+     *
+     * @return array{
+     *     total_sorteos:int,
+     *     numeros:array<int,array{numero:int,apariciones:int,porcentaje:float,atraso:?int}>,
+     *     calientes:array<int,array>, frios:array<int,array>,
+     *     atrasados:array<int,array>, nunca:int[]
+     * }
+     */
+    public function estadisticasNumeros(FiltroReporte $filtro): array
+    {
+        $where  = ['1 = 1'];
+        $params = [];
+        if ($filtro->desde) { $where[] = 's.fecha >= :desde'; $params[':desde'] = $filtro->desde; }
+        if ($filtro->hasta) { $where[] = 's.fecha <= :hasta'; $params[':hasta'] = $filtro->hasta; }
+        if ($filtro->cicloId) { $where[] = 's.ciclo_id = :ciclo'; $params[':ciclo'] = $filtro->cicloId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $where[] = 'cy.tipo = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
+        $condiciones = implode(' AND ', $where);
+
+        // 1) Sorteos del periodo en orden cronologico real (fecha, turno)
+        //    -mismo criterio que SorteoService::listarPorCiclo()/
+        //    recotejarCiclo(): en sabado los 5 turnos comparten fecha, en
+        //    semanal el turno es siempre 1- para poder calcular el
+        //    "atraso" de cada numero como posicion dentro de la secuencia.
+        $stmt = $this->db->prepare(
+            "SELECT s.id FROM sorteos s JOIN ciclos cy ON cy.id = s.ciclo_id
+              WHERE $condiciones ORDER BY s.fecha ASC, s.turno ASC"
+        );
+        $stmt->execute($params);
+        $sorteoIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+        $totalSorteos = count($sorteoIds);
+        if ($totalSorteos === 0) {
+            return [
+                'total_sorteos' => 0, 'numeros' => [], 'calientes' => [],
+                'frios' => [], 'atrasados' => [], 'nunca' => range(0, 99),
+            ];
+        }
+
+        $indice = [];
+        foreach ($sorteoIds as $pos => $id) {
+            $indice[$id] = $pos + 1;
+        }
+
+        // 2) Pares (numero, sorteo_id) DISTINCT: el extracto puede repetir
+        //    un numero en dos posiciones del MISMO sorteo (a diferencia de
+        //    una jugada), y eso no debe contar como una aparicion extra.
+        $stmt = $this->db->prepare(
+            "SELECT DISTINCT sn.numero, sn.sorteo_id
+               FROM sorteo_numeros sn
+               JOIN sorteos s ON s.id = sn.sorteo_id
+               JOIN ciclos cy ON cy.id = s.ciclo_id
+              WHERE $condiciones"
+        );
+        $stmt->execute($params);
+
+        $apariciones  = array_fill(0, 100, 0);
+        $ultimoIndice = array_fill(0, 100, 0); // 0 = no aparecio nunca en el periodo
+        foreach ($stmt->fetchAll() as $fila) {
+            $n   = (int) $fila['numero'];
+            $pos = $indice[(int) $fila['sorteo_id']] ?? 0;
+            $apariciones[$n]++;
+            if ($pos > $ultimoIndice[$n]) {
+                $ultimoIndice[$n] = $pos;
+            }
+        }
+
+        $numeros = [];
+        $nunca   = [];
+        for ($n = 0; $n <= 99; $n++) {
+            $atraso = $ultimoIndice[$n] > 0 ? $totalSorteos - $ultimoIndice[$n] : null;
+            $numeros[$n] = [
+                'numero'      => $n,
+                'apariciones' => $apariciones[$n],
+                'porcentaje'  => $apariciones[$n] / $totalSorteos * 100,
+                'atraso'      => $atraso, // null = nunca broto en este periodo
+            ];
+            if ($atraso === null) {
+                $nunca[] = $n;
+            }
+        }
+
+        $porApariciones = static fn(array $a, array $b): int =>
+            $a['apariciones'] <=> $b['apariciones'] ?: $b['numero'] <=> $a['numero'];
+
+        $calientes = $numeros;
+        usort($calientes, static fn($a, $b) => -$porApariciones($a, $b));
+        $calientes = array_slice($calientes, 0, 10);
+
+        $frios = $numeros;
+        usort($frios, $porApariciones);
+        $frios = array_slice($frios, 0, 10);
+
+        // Atrasados: solo entre los que SI aparecieron alguna vez en el
+        // periodo -con pocos sorteos cargados la mayoria de los 100
+        // numeros puede no haber salido nunca todavia, y mezclarlos aca
+        // (todos "empatados" al maximo posible) no aporta nada; van
+        // aparte en 'nunca'.
+        $atrasados = array_values(array_filter($numeros, static fn($f) => $f['atraso'] !== null));
+        usort($atrasados, static fn($a, $b) => $b['atraso'] <=> $a['atraso'] ?: $a['numero'] <=> $b['numero']);
+        $atrasados = array_slice($atrasados, 0, 10);
+
+        return [
+            'total_sorteos' => $totalSorteos,
+            'numeros'       => $numeros,
+            'calientes'     => $calientes,
+            'frios'         => $frios,
+            'atrasados'     => $atrasados,
+            'nunca'         => $nunca,
+        ];
+    }
+
     // ── Internos ────────────────────────────────────────────
 
     /**

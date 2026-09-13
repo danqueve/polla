@@ -1,6 +1,6 @@
 <?php
 /**
- * Exportable CSV de jugadas y de ganadores.
+ * Exportable CSV de jugadas, ganadores y estadisticas de numeros.
  *
  * Usa exactamente los mismos metodos de ReporteService que las
  * pantallas, con el mismo alcance armado desde la sesion. No hay una
@@ -11,8 +11,10 @@
  * en español espera: con coma abre todo en una sola columna y sin BOM
  * rompe los acentos.
  *
- * Exclusivo del admin: jugadas.php y ganadores.php (las pantallas que
- * este archivo exporta) tambien lo son.
+ * jugadas/ganadores son exclusivos del admin (jugadas.php y
+ * ganadores.php, las pantallas que exportan, tambien lo son).
+ * numeros es de admin y supervisor por igual -mismo criterio que
+ * admin/reportes/numeros.php-, asi que el guard depende de $que.
  */
 require_once __DIR__ . '/../../config/app.php';
 
@@ -20,16 +22,23 @@ use Polla\Services\ReporteService;
 use Polla\Support\AlcanceReporte;
 use Polla\Support\FiltroReporte;
 
-requireAdmin();
+$que = in_array($_GET['que'] ?? '', ['jugadas', 'ganadores', 'numeros'], true)
+     ? $_GET['que'] : 'jugadas';
+
+if ($que === 'numeros') {
+    requireLogin();
+} else {
+    requireAdmin();
+}
 
 $db      = getPDO();
 $usuario = currentUser();
 
-$alcance = AlcanceReporte::desdeSesion((int) $usuario['id'], (string) $usuario['rol']);
+$alcance = $que === 'numeros'
+    ? AlcanceReporte::total((int) $usuario['id'])
+    : AlcanceReporte::desdeSesion((int) $usuario['id'], (string) $usuario['rol']);
 $reporte = new ReporteService($db, $alcance);
 $filtro  = FiltroReporte::desdeGet($_GET, $alcance);
-
-$que = ($_GET['que'] ?? 'jugadas') === 'ganadores' ? 'ganadores' : 'jugadas';
 
 // Nombre con la fecha y, si es un supervisor, con su usuario: asi no se
 // confunden dos archivos bajados el mismo dia por gente distinta.
@@ -84,7 +93,7 @@ if ($que === 'jugadas') {
         ]);
     }
 
-} else {
+} elseif ($que === 'ganadores') {
 
     $fila([
         'Premio', 'Jugada', 'N cliente', 'DNI', 'Cliente', 'Telefono',
@@ -104,6 +113,23 @@ if ($que === 'jugadas') {
             implode(' ', array_map('num2', $g['numeros'])),
             number_format((float) $g['monto_premio'], 2, ',', ''),
             $g['cargado_por'] ?? '',
+        ]);
+    }
+
+} else {
+
+    $stats = $reporte->estadisticasNumeros($filtro);
+
+    $fila(['Sorteos analizados', $stats['total_sorteos']]);
+    $fila([]);
+    $fila(['Número', 'Apariciones', 'Porcentaje', 'Atraso (sorteos)']);
+
+    foreach ($stats['numeros'] as $f) {
+        $fila([
+            num2($f['numero']),
+            $f['apariciones'],
+            number_format($f['porcentaje'], 1, ',', '') . '%',
+            $f['atraso'] === null ? 'Nunca en este período' : $f['atraso'],
         ]);
     }
 }

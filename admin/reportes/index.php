@@ -255,6 +255,15 @@ require __DIR__ . '/../../includes/topbar.php';
         </div>
 
     <?php endif; ?>
+
+    <!-- Visible para admin y supervisor: los números que salen en un
+         sorteo no son un dato de ningún cliente ni de quién lo cargó. -->
+    <div class="d-flex flex-column gap-2 mt-2">
+        <a href="<?= APP_URL ?>/admin/reportes/numeros.php<?= $qs ? '?' . e($qs) : '' ?>"
+           class="btn btn-outline-secondary w-100">
+            <i class="bi bi-grid-3x3-gap"></i> Estadísticas de números
+        </a>
+    </div>
 </main>
 
 <?php

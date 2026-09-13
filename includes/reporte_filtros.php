@@ -8,6 +8,13 @@
  * de detalle por cliente que ese filtro pueda acotar (ver
  * admin/reportes/index.php), asi que mostrarlo seria una opcion que no
  * hace nada.
+ *
+ * $ocultarFiltrosPersonales (opcional): en true, esconde Cliente y
+ * "Cargado por" aunque $alcance->esAdmin() de true -lo usa
+ * admin/reportes/numeros.php, que se instancia con
+ * AlcanceReporte::total() para que el supervisor vea todo sin acotar,
+ * pero donde ni cliente ni "cargado por" tienen ningun sentido: los
+ * numeros que salieron en un sorteo no son de nadie en particular.
  */
 use Polla\Services\CicloService;
 use Polla\Support\FiltroReporte;
@@ -58,7 +65,7 @@ $_ciclos   = $reporte->ciclosParaFiltro($filtro->tipoJuego !== FiltroReporte::TI
             </select>
         </div>
 
-        <?php if ($alcance->esAdmin()): ?>
+        <?php if ($alcance->esAdmin() && empty($ocultarFiltrosPersonales)): ?>
             <div class="col-12">
                 <label class="form-label" for="cliente">Cliente</label>
                 <select class="form-select" id="cliente" name="cliente">
@@ -73,7 +80,7 @@ $_ciclos   = $reporte->ciclosParaFiltro($filtro->tipoJuego !== FiltroReporte::TI
             </div>
         <?php endif; ?>
 
-        <?php if ($_usuarios): ?>
+        <?php if ($_usuarios && empty($ocultarFiltrosPersonales)): ?>
             <div class="col-12">
                 <label class="form-label" for="usuario">Cargado por</label>
                 <select class="form-select" id="usuario" name="usuario">

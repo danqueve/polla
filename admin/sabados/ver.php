@@ -246,17 +246,24 @@ require __DIR__ . '/../../includes/topbar.php';
                         <?php endforeach; ?>
                     </div>
 
-                    <?php if (isAdmin() && $abierto): ?>
-                        <form method="post" action="<?= APP_URL ?>/admin/sabados/sorteo_eliminar.php"
-                              class="mt-2 text-end"
-                              onsubmit="return confirm('¿Borrar el turno <?= (int) $sorteo['turno'] ?>?')">
-                            <?= csrfField() ?>
-                            <input type="hidden" name="id" value="<?= (int) $sorteo['id'] ?>">
-                            <input type="hidden" name="volver_a" value="<?= (int) $ciclo['id'] ?>">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash"></i> Borrar
-                            </button>
-                        </form>
+                    <?php if (isAdmin()): ?>
+                        <div class="mt-2 text-end d-flex justify-content-end gap-2">
+                            <a href="<?= APP_URL ?>/admin/sabados/sorteo_editar.php?id=<?= (int) $sorteo['id'] ?>"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <?php if ($abierto): ?>
+                                <form method="post" action="<?= APP_URL ?>/admin/sabados/sorteo_eliminar.php"
+                                      onsubmit="return confirm('¿Borrar el turno <?= (int) $sorteo['turno'] ?>?')">
+                                    <?= csrfField() ?>
+                                    <input type="hidden" name="id" value="<?= (int) $sorteo['id'] ?>">
+                                    <input type="hidden" name="volver_a" value="<?= (int) $ciclo['id'] ?>">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Borrar
+                                    </button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>

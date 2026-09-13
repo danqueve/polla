@@ -237,6 +237,29 @@ class CicloService
         return $stmt->fetch() ?: null;
     }
 
+    /**
+     * Igual que buscarPorId(), pero deja la fila bloqueada hasta el
+     * commit. A diferencia de bloquearAbierto(), bloquea CUALQUIER
+     * ciclo sea cual sea su estado -- lo usa SorteoService::corregir()
+     * para tomar el candado del ciclo de un sorteo que puede estar
+     * cerrado.
+     *
+     * Solo tiene sentido llamarlo dentro de una transaccion.
+     */
+    public function bloquearPorId(int $id): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT c.*, p.monto_arrastrado, p.monto_acumulado, p.monto_pagado,
+                    p.monto_piso_aplicado, p.fecha_liquidacion
+               FROM ciclos c
+               LEFT JOIN pozo_ciclo p ON p.ciclo_id = c.id
+              WHERE c.id = :id LIMIT 1
+                FOR UPDATE'
+        );
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch() ?: null;
+    }
+
     /** @return array<int,array> */
     public function listar(int $limite = 20, string $tipo = self::TIPO_SEMANAL): array
     {

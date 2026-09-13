@@ -168,6 +168,253 @@ class SorteoService
         return (int) $stmt->fetchColumn() + 1;
     }
 
+    // ── Correccion de un sorteo mal cargado ────────────────────
+
+    /**
+     * Id del sorteo mas nuevo (mayor fecha/turno) de un ciclo, o null
+     * si no tiene ninguno. Para sabados, todos los turnos comparten la
+     * misma fecha, asi que "turno DESC" es lo que realmente desempata
+     * al mas nuevo.
+     */
+    public function idDelUltimoSorteo(int $cicloId): ?int
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id FROM sorteos WHERE ciclo_id = :ciclo
+              ORDER BY fecha DESC, turno DESC LIMIT 1'
+        );
+        $stmt->execute([':ciclo' => $cicloId]);
+        $id = $stmt->fetchColumn();
+
+        return $id !== false ? (int) $id : null;
+    }
+
+    /**
+     * Hint de solo lectura para la UI: ¿se puede corregir un
+     * sorteo de este ciclo? corregir() vuelve a validar esto mismo con
+     * los candados ya tomados -- esto es solo para no mostrarle al
+     * admin un formulario condenado a fallar.
+     *
+     * @return array{permitido:bool, motivo:?string}
+     */
+    public function puedeCorregirse(array $ciclo): array
+    {
+        if ($ciclo['estado'] === CicloService::ESTADO_ABIERTO) {
+            return ['permitido' => true, 'motivo' => null];
+        }
+        if ($ciclo['estado'] !== CicloService::ESTADO_CON_GANADOR
+            && $ciclo['estado'] !== CicloService::ESTADO_SIN_GANADOR) {
+            return ['permitido' => false, 'motivo' => 'Este ciclo todavía no tiene sorteos.'];
+        }
+
+        $siguiente = $this->ciclos->buscarAbierto($ciclo['tipo']);
+        if (!$siguiente || (int) $siguiente['numero'] !== (int) $ciclo['numero'] + 1) {
+            return ['permitido' => false, 'motivo' =>
+                'No se puede corregir: ya pasaron más ciclos desde que este se cerró.'];
+        }
+        if ($this->tieneSorteosPropios((int) $siguiente['id'])) {
+            return ['permitido' => false, 'motivo' =>
+                'No se puede corregir: el ciclo siguiente ya tiene sorteos propios cargados '
+              . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
+              . 'jugadas o pozo acumulado, pero no sorteos.'];
+        }
+
+        return ['permitido' => true, 'motivo' => null];
+    }
+
+    private function tieneSorteosPropios(int $cicloId): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM sorteos WHERE ciclo_id = :id LIMIT 1');
+        $stmt->execute([':id' => $cicloId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    private function tieneJugadas(int $cicloId): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM jugadas WHERE ciclo_id = :id LIMIT 1');
+        $stmt->execute([':id' => $cicloId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Corrige los 20 numeros de un sorteo ya cargado y vuelve a correr
+     * el cotejo desde cero. Solo corrige numeros, no fecha ni turno.
+     *
+     * Reglas duras (puedeCorregirse() da el mismo veredicto de
+     * antemano para la UI; aca se revalidan con los candados ya
+     * tomados, que es la autoridad real):
+     *  - Si el ciclo ya cerro, el ciclo siguiente del mismo tipo tiene
+     *    que ser exactamente numero+1 y no tener sorteos propios.
+     *
+     * Si el ciclo estaba cerrado, antes de recotejar: revierte el
+     * cierre (jugadas ganadora/perdedora -> activa; si fue con
+     * ganador, borra `ganadores` y resetea la liquidacion del pozo; si
+     * fue sin ganador, resta del pozo del siguiente el arrastre que se
+     * le habia sumado de mas) y devuelve el ciclo siguiente a
+     * `programado` -- sin tocar sus jugadas ni su pozo propio, que ya
+     * estan donde deben estar segun la regla de corte automatico de
+     * semana ya iniciada (Fase 12).
+     *
+     * @param string[] $numerosCrudos
+     * @return array{sorteo_id:int, ciclo_id:int, reabierto:bool, ganadores:array<int,float>,
+     *               cerro_ciclo:bool, estado_cierre:?string, pozo_repartido:float,
+     *               ciclo_nuevo_id:?int, arrastre:float}
+     * @throws ValidacionException
+     */
+    public function corregir(int $sorteoId, array $numerosCrudos, ?int $usuarioId): array
+    {
+        $numeros = $this->validarNumeros($numerosCrudos);
+
+        $this->db->beginTransaction();
+        try {
+            $sorteo = $this->buscarPorId($sorteoId);
+            if (!$sorteo) {
+                throw ValidacionException::de('El sorteo no existe.');
+            }
+
+            $viejo = $this->ciclos->bloquearPorId((int) $sorteo['ciclo_id']);
+            if (!$viejo) {
+                throw ValidacionException::de('El ciclo de ese sorteo no existe.');
+            }
+
+            $tipo      = $viejo['tipo'];
+            $reabierto = false;
+
+            if ($viejo['estado'] !== CicloService::ESTADO_ABIERTO) {
+                $reabierto = true;
+
+                $siguiente = $this->ciclos->bloquearAbierto($tipo);
+                if (!$siguiente || (int) $siguiente['numero'] !== (int) $viejo['numero'] + 1) {
+                    throw ValidacionException::de(
+                        'No se puede corregir: ya pasaron más ciclos desde que este se cerró.'
+                    );
+                }
+                if ($this->tieneSorteosPropios((int) $siguiente['id'])) {
+                    throw ValidacionException::de(
+                        'No se puede corregir: el ciclo siguiente ya tiene sorteos propios cargados '
+                      . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
+                      . 'jugadas o pozo acumulado, pero no sorteos.'
+                    );
+                }
+
+                // Si quedo un "programado" vacio de mas (creado al
+                // promover a $siguiente por error), su trabajo lo
+                // retoma $siguiente en cuanto lo bajemos de categoria.
+                $extra = $this->ciclos->buscarProgramado($tipo);
+                if ($extra) {
+                    if ($this->tieneSorteosPropios((int) $extra['id'])
+                        || $this->tieneJugadas((int) $extra['id'])) {
+                        // No deberia poder pasar (ver diseño): defensivo.
+                        throw ValidacionException::de(
+                            'No se puede corregir: hay actividad inesperada en un ciclo posterior.'
+                        );
+                    }
+                    $this->db->prepare('DELETE FROM ciclos WHERE id = :id')
+                        ->execute([':id' => $extra['id']]);
+                }
+
+                if ($viejo['estado'] === CicloService::ESTADO_SIN_GANADOR) {
+                    // Deshacer el arrastre que la promocion erronea le
+                    // sumo al pozo del siguiente.
+                    $arrastre = $this->pozo->montoAcumulado((int) $viejo['id']);
+                    if ($arrastre > 0) {
+                        $this->db->prepare(
+                            'UPDATE pozo_ciclo
+                                SET monto_arrastrado = monto_arrastrado - :a1,
+                                    monto_acumulado  = monto_acumulado  - :a2
+                              WHERE ciclo_id = :ciclo'
+                        )->execute([':a1' => $arrastre, ':a2' => $arrastre, ':ciclo' => $siguiente['id']]);
+                    }
+                } else {
+                    // CON_GANADOR: deshacer la liquidacion falsa.
+                    $this->db->prepare('DELETE FROM ganadores WHERE ciclo_id = :ciclo')
+                        ->execute([':ciclo' => $viejo['id']]);
+                    $this->db->prepare(
+                        'UPDATE pozo_ciclo
+                            SET monto_piso_aplicado = NULL, monto_pagado = 0, fecha_liquidacion = NULL
+                          WHERE ciclo_id = :ciclo'
+                    )->execute([':ciclo' => $viejo['id']]);
+                }
+
+                $this->db->prepare(
+                    "UPDATE jugadas SET estado = 'activa'
+                      WHERE ciclo_id = :ciclo AND estado IN ('ganadora','perdedora')"
+                )->execute([':ciclo' => $viejo['id']]);
+
+                // Orden OBLIGATORIO por el UNIQUE(tipo, *_flag): primero
+                // el siguiente sale de 'abierto' (a 'programado'),
+                // recien despues el viejo puede entrar a 'abierto'.
+                $this->db->prepare("UPDATE ciclos SET estado = 'programado' WHERE id = :id")
+                    ->execute([':id' => $siguiente['id']]);
+                $this->db->prepare(
+                    "UPDATE ciclos SET estado = 'abierto', fecha_cierre = NULL WHERE id = :id"
+                )->execute([':id' => $viejo['id']]);
+            }
+
+            // Reemplazar los 20 numeros del sorteo.
+            $this->db->prepare('DELETE FROM sorteo_numeros WHERE sorteo_id = :id')
+                ->execute([':id' => $sorteoId]);
+            $stmt = $this->db->prepare(
+                'INSERT INTO sorteo_numeros (sorteo_id, posicion, numero) VALUES (:sorteo, :pos, :numero)'
+            );
+            foreach ($numeros as $i => $numero) {
+                $stmt->execute([':sorteo' => $sorteoId, ':pos' => $i + 1, ':numero' => $numero]);
+            }
+
+            $this->db->prepare(
+                'UPDATE sorteos SET corregido_por = :u, corregido_en = NOW() WHERE id = :id'
+            )->execute([':u' => $usuarioId, ':id' => $sorteoId]);
+
+            // Una correccion puede ser de un sorteo anterior. Repetimos el
+            // cotejo cronologico completo para que el primer ganador (o el
+            // arrastre final) sea el que realmente corresponde.
+            $resultado = $this->recotejarCiclo($viejo, $tipo);
+
+            $this->db->commit();
+
+            return ['sorteo_id' => $sorteoId, 'ciclo_id' => (int) $viejo['id'], 'reabierto' => $reabierto]
+                 + $resultado;
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * Recorre los extractos existentes en orden cronologico y detiene la
+     * secuencia en cuanto el ciclo se cierra, igual que durante una carga
+     * normal. Se llama despues de dejar todas las jugadas activas al
+     * reabrir un ciclo cerrado.
+     *
+     * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
+     *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
+     */
+    private function recotejarCiclo(array $ciclo, string $tipo): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, fecha, turno FROM sorteos WHERE ciclo_id = :ciclo ORDER BY fecha ASC, turno ASC'
+        );
+        $stmt->execute([':ciclo' => $ciclo['id']]);
+
+        $resultado = [
+            'ganadores' => [], 'cerro_ciclo' => false, 'estado_cierre' => null,
+            'pozo_repartido' => 0.0, 'ciclo_nuevo_id' => null, 'arrastre' => 0.0,
+        ];
+        foreach ($stmt->fetchAll() as $sorteo) {
+            $esUltimo = $tipo === CicloService::TIPO_SABADO
+                ? ((int) $sorteo['turno'] === 5)
+                : ($sorteo['fecha'] === $ciclo['fecha_fin']);
+            $resultado = $this->cotejarYCerrar((int) $sorteo['id'], $ciclo, $esUltimo, $tipo);
+            if ($resultado['cerro_ciclo']) {
+                break;
+            }
+        }
+
+        return $resultado;
+    }
+
     // ── Cotejo ──────────────────────────────────────────────
 
     /**

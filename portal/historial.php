@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/portal.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\JugadaService;
 use Polla\Services\PortalService;
 
 requireCliente();
@@ -121,6 +122,38 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                     <?php $evaluacion = PortalService::evaluar($jugada['numeros'], $sorteos); ?>
                     <?php require __DIR__ . '/../includes/portal_jugada.php'; ?>
                 <?php endforeach; ?>
+
+                <?php if ($c['estado'] !== CicloService::ESTADO_PROGRAMADO): ?>
+                    <?php
+                    $ajenas = array_filter(
+                        JugadaService::crearDesde($db)->listarPorCiclo($cicloId),
+                        static fn($j) => (int) $j['cliente_id'] !== $clienteId
+                    );
+                    ?>
+                    <?php if ($ajenas): ?>
+                        <p class="rotulo mt-3 mb-2">Jugadas de los demás en este ciclo</p>
+                        <?php foreach ($ajenas as $j): ?>
+                            <div class="fila mb-2">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="min-w-0">
+                                        <p class="fila__titulo mb-0"><?= e(mb_substr($j['cliente_nombre'], 0, 5)) ?>…</p>
+                                        <p class="fila__meta mb-0">N° <?= e($j['nro_cliente']) ?></p>
+                                    </div>
+                                    <?php if ($j['estado'] === 'ganadora'): ?>
+                                        <span class="etiqueta etiqueta--oro text-nowrap">
+                                            <i class="bi bi-trophy-fill"></i> Ganó
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="bolillas mt-2">
+                                    <?php foreach ($j['numeros'] as $numero): ?>
+                                        <span class="bolilla"><?= e(num2($numero)) ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                <?php endif; ?>
             </section>
 
         <?php endforeach; ?>

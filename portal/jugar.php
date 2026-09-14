@@ -27,6 +27,7 @@ requireCliente();
 $db         = getPDO();
 $parametros = new ParametroService($db);
 $horario    = new HorarioCargaService($parametros);
+$ciclos     = new CicloService($db, $parametros);
 $clienteId  = (int) clienteActualId();
 
 $tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
@@ -34,6 +35,12 @@ $tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
     : CicloService::TIPO_SEMANAL;
 $esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
 $horaAbierto = $horario->abierto($tipoJuego);
+
+// Vista previa de a que ciclo va a ir esta jugada (nunca definitiva: la
+// solicitud recien queda asignada de verdad cuando el staff confirme
+// el pago -- ver SolicitudService::confirmar()). Sirve para avisar
+// "esto va para la semana que viene" antes de que el cliente confirme.
+$cicloPreview = $ciclos->obtenerCicloParaCarga($tipoJuego);
 
 $importe  = $esSabado ? $parametros->importeJugadaSabado() : $parametros->importeJugada();
 $cantidad = $esSabado ? $parametros->numerosPorJugadaSabado() : $parametros->numerosPorJugada();
@@ -121,6 +128,18 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         Elegí <?= $cantidad ?> números por jugada. Después pagás en persona o por
         transferencia con el código que te va a quedar.
     </p>
+
+    <?php if ($cicloPreview['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
+        <div class="alert alert-info py-2" style="font-size:.875rem">
+            <?php if ($esSabado): ?>
+                Ya se cargó el primer turno del sábado en curso: esta jugada va a
+                quedar anotada para el próximo sábado.
+            <?php else: ?>
+                Ya pasó el corte de carga de esta semana: esta jugada va a quedar
+                anotada para la semana que viene.
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <ul class="nav nav-pills mb-3">
         <li class="nav-item">

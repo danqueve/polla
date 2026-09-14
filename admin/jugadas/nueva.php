@@ -128,8 +128,13 @@ require __DIR__ . '/../../includes/topbar.php';
     </p>
     <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
         <div class="alert alert-info py-2" style="font-size:.875rem">
-            Ya se cargó el primer <?= $esSabado ? 'turno' : 'sorteo' ?> de la semana en curso:
-            esta jugada queda anotada para <?= $esSabado ? 'el próximo sábado' : 'la semana que viene' ?>.
+            <?php if ($esSabado): ?>
+                Ya se cargó el primer turno del sábado en curso: esta jugada queda
+                anotada para el próximo sábado.
+            <?php else: ?>
+                Ya pasó el corte de carga de esta semana (lunes, o ya se cargó el
+                primer sorteo): esta jugada queda anotada para la semana que viene.
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 

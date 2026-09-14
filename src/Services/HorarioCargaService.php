@@ -37,33 +37,38 @@ class HorarioCargaService
     /** true si en este momento se puede cargar jugadas de ese tipo de juego. */
     public function abierto(string $tipoJuego, ?DateTimeImmutable $ahora = null): bool
     {
+        if ($tipoJuego === CicloService::TIPO_SEMANAL) {
+            // El semanal ya no bloquea la carga: lo que se cargue
+            // despues del corte del lunes (horario_limite_semanal) va
+            // para el ciclo de la semana que viene en vez de
+            // rechazarse -- ver CicloService::obtenerCicloParaCarga()/
+            // pasoCorteSemanal(). El parametro sigue existiendo, pero
+            // como el horario de ESE corte, ya no como gate de acceso.
+            return true;
+        }
+
         $ahora   = $ahora ?? new DateTimeImmutable('now');
         $diaIso  = (int) $ahora->format('N'); // 1 = lunes ... 7 = domingo
         $minutos = self::minutosDelDia($ahora);
 
-        if ($tipoJuego === CicloService::TIPO_SABADO) {
-            // Solo el sabado tiene corte; domingo a viernes, sin limite.
-            return $diaIso !== 6 || $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSabado());
-        }
-
-        // Semanal: corte de lunes a viernes; sabado y domingo, sin limite.
-        return $diaIso > 5 || $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSemanal());
+        // Sabado: solo el sabado tiene corte; domingo a viernes, sin limite.
+        return $diaIso !== 6 || $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSabado());
     }
 
-    /** Mensaje para mostrarle al usuario, o null si esta dentro de horario. */
+    /**
+     * Mensaje para mostrarle al usuario, o null si esta dentro de
+     * horario. Solo el sabado puede devolver un mensaje: el semanal
+     * ya nunca esta "cerrado" (abierto() siempre da true para ese
+     * tipo), asi que esta rama solo se recorre para sabados.
+     */
     public function motivoCerrado(string $tipoJuego, ?DateTimeImmutable $ahora = null): ?string
     {
         if ($this->abierto($tipoJuego, $ahora)) {
             return null;
         }
 
-        $limite = $tipoJuego === CicloService::TIPO_SABADO
-            ? $this->parametros->horarioLimiteSabado()
-            : $this->parametros->horarioLimiteSemanal();
-
-        $juego = $tipoJuego === CicloService::TIPO_SABADO ? 'de sábados' : 'de esta semana';
-
-        return 'El horario para cargar jugadas ' . $juego . ' cerró a las ' . $limite
+        return 'El horario para cargar jugadas de sábados cerró a las '
+             . $this->parametros->horarioLimiteSabado()
              . '. Podés volver a cargar mañana a partir de las 00:00.';
     }
 

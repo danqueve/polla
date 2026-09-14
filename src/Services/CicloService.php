@@ -53,10 +53,12 @@ class CicloService
     ];
 
     private PDO $db;
+    private ParametroService $parametros;
 
-    public function __construct(PDO $db)
+    public function __construct(PDO $db, ?ParametroService $parametros = null)
     {
-        $this->db = $db;
+        $this->db         = $db;
+        $this->parametros = $parametros ?? new ParametroService($db);
     }
 
     /**
@@ -160,7 +162,7 @@ class CicloService
     public function obtenerCicloParaCarga(string $tipo = self::TIPO_SEMANAL): array
     {
         $abierto = $this->obtenerCicloActivo($tipo);
-        if (!$this->yaTieneSorteoCargado((int) $abierto['id'])) {
+        if (!$this->yaTieneSorteoCargado((int) $abierto['id']) && !$this->pasoCorteSemanal($abierto)) {
             return $abierto;
         }
 
@@ -179,7 +181,7 @@ class CicloService
         if (!$abierto) {
             return null;
         }
-        if (!$this->yaTieneSorteoCargado((int) $abierto['id'])) {
+        if (!$this->yaTieneSorteoCargado((int) $abierto['id']) && !$this->pasoCorteSemanal($abierto)) {
             return $abierto;
         }
 
@@ -192,6 +194,28 @@ class CicloService
         $stmt->execute([':id' => $cicloId]);
 
         return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Segundo corte para el semanal, ademas de "ya tiene un sorteo
+     * cargado": pasado el horario_limite_semanal del lunes de ESE
+     * ciclo (fecha_inicio siempre cae en lunes), lo que se cargue ya
+     * no cuenta para esta semana aunque todavia no haya corrido
+     * ningun sorteo -- va para la semana que viene. No aplica a
+     * sabados, que siguen cortando solo por HorarioCargaService (gate
+     * duro a las horario_limite_sabado).
+     */
+    private function pasoCorteSemanal(array $ciclo): bool
+    {
+        if ($ciclo['tipo'] !== self::TIPO_SEMANAL) {
+            return false;
+        }
+
+        $corte = new DateTimeImmutable(
+            $ciclo['fecha_inicio'] . ' ' . $this->parametros->horarioLimiteSemanal() . ':00'
+        );
+
+        return new DateTimeImmutable('now') > $corte;
     }
 
     /**

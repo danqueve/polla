@@ -191,15 +191,17 @@ require __DIR__ . '/../../includes/topbar.php';
 
         <div class="tarjeta p-3 mb-3">
             <span class="rotulo d-block mb-2">Horarios límite de carga</span>
-            <p class="fila__meta mt-0 mb-3">
-                Después de este horario, clientes y staff no pueden cargar más
-                jugadas de ese juego hasta el otro día.
-            </p>
 
             <div class="mb-3">
-                <label class="form-label" for="horario_limite_semanal">Semanal (lunes a viernes)</label>
+                <label class="form-label" for="horario_limite_semanal">Semanal (corte del lunes)</label>
                 <input type="time" class="form-control cifra" id="horario_limite_semanal" name="horario_limite_semanal"
                        value="<?= e($horarioSemanal) ?>" required>
+                <div class="form-text">
+                    Hasta esta hora del lunes, lo que se cargue cuenta para el pozo
+                    de esta semana. Después (martes a domingo), la carga no se
+                    bloquea: lo que se cargue queda anotado automáticamente para
+                    la semana que viene.
+                </div>
                 <?php if ($ultimoHorarioSemanal): ?>
                     <p class="fila__meta mb-0 mt-1">
                         Último cambio: <?= e(formatFechaHora($ultimoHorarioSemanal['actualizado_en'])) ?>
@@ -214,6 +216,10 @@ require __DIR__ . '/../../includes/topbar.php';
                 <label class="form-label" for="horario_limite_sabado">Sábados</label>
                 <input type="time" class="form-control cifra" id="horario_limite_sabado" name="horario_limite_sabado"
                        value="<?= e($horarioSabado) ?>" required>
+                <div class="form-text">
+                    Después de este horario, clientes y staff no pueden cargar más
+                    jugadas de sábado hasta el sábado siguiente.
+                </div>
                 <?php if ($ultimoHorarioSabado): ?>
                     <p class="fila__meta mb-0 mt-1">
                         Último cambio: <?= e(formatFechaHora($ultimoHorarioSabado['actualizado_en'])) ?>

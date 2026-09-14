@@ -11,7 +11,7 @@
 -- 2026-09-11_ciclo_programado.sql.
 -- ============================================================
 
-USE `iifatgdb_decena`;
+USE `polla_quevedo`;
 
 ALTER TABLE `sorteos`
     ADD COLUMN `corregido_por` INT UNSIGNED NULL AFTER `cargado_por`,

@@ -21,7 +21,7 @@
 -- 2026-09-11_vendedor_cliente_link.sql.
 -- ============================================================
 
-USE `iifatgdb_decena`;
+USE `polla_quevedo`;
 
 ALTER TABLE `ciclos`
     MODIFY COLUMN `estado` ENUM('programado','abierto','cerrado_con_ganador','cerrado_sin_ganador')

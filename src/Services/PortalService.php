@@ -125,60 +125,59 @@ class PortalService
     }
 
     /**
-     * Cuenta cuantos numeros de la jugada salieron EN CADA SORTEO por
-     * separado.
+     * Progreso de una jugada contra los sorteos ya cargados de su ciclo,
+     * bajo el MISMO criterio de cotejo que decide un ganador de verdad
+     * (SorteoService::jugadasGanadoras()): los aciertos se acumulan
+     * entre todos los sorteos del ciclo, no hace falta que los numeros
+     * salgan juntos en uno solo.
      *
-     * Deliberadamente no se acumula a lo largo de la semana. La regla
-     * del juego exige los 10 en un mismo sorteo, pero entre los 5
-     * sorteos de una semana salen hasta 100 numeros: simulando 200.000
-     * jugadas, en el 0,93% de los casos los 10 numeros aparecen en algun
-     * momento de la semana sin haber ganado nunca. Marcar la union
-     * dejaria a uno de cada cien clientes viendo sus 10 numeros en verde
-     * y creyendo que gano.
+     * Hasta el commit a0608e2 esto se calculaba distinto a proposito
+     * (solo contra el mejor sorteo individual, nunca la union de la
+     * semana), porque en ese momento esa tambien era la regla real para
+     * ganar. Cuando la regla de negocio paso a acumulado, esto se quedo
+     * atras mostrando un progreso mas bajo del que el cliente realmente
+     * tenia -- se corrige aca para que coincida con lo que de verdad
+     * decide un premio.
      *
-     * @param int[] $numerosJugada Los 10 numeros, distintos entre si.
-     * @param array $sorteos       Salida de sorteosDelCiclo().
+     * @param int[] $numerosJugada Los numeros de la jugada, distintos entre si.
+     * @param array $sorteos       Salida de sorteosDelCiclo(), en orden de fecha/turno.
      * @return array{
-     *     porSorteo: array<int,array{fecha:string, aciertos:int, acertados:array<int,bool>}>,
-     *     mejor: ?array,
-     *     mejorAciertos: int
+     *     acertados: array<int,bool>,
+     *     aciertos: int,
+     *     porSorteo: array<int,array{fecha:string, acertados:array<int,bool>, acumulado:int}>
      * }
      */
     public static function evaluar(array $numerosJugada, array $sorteos): array
     {
-        $porSorteo = [];
-        $mejor     = null;
+        // Los numeros de la jugada ya son distintos entre si, asi que la
+        // interseccion no puede contar dos veces el mismo numero aunque
+        // el extracto lo repita en dos posiciones (dentro de un sorteo,
+        // o entre sorteos distintos del mismo ciclo) -- mismo COUNT
+        // DISTINCT que usa jugadasGanadoras() del lado del cotejo real.
+        $tieneNumero = array_flip($numerosJugada);
+        $acumulados  = [];
+        $porSorteo   = [];
 
         foreach ($sorteos as $sorteo) {
-            // Los numeros de la jugada ya son distintos entre si, asi que
-            // la interseccion no puede contar dos veces el mismo numero
-            // aunque el extracto lo haya repetido en dos posiciones.
-            $salieron  = array_flip($sorteo['numeros']);
-            $acertados = [];
-
-            foreach ($numerosJugada as $numero) {
-                if (isset($salieron[$numero])) {
-                    $acertados[$numero] = true;
+            $deEseDia = [];
+            foreach ($sorteo['numeros'] as $numero) {
+                if (isset($tieneNumero[$numero])) {
+                    $deEseDia[$numero]   = true;
+                    $acumulados[$numero] = true;
                 }
             }
 
-            $entrada = [
+            $porSorteo[] = [
                 'fecha'     => $sorteo['fecha'],
-                'aciertos'  => count($acertados),
-                'acertados' => $acertados,
+                'acertados' => $deEseDia,
+                'acumulado' => count($acumulados),
             ];
-
-            $porSorteo[] = $entrada;
-
-            if ($mejor === null || $entrada['aciertos'] > $mejor['aciertos']) {
-                $mejor = $entrada;
-            }
         }
 
         return [
-            'porSorteo'     => $porSorteo,
-            'mejor'         => $mejor,
-            'mejorAciertos' => $mejor['aciertos'] ?? 0,
+            'acertados' => $acumulados,
+            'aciertos'  => count($acumulados),
+            'porSorteo' => $porSorteo,
         ];
     }
 

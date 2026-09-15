@@ -17,17 +17,18 @@
  *                 indice, asi que no hace falta cruzar por fecha para
  *                 mostrar el extracto completo de cada fila.
  *
- * Los numeros se marcan contra UN sorteo (el mejor), nunca contra la
- * union de la semana: ganar exige los 10 en un mismo sorteo.
+ * Los numeros se marcan acumulados entre todos los sorteos del ciclo
+ * (PortalService::evaluar()), igual que el cotejo real: no hace falta
+ * que salgan juntos en uno solo.
  */
-$gano   = $jugada['monto_premio'] !== null;
-$mejor  = $evaluacion['mejor'];
-$mejorN = $evaluacion['mejorAciertos'];
-$total  = count($jugada['numeros']);
+$gano      = $jugada['monto_premio'] !== null;
+$acertados = $evaluacion['acertados'];
+$aciertos  = $evaluacion['aciertos'];
+$total     = count($jugada['numeros']);
 
-// Contra que sorteo se pintan las bolillas. Si gano, contra el sorteo
-// que la hizo ganar; si no, contra el que mejor le fue.
-$marcados = $mejor['acertados'] ?? [];
+// Bolillas de "Tus N numeros": cualquiera ya salido en algun sorteo del
+// ciclo hasta ahora, acumulado.
+$marcados = $acertados;
 ?>
 <article class="tarjeta tarjeta--realce mb-3 overflow-hidden">
 
@@ -73,9 +74,9 @@ $marcados = $mejor['acertados'] ?? [];
             <div class="min-w-0">
                 <p class="estado-jugada__titulo">Todavía jugando</p>
                 <p class="estado-jugada__detalle">
-                    <?php $faltan = $total - $mejorN; ?>
-                    En tu mejor sorteo te
-                    <?= $faltan === 1 ? 'faltó 1 número' : 'faltaron ' . $faltan . ' números' ?>
+                    <?php $faltan = $total - $aciertos; ?>
+                    Llevás <?= $aciertos ?> de <?= $total ?> acumulados,
+                    te <?= $faltan === 1 ? 'falta 1 número' : 'faltan ' . $faltan . ' números' ?>
                 </p>
             </div>
         </div>
@@ -87,7 +88,7 @@ $marcados = $mejor['acertados'] ?? [];
             <div class="min-w-0">
                 <p class="estado-jugada__titulo">Sin premio</p>
                 <p class="estado-jugada__detalle">
-                    Tu mejor sorteo fue de <?= $mejorN ?> de <?= $total ?>
+                    Acertaste <?= $aciertos ?> de <?= $total ?> en todo el ciclo
                 </p>
             </div>
         </div>
@@ -96,13 +97,7 @@ $marcados = $mejor['acertados'] ?? [];
 
     <div class="p-3">
 
-        <?php if ($totalSorteos > 0 && $mejor): ?>
-            <p class="rotulo mb-2">
-                <?= $gano ? 'Tus números en ese sorteo' : 'Tus números en el sorteo del ' . e(nombreDia($mejor['fecha'])) ?>
-            </p>
-        <?php else: ?>
-            <p class="rotulo mb-2">Tus <?= $total ?> números</p>
-        <?php endif; ?>
+        <p class="rotulo mb-2">Tus <?= $total ?> números</p>
 
         <div class="bolillas-cliente">
             <?php foreach ($jugada['numeros'] as $numero): ?>
@@ -121,21 +116,17 @@ $marcados = $mejor['acertados'] ?? [];
 
             <?php foreach ($evaluacion['porSorteo'] as $idx => $entrada): ?>
                 <?php
-                $esMejor        = $mejor && $entrada['fecha'] === $mejor['fecha'] && $mejorN > 0;
                 $numerosSorteo  = $sorteos[$idx]['numeros'] ?? [];
                 $hayRepetidos   = count($numerosSorteo) !== count(array_unique($numerosSorteo));
                 $idCollapse     = 'sorteo-' . (int) $jugada['id'] . '-' . $idx;
                 ?>
                 <button type="button"
-                        class="reng-sorteo reng-sorteo--clic <?= $esMejor ? 'reng-sorteo--mejor' : '' ?> collapsed"
+                        class="reng-sorteo reng-sorteo--clic collapsed"
                         data-bs-toggle="collapse" data-bs-target="#<?= e($idCollapse) ?>"
                         aria-expanded="false" aria-controls="<?= e($idCollapse) ?>">
                     <span><?= e(formatFechaDia($entrada['fecha'])) ?></span>
                     <span class="reng-sorteo__conteo">
-                        <?= $entrada['aciertos'] ?> de <?= $total ?>
-                        <?php if ($esMejor): ?>
-                            <i class="bi bi-star-fill ms-1" aria-label="tu mejor sorteo"></i>
-                        <?php endif; ?>
+                        <?= $entrada['acumulado'] ?> de <?= $total ?> acumulados
                         <i class="bi bi-chevron-down ms-1 reng-sorteo__flecha" aria-hidden="true"></i>
                     </span>
                 </button>
@@ -161,8 +152,9 @@ $marcados = $mejor['acertados'] ?? [];
 
             <?php if (!$gano): ?>
                 <p class="fila__meta mt-3 mb-0">
-                    Para ganar, tus <?= $total ?> números tienen que salir todos
-                    en un mismo sorteo.
+                    Para ganar, tus <?= $total ?> números tienen que salir todos,
+                    acumulados entre los sorteos de todo el ciclo — no hace falta
+                    que salgan juntos el mismo día.
                 </p>
             <?php endif; ?>
         <?php endif; ?>

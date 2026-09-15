@@ -59,6 +59,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             header('Location: ' . APP_URL . '/portal/index.php');
             exit;
         } catch (ValidacionException $e) {
+            // DNI ya registrado (aprobado, pendiente o rechazado): en vez
+            // de mostrar el error en este mismo formulario, mandamos
+            // derecho al login -- ahi ya tiene cuenta, con clave = su DNI.
+            // Va por query string, no por setFlash(): este archivo corre
+            // bajo la sesion del portal (POLLA_CLIENTE), pero auth/login.php
+            // termina su cascada de login en la sesion del vendedor antes
+            // de leer el flash, asi que uno seteado aca se perderia en el
+            // camino. El query string no depende de en que sesion estemos.
+            if (in_array('Ya hay un cliente cargado con ese DNI.', $e->errores(), true)) {
+                header('Location: ' . APP_URL . '/auth/login.php?ya_registrado=1'
+                    . '&dni=' . urlencode(ClienteService::normalizarDni($dni)));
+                exit;
+            }
+
             setOld(['dni' => $dni, 'nombre' => $nombre, 'telefono' => $telefono]);
             $errores = $e->errores();
         }

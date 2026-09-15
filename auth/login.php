@@ -71,7 +71,9 @@ $flash = getFlash();
 // mundo al que termine perteneciendo quien lo envia -- el POST de abajo
 // cambia de mundo de forma explicita en cuanto sabe con cual matcheo.
 $errores       = [];
-$identificador = '';
+// Solo en el GET que llega desde registro.php (?dni=...): en el POST de
+// abajo se pisa con lo tipeado, nunca se usa para autenticar nada.
+$identificador = $_GET['dni'] ?? '';
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $identificador = trim($_POST['usuario'] ?? '');
@@ -151,6 +153,11 @@ require __DIR__ . '/../includes/head.php';
             <?php if ($flash): ?>
                 <div class="alert alert-<?= e($flash['type']) ?>" role="alert">
                     <?= nl2br(e($flash['msg'])) ?>
+                </div>
+            <?php elseif (($_GET['ya_registrado'] ?? '') === '1'): ?>
+                <div class="alert alert-info" role="alert">
+                    Ese DNI ya está registrado. Ingresá con tu DNI como usuario
+                    y contraseña.
                 </div>
             <?php endif; ?>
 

@@ -13,6 +13,7 @@ requireCliente();
 
 $db        = getPDO();
 $portal    = new PortalService($db);
+$ciclosSvc = new CicloService($db);
 $clienteId = (int) clienteActualId();
 
 $tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
@@ -24,7 +25,21 @@ $ciclos       = $portal->ciclosJugados($clienteId, $tipoJuego);
 $totalGanado  = $portal->totalGanado($clienteId);
 $totalJugadas = $portal->totalJugadas($clienteId);
 
-$cicloAbierto = false;
+// La semana en curso entra tambien al historial (arriba de todo) apenas
+// queda trabada para jugadas nuevas -- no hace falta esperar a que
+// ademas termine de correr toda la semana. A partir de ahi nadie nuevo
+// puede sumarse a competir, asi que ver los numeros de los demas ya no
+// da ventaja. Por ahora solo semanal: sabados sigue esperando el cierre
+// total aca, tiene su propio ranking en vivo mientras tanto
+// (portal/ranking_sabado.php).
+if (!$esSabado) {
+    $activo = $ciclosSvc->obtenerCicloActivo($tipoJuego);
+    if ($ciclosSvc->pasoCorteDeCarga($activo)
+        && $portal->jugadasDelCiclo($clienteId, (int) $activo['id'])
+    ) {
+        array_unshift($ciclos, $activo);
+    }
+}
 
 $pageTitle  = 'Historial · ' . APP_NAME;
 $navSeccion = 'historial';
@@ -93,6 +108,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             $jugadas      = $portal->jugadasDelCiclo($clienteId, $cicloId);
             $sorteos      = $portal->sorteosDelCiclo($cicloId);
             $totalSorteos = count($sorteos);
+            $cicloAbierto = $c['estado'] === CicloService::ESTADO_ABIERTO;
 
             // Cuanto se llevo el cliente esa semana
             $ganadoEnCiclo = 0.0;
@@ -111,6 +127,8 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                         <span class="etiqueta etiqueta--oro text-nowrap">
                             <i class="bi bi-trophy-fill"></i> Ganaste
                         </span>
+                    <?php elseif ($cicloAbierto): ?>
+                        <span class="etiqueta etiqueta--verde text-nowrap">En curso</span>
                     <?php elseif ($c['estado'] === CicloService::ESTADO_CON_GANADOR): ?>
                         <span class="etiqueta etiqueta--gris text-nowrap">Ganó otro</span>
                     <?php else: ?>

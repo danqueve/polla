@@ -219,6 +219,23 @@ class CicloService
     }
 
     /**
+     * Si el ciclo ABIERTO ya quedo trabado para jugadas nuevas: mismo
+     * criterio que obtenerCicloParaCarga() usa para enrutar al
+     * "programado" de la semana/sabado que viene (ya tiene un sorteo
+     * cargado, o -- solo semanal -- ya paso el horario_limite_semanal
+     * del lunes de ese ciclo). La usa portal/historial.php para decidir
+     * si ya se puede mostrar la seccion de "jugadas de los demas" en un
+     * ciclo que todavia sigue abierto, sin esperar a que cierre del
+     * todo: una vez trabado, no puede sumarse nadie nuevo a competir
+     * ese ciclo, asi que ver los numeros de los demas ya no le da
+     * ventaja a nadie.
+     */
+    public function pasoCorteDeCarga(array $ciclo): bool
+    {
+        return $this->yaTieneSorteoCargado((int) $ciclo['id']) || $this->pasoCorteSemanal($ciclo);
+    }
+
+    /**
      * Ciclo "programado" de un tipo, creandolo si todavia no existe --
      * mismo patron idempotente que obtenerCicloActivo(): si dos
      * requests lo necesitan a la vez, el UNIQUE uk_ciclo_tipo_programado

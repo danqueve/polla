@@ -147,6 +147,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                         JugadaService::crearDesde($db)->listarPorCiclo($cicloId),
                         static fn($j) => (int) $j['cliente_id'] !== $clienteId
                     );
+                    $salidos = PortalService::numerosSalidos($sorteos);
                     ?>
                     <?php if ($ajenas): ?>
                         <p class="rotulo mt-3 mb-2">Jugadas de los demás en este ciclo</p>
@@ -165,7 +166,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                                 </div>
                                 <div class="bolillas mt-2">
                                     <?php foreach ($j['numeros'] as $numero): ?>
-                                        <span class="bolilla"><?= e(num2($numero)) ?></span>
+                                        <span class="bolilla <?= isset($salidos[$numero]) ? 'bolilla--acertada' : '' ?>"><?= e(num2($numero)) ?></span>
                                     <?php endforeach; ?>
                                 </div>
                             </div>

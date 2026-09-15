@@ -439,6 +439,12 @@ body.con-accion-fija { padding-bottom: 7.5rem; }
 
 /* ── Navegación inferior ──────────────────────────────────── */
 
+/* Mismo verde que .topbar: la barra de arriba, el theme-color del
+   navegador y el manifest de la PWA ya son --verde-oscuro, asi que la
+   navegacion de abajo cierra ese marco en vez de desvanecerse. En
+   blanco daba 1,11:1 contra el papel (invisible); asi da 9,3:1 y no
+   necesita borde para separarse. De paso, la franja del gesto de
+   inicio del celular queda verde y no blanca. */
 .navbar-abajo {
     position: fixed;
     left: 0;
@@ -446,8 +452,7 @@ body.con-accion-fija { padding-bottom: 7.5rem; }
     bottom: 0;
     z-index: 1030;
     display: flex;
-    background: var(--superficie);
-    border-top: 1px solid var(--borde);
+    background: var(--verde-oscuro);
     padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -460,7 +465,7 @@ body.con-accion-fija { padding-bottom: 7.5rem; }
     gap: .125rem;
     min-height: var(--barra);
     padding: .5rem .25rem;
-    color: var(--tinta-tenue);
+    color: rgba(255, 255, 255, .72);
     text-decoration: none;
     font-size: .6875rem;
     font-weight: 600;
@@ -469,9 +474,88 @@ body.con-accion-fija { padding-bottom: 7.5rem; }
 
 .navbar-abajo__item i { font-size: 1.375rem; }
 
-.navbar-abajo__item.active { color: var(--verde); }
+/* Fondo + barrita indicadora ademas del color: el estado activo no
+   depende solo del brillo del texto. La barrita va con box-shadow
+   inset (no border/margin) para no alterar min-height: var(--barra),
+   que el body usa tal cual para reservar su padding-bottom. */
+.navbar-abajo__item.active {
+    color: #fff;
+    background: rgba(255, 255, 255, .10);
+    box-shadow: inset 0 3px 0 #fff;
+}
 
 .navbar-abajo__item.active i { transform: translateY(-1px); }
+
+/* El disparador de "Más" es un <button>, no un <a>: reset de los
+   estilos por defecto del navegador para que quede igual que los
+   demas items (misma tipografia, sin fondo/borde propios de boton). */
+.navbar-abajo__item--boton {
+    background: none;
+    border: 0;
+    font-family: inherit;
+}
+
+/* ── Hoja "Más secciones" ─────────────────────────────────────
+   Lista agrupada por categoria (Jugadas / Equipo / Negocio) sobre la
+   superficie clara de siempre -- opcion elegida entre 4 alternativas
+   mostradas al usuario. Mismo criterio visual que .dropdown-menu (el
+   otro menu de navegacion que ya existe, en la topbar): fondo blanco,
+   icono en verde, texto en tinta. Los rotulos de grupo usan la misma
+   clase .rotulo que ya define el resto de la app (mayusculas chicas,
+   letter-spacing, tinta-tenue). */
+.menu-mas {
+    background: var(--superficie);
+    color: var(--tinta);
+    max-height: 85vh;
+}
+
+.menu-mas__header {
+    border-bottom: 1px solid var(--borde);
+    padding: 1rem 1.25rem;
+}
+
+.menu-mas__titulo {
+    font-family: var(--ff-display);
+    font-weight: 800;
+    font-size: 1.0625rem;
+    color: var(--tinta);
+}
+
+.menu-mas__body {
+    padding: .25rem 0 calc(1.25rem + env(safe-area-inset-bottom));
+}
+
+.menu-mas__grupo { margin-top: .875rem; }
+.menu-mas__grupo:first-child { margin-top: .25rem; }
+
+.menu-mas__rotulo {
+    padding: 0 1.25rem .375rem;
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--tinta-tenue);
+}
+
+.menu-mas__fila {
+    display: flex;
+    align-items: center;
+    gap: .875rem;
+    padding: .625rem 1.25rem;
+    color: var(--tinta);
+    text-decoration: none;
+    font-size: .875rem;
+    font-weight: 600;
+}
+
+.menu-mas__fila i { font-size: 1.1875rem; color: var(--verde); flex-shrink: 0; }
+
+.menu-mas__fila:hover,
+.menu-mas__fila:focus,
+.menu-mas__fila:active {
+    background: var(--verde-claro);
+    color: var(--tinta);
+}
 
 /* ── Listados ─────────────────────────────────────────────── */
 
@@ -616,12 +700,15 @@ a.fila:hover { border-color: var(--verde); }
     .pantalla__titulo { font-size: 2rem; }
     body { padding-bottom: 2rem; }
 
-    /* En pantalla grande el menú va arriba, no tapando el contenido */
+    /* En pantalla grande el menú va arriba, no tapando el contenido.
+       Sin borde: uno claro alrededor de la caja verde oscura queda
+       como un artefacto (antes separaba la barra blanca del fondo,
+       ahora el contraste ya la separa solo). */
     .navbar-abajo {
         position: static;
         max-width: 720px;
         margin: 1rem auto 0;
-        border: 1px solid var(--borde);
+        border: 0;
         border-radius: var(--radio-sm);
         overflow: hidden;
     }

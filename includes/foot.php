@@ -5,7 +5,13 @@
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
     <?php foreach (($pageScripts ?? []) as $_src): ?>
-        <script src="<?= APP_URL ?>/assets/js/<?= e($_src) ?>?v=<?= APP_VERSION ?>"></script>
+        <?php
+        // Mismo criterio que includes/head.php con app.css: filemtime()
+        // en vez de APP_VERSION, para que el cache se limpie solo con
+        // cada cambio real del archivo.
+        $_jsVersion = @filemtime(BASE_PATH . '/assets/js/' . $_src) ?: APP_VERSION;
+        ?>
+        <script src="<?= APP_URL ?>/assets/js/<?= e($_src) ?>?v=<?= $_jsVersion ?>"></script>
     <?php endforeach; ?>
 
     <script>

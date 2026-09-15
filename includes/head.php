@@ -35,6 +35,14 @@
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
-    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= APP_VERSION ?>">
+    <?php
+    // filemtime() en vez de APP_VERSION: un cache-buster que se actualiza
+    // solo con cada cambio real del archivo. APP_VERSION es una constante
+    // manual -- si nadie se acuerda de subirla en un cambio de CSS (como
+    // paso recien: quedo en 1.1.0 desde hace muchos commits), el
+    // navegador sigue sirviendo la version vieja de cache indefinidamente.
+    $_appCssVersion = @filemtime(BASE_PATH . '/assets/css/app.css') ?: APP_VERSION;
+    ?>
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= $_appCssVersion ?>">
 </head>
 <body class="<?= e($bodyClass ?? '') ?>">

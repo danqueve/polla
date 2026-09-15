@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Qué es Decena de Oro y cómo se gana</title>
+<style>
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: #fff; color: #10201a;
+    font-family: Arial, "Segoe UI", sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.hoja { width: 210mm; height: 297mm; padding: 18mm 17mm; position: relative; overflow: hidden; }
+.tapa {
+    background: #0d4a2d; color: #fff; border-radius: 18px; padding: 26px 30px;
+    position: relative; overflow: hidden;
+}
+.tapa::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(-45deg, rgba(255,255,255,.055) 0 1px, transparent 1px 11px);
+}
+.tapa > * { position: relative; }
+.rotulo { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #8b9a93; }
+.tapa .rotulo { color: rgba(255,255,255,.72); }
+h1, h2, h3 { margin: 0; letter-spacing: -.02em; }
+h1 { font-size: 35px; margin: 8px 0; }
+h2 { font-size: 22px; margin: 24px 0 10px; }
+h3 { font-size: 15px; margin-bottom: 4px; }
+.bajada { margin: 0; color: rgba(255,255,255,.88); font-size: 14px; line-height: 1.55; max-width: 520px; }
+.chips { margin-top: 16px; }
+.chip { display: inline-block; margin: 2px 5px 0 0; padding: 6px 11px; border-radius: 999px; background: rgba(242,211,130,.2); color: #f2d382; font-size: 11px; font-weight: 700; }
+.intro { color: #4b5b54; font-size: 14px; line-height: 1.55; margin: 0; }
+.columnas { display: flex; gap: 12px; margin-top: 12px; }
+.tarjeta { flex: 1; border: 1px solid #dce4de; border-radius: 13px; padding: 15px; }
+.tarjeta h3 { color: #0d4a2d; }
+.tarjeta p { margin: 0; color: #4b5b54; font-size: 12.5px; line-height: 1.48; }
+.numero { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; background: #14663f; color: #fff; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-right: 9px; }
+.paso { display: flex; gap: 10px; margin: 12px 0; align-items: flex-start; }
+.paso p { margin: 0; color: #4b5b54; font-size: 13px; line-height: 1.45; }
+.aviso { margin-top: 17px; padding: 14px 16px; border-radius: 12px; background: #fbf3dd; border: 1px solid #e8d6a4; }
+.aviso p { margin: 4px 0 0; color: #755816; font-size: 12.5px; line-height: 1.5; }
+.pie { position: absolute; left: 17mm; right: 17mm; bottom: 12mm; padding-top: 9px; border-top: 1px solid #e2e0d8; display: flex; justify-content: space-between; color: #8b9a93; font-size: 10px; }
+</style>
+</head>
+<body>
+<main class="hoja">
+    <section class="tapa">
+        <div class="rotulo">Guía rápida</div>
+        <h1>Decena de Oro</h1>
+        <p class="bajada">Un juego de números con dos modalidades independientes: la semana y el sábado. Elegís tus números, seguís los resultados y ganás al completar todos los de tu jugada.</p>
+        <div class="chips"><span class="chip">SEMANA · 10 NÚMEROS</span><span class="chip">SÁBADO · 5 NÚMEROS</span></div>
+    </section>
+
+    <h2>¿De qué se trata?</h2>
+    <p class="intro">Elegís números distintos del <b>00 al 99</b>. La Semana y el Sábado tienen sorteos y pozos separados: podés jugar una modalidad o las dos.</p>
+
+    <div class="columnas">
+        <section class="tarjeta">
+            <h3>Juego semanal</h3>
+            <p>Elegís <b>10 números</b>. Hay un sorteo por día, de lunes a viernes.</p>
+        </section>
+        <section class="tarjeta">
+            <h3>Juego de sábados</h3>
+            <p>Elegís <b>5 números</b>. Hay 5 turnos de sorteo durante el mismo sábado.</p>
+        </section>
+    </div>
+
+    <h2>¿Cómo se gana?</h2>
+    <div class="paso"><span class="numero">1</span><p>Cuando un número elegido aparece en un sorteo o turno, queda marcado como acertado.</p></div>
+    <div class="paso"><span class="numero">2</span><p>Los aciertos se <b>acumulan</b> durante el ciclo: no hace falta que todos los números salgan juntos en un único sorteo.</p></div>
+    <div class="paso"><span class="numero">3</span><p>Ganás cuando se completan <b>todos</b> los números de tu jugada: 10 de 10 en la Semana o 5 de 5 el sábado.</p></div>
+
+    <section class="aviso">
+        <h3>Importante</h3>
+        <p>No hay premio por aciertos parciales. Si más de una jugada se completa en el mismo sorteo o turno, el pozo se reparte en partes iguales. Si nadie gana, el pozo sigue para el próximo ciclo del mismo juego.</p>
+    </section>
+
+    <section class="aviso" style="background:#e6f1eb;border-color:#c6ded1;">
+        <h3>Para participar</h3>
+        <p style="color:#275c42;">Tu jugada entra en juego recién cuando el pago queda confirmado. Podés ver los números acertados y tus resultados desde el portal.</p>
+    </section>
+
+    <footer class="pie"><span>Decena de Oro</span><span>Qué es y cómo se gana</span></footer>
+</main>
+</body>
+</html>

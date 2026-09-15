@@ -15,11 +15,14 @@ sitio).
   administrador, supervisor y vendedor: cada función del sistema, permisos
   por rol, y una explicación del modelo de negocio (reparto pozo/gastos,
   premio base, juego de sábados, comisiones de referidos).
-- `instructivo-carga-jugadas.html` → `Como cargar tu jugada.pdf` — guía
-  corta solo para clientes, con capturas reales del portal (no ilustraciones
-  como las de `manual-cliente.html`): paso a paso para armar una jugada de
-  la semana y una de sábados. Ver la nota de fuentes más abajo, es el único
-  de los cuatro que **no** usa Google Fonts.
+- `instructivo-carga-jugadas.html` → `Guia de bienvenida y reglas de juego.pdf`
+  — guía para clientes nuevos, con capturas reales del portal (no
+  ilustraciones como las de `manual-cliente.html`): registro, reglas
+  acumulativas, horarios y carga de una jugada semanal o de sábados. Ver la
+  nota de fuentes más abajo, es el único de los cuatro que **no** usa Google
+  Fonts.
+- `que-es-y-como-se-gana.html` → `Que es Decena de Oro y como se gana.pdf`
+  — resumen de una página sobre las dos modalidades y las reglas para ganar.
 
 Para regenerar un PDF después de editar el HTML:
 

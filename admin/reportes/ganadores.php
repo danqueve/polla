@@ -1,5 +1,5 @@
 <?php
-/** Historial de ganadores, con filtros y exportable. Exclusivo del admin. */
+/** Historial de ganadores con diseño Gentelella. */
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\ReporteService;
@@ -22,106 +22,127 @@ foreach ($ganadores as $g) {
     $totalPagado += (float) $g['monto_premio'];
 }
 
-$pageTitle  = 'Ganadores · Reportes · ' . APP_NAME;
-$navSeccion = 'reportes';
-require __DIR__ . '/../../includes/head.php';
-require __DIR__ . '/../../includes/topbar.php';
+$pageTitle        = 'Ganadores · Reportes · ' . APP_NAME;
+$navSeccion       = 'reportes';
+$pageSectionTitle = 'Historial de Ganadores';
+$breadcrumb       = [
+    ['label' => 'Reportes', 'url' => APP_URL . '/admin/reportes/index.php'],
+    ['label' => 'Ganadores', 'url' => '']
+];
+
+require __DIR__ . '/../../includes/admin_head.php';
+require __DIR__ . '/../../includes/admin_sidebar.php';
+require __DIR__ . '/../../includes/admin_topbar.php';
 ?>
 
-<main class="pantalla">
+<main class="g-content">
 
-    <a href="<?= APP_URL ?>/admin/reportes/index.php" class="btn btn-sm btn-outline-secondary mb-3">
-        <i class="bi bi-arrow-left"></i> Reportes
-    </a>
+    <?php require __DIR__ . '/../../includes/flash.php'; ?>
 
-    <h1 class="pantalla__titulo">Ganadores</h1>
-    <p class="pantalla__bajada">
-        <?php if (!$alcance->esAdmin()): ?>
-            De las jugadas que cargaste vos
-        <?php else: ?>
-            Historial completo de premios pagados
-        <?php endif; ?>
-    </p>
-
-    <div class="row g-2 mt-3 mb-3">
-        <div class="col-6">
-            <div class="tarjeta-dato">
-                <div class="tarjeta-dato__valor"><?= count($ganadores) ?></div>
-                <div class="tarjeta-dato__rotulo">Premios</div>
-            </div>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 g-animate">
+        <div>
+            <h1 class="g-page-title">Historial de Ganadores</h1>
+            <p class="g-page-subtitle">Premios mayores entregados y pozos liquidados</p>
         </div>
-        <div class="col-6">
-            <div class="tarjeta-dato">
-                <div class="tarjeta-dato__valor" style="color:var(--oro)">
-                    <?= e(formatPesos($totalPagado)) ?>
-                </div>
-                <div class="tarjeta-dato__rotulo">Pagado en total</div>
-            </div>
+
+        <div class="d-flex gap-2">
+            <a href="<?= APP_URL ?>/admin/reportes/index.php" class="g-btn g-btn--outline">
+                <i class="bi bi-arrow-left"></i> Volver a Reportes
+            </a>
+            <?php if ($ganadores): ?>
+                <a href="<?= APP_URL ?>/admin/reportes/exportar.php?<?= e($filtro->comoQueryString(['que' => 'ganadores'])) ?>"
+                   class="g-btn g-btn--primary">
+                    <i class="bi bi-download me-1"></i> Exportar CSV
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 
-    <?php
-    $accion = APP_URL . '/admin/reportes/ganadores.php';
-    require __DIR__ . '/../../includes/reporte_filtros.php';
-    ?>
-
-    <?php if (!$ganadores): ?>
-
-        <div class="vacio tarjeta">
-            <i class="bi bi-trophy" aria-hidden="true"></i>
-            Todavía no hay ganadores que entren en este filtro.
+    <!-- Stat Tiles -->
+    <div class="g-stat-grid g-animate g-animate-delay-1 mb-4">
+        <div class="g-stat">
+            <div class="g-stat__icon g-stat__icon--orange">
+                <i class="bi bi-trophy-fill"></i>
+            </div>
+            <div class="g-stat__value"><?= count($ganadores) ?></div>
+            <div class="g-stat__label">Total Premios Pagados</div>
         </div>
 
-    <?php else: ?>
+        <div class="g-stat g-stat--accent">
+            <div class="g-stat__icon">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+            <div class="g-stat__value"><?= e(formatPesos($totalPagado)) ?></div>
+            <div class="g-stat__label">Monto Total Liquidado</div>
+        </div>
+    </div>
 
-        <a href="<?= APP_URL ?>/admin/reportes/exportar.php?<?= e($filtro->comoQueryString(['que' => 'ganadores'])) ?>"
-           class="btn btn-primary w-100 mb-3">
-            <i class="bi bi-download"></i> Descargar CSV (<?= count($ganadores) ?> filas)
-        </a>
+    <!-- Filtros -->
+    <div class="g-card mb-4 g-animate g-animate-delay-1">
+        <div class="g-card__body p-3">
+            <?php
+            $accion = APP_URL . '/admin/reportes/ganadores.php';
+            require __DIR__ . '/../../includes/reporte_filtros.php';
+            ?>
+        </div>
+    </div>
 
-        <?php foreach ($ganadores as $g): ?>
-            <article class="tarjeta p-3 mb-2" style="border-color:#e8d6a4">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="min-w-0">
-                        <p class="fila__titulo">
-                            <i class="bi bi-trophy-fill" style="color:var(--oro)"></i>
-                            <?= e($g['cliente']) ?>
-                        </p>
-                        <p class="fila__meta">
-                            <span class="cifra">N° <?= e($g['nro_cliente']) ?></span>
-                            · DNI <?= e($g['dni']) ?>
-                            <?php if ($g['telefono']): ?>
-                                · <?= e($g['telefono']) ?>
-                            <?php endif; ?>
-                        </p>
-                        <p class="fila__meta">
-                            Ciclo <?= (int) $g['ciclo'] ?>
-                            · sorteo del <?= e(formatFecha($g['sorteo'])) ?>
-                            · jugada #<?= (int) $g['jugada_id'] ?>
-                        </p>
-                        <p class="fila__meta">
-                            Cargada por <?= e($g['cargado_por'] ?? '—') ?>
-                        </p>
-                    </div>
-                    <div class="text-end text-nowrap">
-                        <div class="rotulo">Premio</div>
-                        <div class="cifra fw-bold fs-4" style="color:var(--oro)">
-                            <?= e(formatPesos($g['monto_premio'])) ?>
-                        </div>
-                    </div>
+    <!-- Lista de Ganadores -->
+    <div class="g-card g-animate g-animate-delay-2">
+        <div class="g-card__header">
+            <h2 class="g-card__title">
+                <i class="bi bi-trophy-fill text-warning me-1"></i>
+                Premios y Ganadores (<?= count($ganadores) ?>)
+            </h2>
+        </div>
+
+        <div class="g-card__body">
+            <?php if (!$ganadores): ?>
+                <div class="p-5 text-center text-secondary">
+                    <i class="bi bi-trophy fs-1 d-block mb-3 text-muted"></i>
+                    No hay registros de ganadores en el período filtrado.
                 </div>
+            <?php else: ?>
+                <div class="d-flex flex-column gap-3">
+                    <?php foreach ($ganadores as $g): ?>
+                        <div class="p-3 rounded border" style="background:#fffdfa;border-color:#fde68a !important">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <h3 class="fw-bold fs-5 text-dark mb-1">
+                                        <i class="bi bi-trophy-fill text-warning me-1"></i>
+                                        <?= e($g['cliente']) ?>
+                                        <span class="text-muted fw-normal fs-7 ms-1">N° <?= e($g['nro_cliente']) ?></span>
+                                    </h3>
+                                    <div class="text-muted small">
+                                        DNI <?= e($g['dni']) ?>
+                                        <?php if ($g['telefono']): ?>
+                                            · Tel: <?= e($g['telefono']) ?>
+                                        <?php endif; ?>
+                                        · Ciclo <?= (int) $g['ciclo'] ?>
+                                        · Sorteo <?= e(formatFecha($g['sorteo'])) ?>
+                                        · Cargado por <?= e($g['cargado_por'] ?? '—') ?>
+                                    </div>
+                                </div>
 
-                <div class="bolillas mt-2">
-                    <?php foreach ($g['numeros'] as $numero): ?>
-                        <span class="bolilla bolilla--acertada"><?= e(num2($numero)) ?></span>
+                                <div class="text-end">
+                                    <div class="small text-muted">Premio Otorgado:</div>
+                                    <div class="fs-3 fw-extrabold text-success"><?= e(formatPesos($g['monto_premio'])) ?></div>
+                                </div>
+                            </div>
+
+                            <div class="bolillas mt-3">
+                                <?php foreach ($g['numeros'] as $numero): ?>
+                                    <span class="bolilla bolilla--acertada"><?= e(num2($numero)) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
-            </article>
-        <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
 
-    <?php endif; ?>
 </main>
 
 <?php
-require __DIR__ . '/../../includes/bottom_nav.php';
-require __DIR__ . '/../../includes/foot.php';
+require __DIR__ . '/../../includes/admin_foot.php';

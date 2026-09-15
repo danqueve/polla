@@ -1,5 +1,5 @@
 <?php
-/** Historial de ciclos: estado, pozo y ganadores de cada semana. */
+/** Historial de ciclos con diseño Gentelella. */
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
@@ -11,90 +11,108 @@ requireLogin();
 $db     = getPDO();
 $ciclos = new CicloService($db);
 
-// Abre el de la semana si todavia no existe, para que la lista nunca
-// aparezca vacia en una instalacion nueva.
 $ciclos->obtenerCicloActivo();
 $lista = $ciclos->listar(52);
-
-// Fase 7: el pozo del ciclo abierto se muestra con el piso aplicado en
-// caliente; uno cerrado sin ganador no pago nada, se muestra el real.
 $premioBase = (new ParametroService($db))->premioBase();
 
-$pageTitle  = 'Ciclos · ' . APP_NAME;
-$navSeccion = 'ciclos';
-require __DIR__ . '/../../includes/head.php';
-require __DIR__ . '/../../includes/topbar.php';
+$pageTitle        = 'Historial de Ciclos · ' . APP_NAME;
+$navSeccion       = 'ciclos';
+$pageSectionTitle = 'Ciclos y Semanas de Juego';
+$breadcrumb       = [
+    ['label' => 'Ciclos', 'url' => '']
+];
+
+require __DIR__ . '/../../includes/admin_head.php';
+require __DIR__ . '/../../includes/admin_sidebar.php';
+require __DIR__ . '/../../includes/admin_topbar.php';
 ?>
 
-<main class="pantalla">
+<main class="g-content">
 
     <?php require __DIR__ . '/../../includes/flash.php'; ?>
 
-    <h1 class="pantalla__titulo">Ciclos</h1>
-    <p class="pantalla__bajada">Una semana de juego por fila, de la mas nueva a la mas vieja</p>
+    <!-- Encabezado de Página -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 g-animate">
+        <div>
+            <h1 class="g-page-title">Historial de Ciclos Semanales</h1>
+            <p class="g-page-subtitle">Registro cronológico de semanas, pozos acumulados y ganadores</p>
+        </div>
 
-    <div class="mt-3">
-        <?php foreach ($lista as $ciclo): ?>
-            <a class="fila" href="<?= APP_URL ?>/admin/ciclos/ver.php?id=<?= (int) $ciclo['id'] ?>">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="min-w-0">
-                        <p class="fila__titulo">
-                            Ciclo <?= (int) $ciclo['numero'] ?>
-                            <span class="fw-normal text-secondary">
-                                · <?= e(CicloService::rotulo($ciclo)) ?>
-                            </span>
-                        </p>
-                        <p class="fila__meta">
-                            <?= (int) $ciclo['jugadas_total'] ?> jugadas
-                            · <?= (int) $ciclo['sorteos_total'] ?>/5 sorteos
-                        </p>
-                        <?php if ((float) $ciclo['monto_arrastrado'] > 0): ?>
-                            <p class="fila__meta">
-                                <i class="bi bi-arrow-return-right"></i>
-                                Arrastro <?= e(formatPesos($ciclo['monto_arrastrado'])) ?>
-                                de la semana anterior
-                            </p>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="text-end text-nowrap">
-                        <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
-                            <span class="etiqueta etiqueta--gris">
-                                <i class="bi bi-clock-history"></i> Próxima semana
-                            </span>
-                        <?php elseif ($ciclo['estado'] === CicloService::ESTADO_ABIERTO): ?>
-                            <span class="etiqueta etiqueta--verde">Abierto</span>
-                        <?php elseif ($ciclo['estado'] === CicloService::ESTADO_CON_GANADOR): ?>
-                            <span class="etiqueta etiqueta--oro">
-                                <i class="bi bi-trophy-fill"></i>
-                                <?= (int) $ciclo['ganadores_total'] ?>
-                            </span>
-                        <?php else: ?>
-                            <span class="etiqueta etiqueta--gris">Sin ganador</span>
-                        <?php endif; ?>
-
-                        <?php
-                        $pagado = (float) $ciclo['monto_pagado'];
-                        $real   = (float) $ciclo['monto_acumulado'];
-                        $mostrado = $pagado > 0
-                            ? $pagado
-                            : ($ciclo['estado'] === CicloService::ESTADO_ABIERTO
-                                ? PozoService::montoAMostrar($real, $premioBase)
-                                : $real);
-                        ?>
-                        <div class="cifra fw-bold mt-1">
-                            <?= e(formatPesos($mostrado)) ?>
-                        </div>
-                        <div class="fila__meta">
-                            <?= $pagado > 0 ? 'repartido' : 'en el pozo' ?>
-                        </div>
-                    </div>
-                </div>
+        <div>
+            <a href="<?= APP_URL ?>/admin/index.php" class="g-btn g-btn--outline">
+                <i class="bi bi-speedometer2 me-1"></i> Ir al Tablero
             </a>
-        <?php endforeach; ?>
+        </div>
     </div>
+
+    <!-- Lista de Ciclos -->
+    <div class="g-card g-list-card g-animate g-animate-delay-1">
+        <div class="g-card__header">
+            <h2 class="g-card__title">
+                <i class="bi bi-calendar-week me-1"></i>
+                Ciclos Registrados (<?= count($lista) ?>)
+            </h2>
+        </div>
+
+        <div class="g-card__body">
+            <?php foreach ($lista as $ciclo): ?>
+                <a class="g-list-item" href="<?= APP_URL ?>/admin/ciclos/ver.php?id=<?= (int) $ciclo['id'] ?>">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-3 min-w-0">
+                            <div class="g-stat__icon g-stat__icon--blue mb-0 flex-shrink-0" style="width:44px;height:44px">
+                                <i class="bi bi-calendar-week"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="g-list-item__title">
+                                    Ciclo <?= (int) $ciclo['numero'] ?>
+                                    <span class="text-muted fw-normal fs-7 ms-1">· <?= e(CicloService::rotulo($ciclo)) ?></span>
+                                </h3>
+                                <div class="g-list-item__meta mt-1">
+                                    <span class="badge bg-light text-dark border me-1"><?= (int) $ciclo['jugadas_total'] ?> jugadas</span>
+                                    · <span class="badge bg-light text-dark border me-1"><?= (int) $ciclo['sorteos_total'] ?>/5 sorteos</span>
+                                    <?php if ((float) $ciclo['monto_arrastrado'] > 0): ?>
+                                        · <span class="text-primary"><i class="bi bi-arrow-return-right me-1"></i>Arrastró <?= e(formatPesos($ciclo['monto_arrastrado'])) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <div class="mb-1">
+                                <?php if ($ciclo['estado'] === CicloService::ESTADO_PROGRAMADO): ?>
+                                    <span class="g-badge g-badge--info">
+                                        <i class="bi bi-clock me-1"></i> Próxima Semana
+                                    </span>
+                                <?php elseif ($ciclo['estado'] === CicloService::ESTADO_ABIERTO): ?>
+                                    <span class="g-badge g-badge--success">Ciclo Abierto</span>
+                                <?php elseif ($ciclo['estado'] === CicloService::ESTADO_CON_GANADOR): ?>
+                                    <span class="g-badge g-badge--warning">
+                                        <i class="bi bi-trophy-fill me-1"></i> <?= (int) $ciclo['ganadores_total'] ?> <?= (int) $ciclo['ganadores_total'] === 1 ? 'Ganador' : 'Ganadores' ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="g-badge" style="background:#e5e7eb;color:#4b5563">Sin Ganador</span>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php
+                            $pagado = (float) $ciclo['monto_pagado'];
+                            $real   = (float) $ciclo['monto_acumulado'];
+                            $mostrado = $pagado > 0
+                                ? $pagado
+                                : ($ciclo['estado'] === CicloService::ESTADO_ABIERTO
+                                    ? PozoService::montoAMostrar($real, $premioBase)
+                                    : $real);
+                            ?>
+                            <div class="fw-bold fs-6 text-dark"><?= e(formatPesos($mostrado)) ?></div>
+                            <div class="small text-muted"><?= $pagado > 0 ? 'repartido' : 'en pozo' ?></div>
+                        </div>
+                    </div>
+                </a>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
 </main>
 
 <?php
-require __DIR__ . '/../../includes/bottom_nav.php';
-require __DIR__ . '/../../includes/foot.php';
+require __DIR__ . '/../../includes/admin_foot.php';

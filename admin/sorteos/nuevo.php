@@ -1,9 +1,6 @@
 <?php
 /**
- * Carga del extracto de la Nocturna: fecha + 20 numeros.
- *
- * Al guardar se dispara el cotejo contra todas las jugadas activas
- * del ciclo. Si alguien acerto los 10, la semana se corta ahi mismo.
+ * Carga del extracto de la Nocturna: fecha + 20 numeros con diseño Gentelella.
  */
 require_once __DIR__ . '/../../config/app.php';
 
@@ -24,7 +21,6 @@ $cantidad = $parametros->getInt('numeros_por_sorteo');
 $yaCargados = $sorteos->listarPorCiclo((int) $ciclo['id']);
 $fechasHechas = array_column($yaCargados, 'fecha');
 
-// Dias habiles del ciclo que todavia no tienen extracto, para el selector.
 $pendientes  = [];
 $inicioCiclo = new DateTimeImmutable($ciclo['fecha_inicio']);
 $fin         = new DateTimeImmutable($ciclo['fecha_fin']);
@@ -38,62 +34,75 @@ while ($dia <= $fin) {
     $dia = $dia->modify('+1 day');
 }
 
-// La fecha sugerida es la pendiente mas reciente: lo normal es cargar
-// el sorteo de anoche, pero si quedo alguno atrasado aparece primero.
 $fechaPrevia = old('fecha', $pendientes ? end($pendientes)->format('Y-m-d') : '');
 $numerosPrevios = old('numeros', []);
 
-$pageTitle   = 'Cargar sorteo · ' . APP_NAME;
-$navSeccion  = 'sorteos';
-$bodyClass   = 'con-accion-fija';
-$pageScripts = ['numeros.js'];
-require __DIR__ . '/../../includes/head.php';
-require __DIR__ . '/../../includes/topbar.php';
+$pageTitle        = 'Cargar Sorteo · ' . APP_NAME;
+$navSeccion       = 'sorteos';
+$pageSectionTitle = 'Cargar Extracto de Sorteo';
+$bodyClass        = 'con-accion-fija';
+$pageScripts      = ['numeros.js'];
+$breadcrumb       = [
+    ['label' => 'Sorteos', 'url' => APP_URL . '/admin/sorteos/index.php'],
+    ['label' => 'Cargar Extracto', 'url' => '']
+];
+
+require __DIR__ . '/../../includes/admin_head.php';
+require __DIR__ . '/../../includes/admin_sidebar.php';
+require __DIR__ . '/../../includes/admin_topbar.php';
 ?>
 
-<main class="pantalla">
+<main class="g-content">
 
     <?php require __DIR__ . '/../../includes/flash.php'; ?>
 
-    <div class="d-flex align-items-baseline justify-content-between gap-2">
-        <h1 class="pantalla__titulo">Cargar sorteo</h1>
-        <span class="rotulo text-nowrap">Ciclo <?= (int) $ciclo['numero'] ?></span>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 g-animate">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="g-badge g-badge--blue">Ciclo <?= (int) $ciclo['numero'] ?></span>
+                <span class="g-badge g-badge--success">Nocturna</span>
+            </div>
+            <h1 class="g-page-title mt-2">Cargar Extracto Oficial</h1>
+            <p class="g-page-subtitle">
+                Extracto de la Nocturna de Tucumán · Semana del <?= e(CicloService::rotulo($ciclo)) ?>
+            </p>
+        </div>
+
+        <div>
+            <a href="<?= APP_URL ?>/admin/sorteos/index.php" class="g-btn g-btn--outline">
+                <i class="bi bi-arrow-left"></i> Volver a Sorteos
+            </a>
+        </div>
     </div>
-    <p class="pantalla__bajada">
-        Extracto de la Nocturna de Tucuman · semana del <?= e(CicloService::rotulo($ciclo)) ?>
-    </p>
 
     <?php if (!$pendientes && $inicioCiclo > $hoy): ?>
 
-        <!-- Zona muerta: alguien gano y corto la semana, y el ciclo nuevo
-             todavia no arranco. Los sorteos que quedan de esta semana
-             calendario ya no participan (regla 3.2 de la especificacion). -->
-        <div class="vacio tarjeta mt-3">
-            <i class="bi bi-trophy" aria-hidden="true"></i>
-            <p class="mb-1"><strong>La semana pasada se corto porque hubo ganador.</strong></p>
-            <p class="mb-0">
-                Los sorteos que quedan de esta semana ya no participan.
-                El proximo que juega es el del
+        <div class="g-card p-5 text-center text-secondary g-animate g-animate-delay-1">
+            <i class="bi bi-trophy fs-1 d-block mb-3 text-warning"></i>
+            <h4 class="fw-bold text-dark">La semana finalizó porque hubo un ganador</h4>
+            <p class="text-muted mb-3">
+                Los sorteos restantes de esta semana ya no participan. El próximo ciclo comenzará el
                 <strong><?= e(nombreDia($inicioCiclo)) ?> <?= e($inicioCiclo->format('d/m')) ?></strong>.
             </p>
-            <div class="mt-3 d-flex flex-column gap-2">
-                <a href="<?= APP_URL ?>/admin/jugadas/nueva.php" class="btn btn-sm btn-primary">
-                    Cargar jugadas para la semana que viene
+            <div class="d-flex justify-content-center gap-2">
+                <a href="<?= APP_URL ?>/admin/jugadas/nueva.php" class="g-btn g-btn--primary">
+                    <i class="bi bi-plus-lg"></i> Cargar jugadas para próximo ciclo
                 </a>
-                <a href="<?= APP_URL ?>/admin/ciclos/index.php" class="btn btn-sm btn-outline-secondary">
-                    Ver el ciclo que se cerro
+                <a href="<?= APP_URL ?>/admin/ciclos/index.php" class="g-btn g-btn--outline">
+                    Ver ciclos cerrados
                 </a>
             </div>
         </div>
 
     <?php elseif (!$pendientes): ?>
 
-        <div class="vacio tarjeta mt-3">
-            <i class="bi bi-calendar-check" aria-hidden="true"></i>
-            Ya estan cargados todos los sorteos de esta semana que ya ocurrieron.
-            <div class="mt-3">
-                <a href="<?= APP_URL ?>/admin/sorteos/index.php" class="btn btn-sm btn-outline-secondary">
-                    Ver los cargados
+        <div class="g-card p-5 text-center text-secondary g-animate g-animate-delay-1">
+            <i class="bi bi-calendar-check fs-1 d-block mb-3 text-success"></i>
+            <h4 class="fw-bold text-dark">¡Todos los extractos cargados!</h4>
+            <p class="text-muted mb-3">Ya se cargaron todos los sorteos ocurridos en este ciclo.</p>
+            <div>
+                <a href="<?= APP_URL ?>/admin/sorteos/index.php" class="g-btn g-btn--outline">
+                    <i class="bi bi-eye"></i> Ver sorteos registrados
                 </a>
             </div>
         </div>
@@ -101,10 +110,12 @@ require __DIR__ . '/../../includes/topbar.php';
     <?php else: ?>
 
         <?php if (count($pendientes) > 1): ?>
-            <div class="alert alert-warning mt-3" role="alert">
+            <div class="g-alert-banner g-alert-banner--warning mb-4 g-animate g-animate-delay-1">
                 <i class="bi bi-exclamation-triangle-fill"></i>
-                Quedan <?= count($pendientes) ?> sorteos sin cargar en esta semana.
-                Cargalos en orden: el del viernes es el que cierra el ciclo.
+                <div>
+                    Quedan <strong><?= count($pendientes) ?> sorteos</strong> sin cargar en esta semana.
+                    Cárgalos en orden correlativo (el del viernes cierra el ciclo).
+                </div>
             </div>
         <?php endif; ?>
 
@@ -113,84 +124,104 @@ require __DIR__ . '/../../includes/topbar.php';
               action="<?= APP_URL ?>/admin/sorteos/guardar.php" novalidate>
             <?= csrfField() ?>
 
-            <!-- 1. Fecha -->
-            <section class="tarjeta p-3 mt-3">
-                <label class="form-label" for="fecha">
-                    <span class="rotulo">Paso 1</span><br>Fecha del sorteo
-                </label>
-                <select class="form-select" id="fecha" name="fecha" data-requerido required>
-                    <?php foreach ($pendientes as $pendiente): ?>
-                        <?php $iso = $pendiente->format('Y-m-d'); ?>
-                        <option value="<?= e($iso) ?>" <?= $fechaPrevia === $iso ? 'selected' : '' ?>>
-                            <?= e(nombreDia($pendiente)) ?> <?= e($pendiente->format('d/m/Y')) ?><?=
-                                $iso === $hoy->format('Y-m-d') ? ' — hoy' : '' ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <div class="form-text">Solo aparecen los dias de esta semana que faltan cargar.</div>
-            </section>
+            <div class="row g-4">
+                <!-- Columna Principal -->
+                <div class="col-12 col-lg-8">
 
-            <!-- 2. Los 20 numeros del extracto -->
-            <section class="tarjeta p-3 mt-3">
-                <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                    <div>
-                        <span class="rotulo">Paso 2</span>
-                        <div class="fw-semibold">Los <?= $cantidad ?> numeros</div>
-                    </div>
-                    <button type="button" class="js-limpiar btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-eraser"></i> Limpiar
-                    </button>
-                </div>
-
-                <p class="form-text mt-0 mb-3">
-                    En el orden del extracto, del 1° al <?= $cantidad ?>° premio.
-                    Aca <strong>si</strong> puede repetirse un numero.
-                </p>
-
-                <div class="casillas">
-                    <?php for ($i = 0; $i < $cantidad; $i++): ?>
-                        <?php $previo = isset($numerosPrevios[$i]) ? trim((string) $numerosPrevios[$i]) : ''; ?>
-                        <div class="casilla">
-                            <span class="casilla__indice" aria-hidden="true"><?= $i + 1 ?></span>
-                            <input type="text"
-                                   class="casilla__input"
-                                   name="numeros[]"
-                                   value="<?= e($previo) ?>"
-                                   inputmode="numeric"
-                                   pattern="[0-9]*"
-                                   maxlength="2"
-                                   placeholder="--"
-                                   autocomplete="off"
-                                   aria-label="Premio <?= $i + 1 ?> de <?= $cantidad ?>">
+                    <!-- Paso 1: Fecha -->
+                    <div class="g-card mb-4 g-animate g-animate-delay-1">
+                        <div class="g-card__header">
+                            <h3 class="g-card__title">
+                                <span class="g-badge g-badge--blue me-1">Paso 1</span>
+                                Fecha del Sorteo
+                            </h3>
                         </div>
-                    <?php endfor; ?>
+                        <div class="g-card__body">
+                            <label class="form-label fw-semibold small text-muted" for="fecha">Día del Extracto</label>
+                            <select class="form-select form-select-lg" id="fecha" name="fecha" data-requerido required>
+                                <?php foreach ($pendientes as $pendiente): ?>
+                                    <?php $iso = $pendiente->format('Y-m-d'); ?>
+                                    <option value="<?= e($iso) ?>" <?= $fechaPrevia === $iso ? 'selected' : '' ?>>
+                                        <?= e(nombreDia($pendiente)) ?> <?= e($pendiente->format('d/m/Y')) ?><?=
+                                            $iso === $hoy->format('Y-m-d') ? ' — hoy' : '' ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">Solo se listan los días pendientes de la semana actual.</div>
+                        </div>
+                    </div>
+
+                    <!-- Paso 2: Casillas del extracto -->
+                    <div class="g-card mb-4 g-animate g-animate-delay-2">
+                        <div class="g-card__header">
+                            <h3 class="g-card__title">
+                                <span class="g-badge g-badge--blue me-1">Paso 2</span>
+                                Los <?= $cantidad ?> Números del Extracto
+                            </h3>
+                            <button type="button" class="js-limpiar g-btn g-btn--outline g-btn--sm">
+                                <i class="bi bi-eraser"></i> Limpiar Casillas
+                            </button>
+                        </div>
+                        <div class="g-card__body">
+                            <p class="text-muted small mb-3">
+                                En el orden del extracto oficial (del 1° al <?= $cantidad ?>° premio). En el extracto <strong>sí</strong> se pueden repetir números.
+                            </p>
+
+                            <div class="casillas mb-4">
+                                <?php for ($i = 0; $i < $cantidad; $i++): ?>
+                                    <?php $previo = isset($numerosPrevios[$i]) ? trim((string) $numerosPrevios[$i]) : ''; ?>
+                                    <div class="casilla">
+                                        <span class="casilla__indice" aria-hidden="true"><?= $i + 1 ?></span>
+                                        <input type="text"
+                                               class="casilla__input"
+                                               name="numeros[]"
+                                               value="<?= e($previo) ?>"
+                                               inputmode="numeric"
+                                               pattern="[0-9]*"
+                                               maxlength="2"
+                                               placeholder="--"
+                                               autocomplete="off"
+                                               aria-label="Premio <?= $i + 1 ?> de <?= $cantidad ?>">
+                                    </div>
+                                <?php endfor; ?>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <div class="fw-semibold small text-muted mb-2">Tablero de Control Visual (00 - 99):</div>
+                            <div class="tablero js-tablero" aria-hidden="true">
+                                <?php for ($n = 0; $n <= 99; $n++): ?>
+                                    <div class="tablero__celda"><?= num2($n) ?></div>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
-                <hr class="my-3">
-
-                <span class="rotulo d-block mb-2">Tablero 00 - 99</span>
-                <div class="tablero js-tablero" aria-hidden="true">
-                    <?php for ($n = 0; $n <= 99; $n++): ?>
-                        <div class="tablero__celda"><?= num2($n) ?></div>
-                    <?php endfor; ?>
+                <!-- Columna Lateral -->
+                <div class="col-12 col-lg-4">
+                    <div class="g-card g-animate g-animate-delay-3">
+                        <div class="g-card__header">
+                            <h3 class="g-card__title">
+                                <span class="g-badge g-badge--blue me-1">Paso 3</span>
+                                Cotejo Automático
+                            </h3>
+                        </div>
+                        <div class="g-card__body">
+                            <p class="text-muted small mb-3">
+                                Al guardar este extracto, el sistema cotejará inmediatamente los <?= $cantidad ?> números contra todas las jugadas activas del ciclo.
+                            </p>
+                            <div class="g-alert-banner g-alert-banner--warning mb-0 p-3 small">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <div>
+                                    Si alguna jugada acierta sus 10 números, se consagrará ganadora y el ciclo cerrará automáticamente.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </section>
-
-            <!-- 3. Advertencia -->
-            <section class="tarjeta p-3 mt-3">
-                <span class="rotulo">Paso 3</span>
-                <div class="fw-semibold mb-2">Cotejo automatico</div>
-                <p class="fila__meta mb-2">
-                    Al guardar, el sistema compara estos <?= $cantidad ?> numeros contra
-                    todas las jugadas activas del ciclo. Si una jugada tiene sus 10 numeros
-                    entre estos, gana y la semana se corta.
-                </p>
-                <div class="alert alert-warning mb-0 py-2" style="font-size:.875rem">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    Revisá bien los numeros antes de confirmar: si hay ganador,
-                    el pozo se liquida y el ciclo se cierra automaticamente.
-                </div>
-            </section>
+            </div>
         </form>
 
         <div class="accion-fija">
@@ -200,16 +231,17 @@ require __DIR__ . '/../../includes/topbar.php';
                     <div class="rotulo" style="font-size:.625rem">premios</div>
                 </div>
                 <button type="submit" form="form-sorteo" id="btn-confirmar"
-                        class="btn btn-primary flex-grow-1" disabled>
+                        class="g-btn g-btn--primary flex-grow-1" disabled>
                     <i class="bi bi-check-lg"></i>
-                    Guardar y cotejar
+                    Guardar y Cotejar Extracto
                 </button>
             </div>
         </div>
 
     <?php endif; ?>
+
 </main>
 
 <?php
 flushOld();
-require __DIR__ . '/../../includes/foot.php';
+require __DIR__ . '/../../includes/admin_foot.php';

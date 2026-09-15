@@ -1,5 +1,7 @@
 <?php
-/** Tablero: estado del ciclo abierto, pozo y ultimas jugadas. */
+/**
+ * Tablero: estado del ciclo abierto, pozo acumulado, métricas y accesos rápidos.
+ */
 require_once __DIR__ . '/../config/app.php';
 
 use Polla\Services\CicloService;
@@ -28,15 +30,12 @@ $ultimas = $jugadas->ultimas(5);
 $extractos = $sorteos->listarPorCiclo($cicloId);
 $arrastre  = (float) ($ciclo['monto_arrastrado'] ?? 0);
 
-// Fase 7: el pozo que se muestra nunca baja del premio base, aunque lo
-// acumulado real sea menor. El desglose (cuanto es real y cuanto se
-// estaria subsidiando) es exclusivo del admin.
 $pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 $premioBase   = $parametros->premioBase();
 $pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
 $subsidio     = max(0.0, $premioBase - $pozoReal);
 
-// Dias habiles del ciclo ya pasados que todavia no tienen extracto.
+// Dias habiles del ciclo ya pasados que todavia no tienen extracto
 $sinCargar = 0;
 $fechasHechas = array_column($extractos, 'fecha');
 $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
@@ -49,82 +48,60 @@ while ($dia <= $fin) {
     $dia = $dia->modify('+1 day');
 }
 
-$pageTitle  = 'Tablero · ' . APP_NAME;
-$navSeccion = 'tablero';
-require __DIR__ . '/../includes/head.php';
-require __DIR__ . '/../includes/topbar.php';
+$pageTitle        = 'Tablero · ' . APP_NAME;
+$navSeccion       = 'tablero';
+$pageSectionTitle = 'Tablero Principal';
+$breadcrumb       = [
+    ['label' => 'Tablero', 'url' => '']
+];
+
+require __DIR__ . '/../includes/admin_head.php';
+require __DIR__ . '/../includes/admin_sidebar.php';
+require __DIR__ . '/../includes/admin_topbar.php';
 ?>
 
-<main class="pantalla">
+<main class="g-content">
 
     <?php require __DIR__ . '/../includes/flash.php'; ?>
 
-    <div class="d-flex align-items-baseline justify-content-between gap-2 mb-3">
+    <!-- Encabezado de Página -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 g-animate">
         <div>
-            <span class="rotulo">Ciclo <?= (int) $ciclo['numero'] ?></span>
-            <h1 class="pantalla__titulo"><?= e(CicloService::rotulo($ciclo)) ?></h1>
+            <div class="d-flex align-items-center gap-2">
+                <span class="g-badge g-badge--blue">Ciclo <?= (int) $ciclo['numero'] ?></span>
+                <span class="g-badge g-badge--success">Abierto</span>
+            </div>
+            <h1 class="g-page-title mt-2"><?= e(CicloService::rotulo($ciclo)) ?></h1>
+            <p class="g-page-subtitle">
+                Desde el <?= e(formatFecha($ciclo['fecha_inicio'])) ?> hasta el <?= e(formatFecha($ciclo['fecha_fin'])) ?>
+            </p>
         </div>
-        <span class="etiqueta etiqueta--verde">Abierto</span>
+
+        <div class="d-flex gap-2">
+            <a href="<?= APP_URL ?>/admin/jugadas/nueva.php" class="g-btn g-btn--primary">
+                <i class="bi bi-plus-lg"></i> Cargar Jugada
+            </a>
+            <a href="<?= APP_URL ?>/admin/sorteos/nuevo.php" class="g-btn g-btn--outline">
+                <i class="bi bi-dice-5"></i> Cargar Sorteo
+            </a>
+        </div>
     </div>
 
-    <!-- Pozo: la cifra que todos quieren ver primero -->
-    <section class="pozo mb-3">
-        <div class="pozo__rotulo mb-1">Pozo acumulado</div>
-        <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
-        <div class="mt-2" style="color:rgba(255,255,255,.72);font-size:.8125rem">
-            <?php if ($arrastre > 0): ?>
-                Incluye <?= e(formatPesos($arrastre)) ?> que arrastro de la semana anterior
-            <?php else: ?>
-                <?= (int) $parametros->porcentajePozo() ?>% de cada jugada pagada de esta semana
-            <?php endif; ?>
-        </div>
-
-        <?php if ($subsidio > 0): ?>
-            <div class="pozo__desglose mt-3">
-                <i class="bi bi-info-circle-fill"></i>
-                De los cuales <?= e(formatPesos($pozoReal)) ?> son reales ·
-                Decena de Oro está cubriendo <?= e(formatPesos($subsidio)) ?>
-            </div>
-        <?php endif; ?>
-    </section>
-
+    <!-- Alertas si corresponden -->
     <?php if ($solicitudesPendientes > 0): ?>
-        <a href="<?= APP_URL ?>/admin/solicitudes/index.php"
-           class="tarjeta p-3 mb-3 d-flex align-items-center justify-content-between gap-2"
-           style="border-color:#e8d6a4;text-decoration:none;color:inherit">
-            <span class="d-flex align-items-center gap-2">
-                <i class="bi bi-hourglass-split" style="color:var(--oro)"></i>
-                <?= $solicitudesPendientes ?>
-                <?= $solicitudesPendientes === 1 ? 'solicitud de pago pendiente' : 'solicitudes de pago pendientes' ?>
-            </span>
-            <i class="bi bi-chevron-right text-secondary"></i>
+        <a href="<?= APP_URL ?>/admin/solicitudes/index.php" class="g-alert-banner g-alert-banner--warning g-animate g-animate-delay-1">
+            <i class="bi bi-hourglass-split"></i>
+            <div>
+                <strong><?= $solicitudesPendientes ?></strong>
+                <?= $solicitudesPendientes === 1 ? 'solicitud de pago pendiente de aprobación.' : 'solicitudes de pago pendientes de aprobación.' ?>
+            </div>
+            <i class="bi bi-chevron-right g-alert-banner__arrow"></i>
         </a>
     <?php endif; ?>
 
-    <div class="row g-2 mb-3">
-        <div class="col-4">
-            <div class="metrica">
-                <div class="metrica__valor"><?= (int) $resumen['jugadas_total'] ?></div>
-                <div class="metrica__rotulo">Jugadas</div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="metrica">
-                <div class="metrica__valor"><?= count($extractos) ?>/5</div>
-                <div class="metrica__rotulo">Sorteos</div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="metrica">
-                <div class="metrica__valor metrica__valor--oro"><?= e(formatPesos($resumen['recaudado'])) ?></div>
-                <div class="metrica__rotulo">Recaudado</div>
-            </div>
-        </div>
-    </div>
-
     <?php if ($sinCargar > 0): ?>
-        <div class="alert alert-warning d-flex align-items-start gap-2" role="alert">
-            <i class="bi bi-exclamation-triangle-fill flex-shrink-0" style="margin-top:.15rem"></i>
+        <div class="g-alert-banner g-alert-banner--info g-animate g-animate-delay-1">
+            <i class="bi bi-exclamation-triangle-fill"></i>
             <div>
                 <?= $sinCargar === 1
                     ? 'Falta cargar el extracto de un sorteo de esta semana.'
@@ -134,63 +111,205 @@ require __DIR__ . '/../includes/topbar.php';
         </div>
     <?php endif; ?>
 
-    <div class="row g-2 mb-4">
-        <div class="col-12">
-            <a href="<?= APP_URL ?>/admin/jugadas/nueva.php" class="btn btn-primary w-100">
-                <i class="bi bi-plus-lg"></i> Cargar una jugada
-            </a>
-        </div>
-        <div class="col-12">
-            <a href="<?= APP_URL ?>/admin/sorteos/nuevo.php"
-               class="btn <?= $sinCargar > 0 ? 'btn-primary' : 'btn-outline-secondary' ?> w-100">
-                <i class="bi bi-dice-5"></i> Cargar el sorteo de la Nocturna
-            </a>
-        </div>
-    </div>
+    <!-- Layout Grid: Columna Principal + Columna Lateral -->
+    <div class="row g-4">
 
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="rotulo">Ultimas jugadas</span>
-        <a href="<?= APP_URL ?>/admin/jugadas/index.php" class="small text-decoration-none">Ver todas</a>
-    </div>
+        <!-- Columna Izquierda / Principal -->
+        <div class="col-12 col-lg-8">
 
-    <?php if (!$ultimas): ?>
-        <div class="vacio tarjeta">
-            <i class="bi bi-ticket-perforated" aria-hidden="true"></i>
-            Todavia no hay jugadas cargadas.
-        </div>
-    <?php else: ?>
-        <?php foreach ($ultimas as $jugada): ?>
-            <div class="fila">
-                <div class="d-flex justify-content-between align-items-baseline gap-2">
-                    <p class="fila__titulo"><?= e($jugada['cliente_nombre']) ?></p>
-                    <span class="fila__meta text-nowrap"><?= e(formatFechaHora($jugada['fecha_carga'])) ?></span>
+            <!-- Hero Card: Pozo Acumulado -->
+            <div class="g-hero g-animate g-animate-delay-1">
+                <div class="g-hero__label">
+                    <i class="bi bi-trophy-fill me-1"></i> Pozo Acumulado Estimado
                 </div>
-                <p class="fila__meta mb-2">
-                    N° <?= e($jugada['nro_cliente']) ?> · <?= e(formatPesos($jugada['importe'])) ?>
-                </p>
-                <div class="bolillas">
-                    <?php foreach ($jugada['numeros'] as $numero): ?>
-                        <span class="bolilla"><?= e(num2($numero)) ?></span>
-                    <?php endforeach; ?>
+                <div class="g-hero__amount">
+                    <?= e(formatPesos($pozoMostrado)) ?>
+                </div>
+
+                <div class="g-hero__detail">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <?php if ($arrastre > 0): ?>
+                        Incluye <?= e(formatPesos($arrastre)) ?> que arrastró de la semana anterior
+                    <?php else: ?>
+                        <?= (int) $parametros->porcentajePozo() ?>% de cada jugada pagada de esta semana
+                    <?php endif; ?>
+                </div>
+
+                <?php if ($subsidio > 0): ?>
+                    <div class="g-hero__subsidy">
+                        <i class="bi bi-shield-check"></i>
+                        <span>De los cuales <?= e(formatPesos($pozoReal)) ?> son recaudación real · Decena de Oro subsidia <?= e(formatPesos($subsidio)) ?></span>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Métricas Grid (Stats) -->
+            <div class="g-stat-grid g-animate g-animate-delay-2">
+                <div class="g-stat">
+                    <div class="g-stat__icon g-stat__icon--blue">
+                        <i class="bi bi-ticket-perforated"></i>
+                    </div>
+                    <div class="g-stat__value"><?= (int) $resumen['jugadas_total'] ?></div>
+                    <div class="g-stat__label">Jugadas Totales</div>
+                </div>
+
+                <div class="g-stat">
+                    <div class="g-stat__icon g-stat__icon--purple">
+                        <i class="bi bi-dice-5"></i>
+                    </div>
+                    <div class="g-stat__value"><?= count($extractos) ?> / 5</div>
+                    <div class="g-stat__label">Sorteos Realizados</div>
+                </div>
+
+                <div class="g-stat g-stat--accent">
+                    <div class="g-stat__icon">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                    <div class="g-stat__value"><?= e(formatPesos($resumen['recaudado'])) ?></div>
+                    <div class="g-stat__label">Total Recaudado</div>
                 </div>
             </div>
-        <?php endforeach; ?>
-    <?php endif; ?>
 
-    <div class="d-flex flex-column gap-2 mt-3">
-        <a href="<?= APP_URL ?>/admin/ciclos/ver.php?id=<?= $cicloId ?>"
-           class="btn btn-outline-secondary w-100">
-            <i class="bi bi-clipboard-data"></i> Resumen completo del ciclo
-        </a>
-        <a href="<?= APP_URL ?>/admin/reportes/index.php"
-           class="btn btn-outline-secondary w-100">
-            <i class="bi bi-bar-chart-line"></i>
-            <?= isAdmin() ? 'Reportes y recaudación' : 'Reportes de lo que cargaste' ?>
-        </a>
+            <!-- Card: Últimas Jugadas -->
+            <div class="g-card g-list-card g-animate g-animate-delay-3">
+                <div class="g-card__header">
+                    <h2 class="g-card__title">
+                        <i class="bi bi-clock-history"></i>
+                        Últimas Jugadas Cargadas
+                    </h2>
+                    <a href="<?= APP_URL ?>/admin/jugadas/index.php" class="g-btn g-btn--ghost g-btn--sm">
+                        Ver todas <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+
+                <div class="g-card__body">
+                    <?php if (!$ultimas): ?>
+                        <div class="p-4 text-center text-secondary">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 text-muted"></i>
+                            Todavía no hay jugadas registradas en este ciclo.
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($ultimas as $jugada): ?>
+                            <div class="g-list-item">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+                                    <div class="g-list-item__title">
+                                        <?= e($jugada['cliente_nombre']) ?>
+                                        <span class="text-muted fw-normal fs-7 ms-1">(N° <?= e($jugada['nro_cliente']) ?>)</span>
+                                    </div>
+                                    <div class="g-badge g-badge--blue">
+                                        <?= e(formatPesos($jugada['importe'])) ?>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                                    <div class="bolillas">
+                                        <?php foreach ($jugada['numeros'] as $numero): ?>
+                                            <span class="bolilla"><?= e(num2($numero)) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <span class="g-list-item__meta">
+                                        <i class="bi bi-clock me-1"></i><?= e(formatFechaHora($jugada['fecha_carga'])) ?>
+                                    </span>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Columna Derecha / Accesos y Resumen -->
+        <div class="col-12 col-lg-4">
+
+            <!-- Acciones Rápidas -->
+            <div class="g-card mb-4 g-animate g-animate-delay-2">
+                <div class="g-card__header">
+                    <h3 class="g-card__title">
+                        <i class="bi bi-lightning-charge"></i>
+                        Acciones Rápidas
+                    </h3>
+                </div>
+                <div class="g-card__body p-3">
+                    <div class="d-grid gap-2">
+                        <a href="<?= APP_URL ?>/admin/jugadas/nueva.php" class="g-quick-action">
+                            <div class="g-quick-action__icon bg-primary-subtle text-primary">
+                                <i class="bi bi-plus-circle"></i>
+                            </div>
+                            <div>
+                                <div>Cargar Jugada</div>
+                                <div class="small text-muted fw-normal">Registrar cliente y números</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= APP_URL ?>/admin/sorteos/nuevo.php" class="g-quick-action">
+                            <div class="g-quick-action__icon bg-warning-subtle text-warning">
+                                <i class="bi bi-dice-5"></i>
+                            </div>
+                            <div>
+                                <div>Cargar Extracto</div>
+                                <div class="small text-muted fw-normal">Sorteo Nocturna diario</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= APP_URL ?>/admin/ciclos/ver.php?id=<?= $cicloId ?>" class="g-quick-action">
+                            <div class="g-quick-action__icon bg-info-subtle text-info">
+                                <i class="bi bi-clipboard-data"></i>
+                            </div>
+                            <div>
+                                <div>Resumen del Ciclo</div>
+                                <div class="small text-muted fw-normal">Estadísticas y cotejos</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= APP_URL ?>/admin/reportes/index.php" class="g-quick-action">
+                            <div class="g-quick-action__icon bg-success-subtle text-success">
+                                <i class="bi bi-bar-chart-line"></i>
+                            </div>
+                            <div>
+                                <div><?= isAdmin() ? 'Reportes de Recaudación' : 'Mis Reportes' ?></div>
+                                <div class="small text-muted fw-normal">Métricas y exportación</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sorteos de la Semana -->
+            <div class="g-card g-animate g-animate-delay-3">
+                <div class="g-card__header">
+                    <h3 class="g-card__title">
+                        <i class="bi bi-calendar-check"></i>
+                        Sorteos de la Semana
+                    </h3>
+                    <span class="g-badge g-badge--info"><?= count($extractos) ?>/5 cargados</span>
+                </div>
+                <div class="g-card__body p-3">
+                    <?php if (empty($extractos)): ?>
+                        <div class="text-center py-3 text-muted small">
+                            Aún no se cargaron extractos para esta semana.
+                        </div>
+                    <?php else: ?>
+                        <ul class="list-unstyled mb-0 d-flex flex-column gap-2">
+                            <?php foreach ($extractos as $ext): ?>
+                                <li class="d-flex justify-content-between align-items-center p-2 rounded" style="background:#f9fafb;border:1px solid #f3f4f6">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                        <span class="fw-semibold small"><?= e(formatFecha($ext['fecha'])) ?></span>
+                                    </div>
+                                    <span class="small text-muted">Nocturna</span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
 </main>
 
 <?php
-require __DIR__ . '/../includes/bottom_nav.php';
-require __DIR__ . '/../includes/foot.php';
+require __DIR__ . '/../includes/admin_foot.php';

@@ -1,0 +1,1122 @@
+/* ============================================================
+   Decena de Oro — Admin Panel · Estilo Gentelella
+   
+   Capa de diseño que transforma el admin en un dashboard tipo
+   Gentelella v4: sidebar oscuro, topbar blanca, cards con sombra,
+   tipografía Inter, paleta azul/gris.
+
+   Convive con Bootstrap 5 — no reemplaza app.css sino que le agrega
+   el layout de escritorio con sidebar. En mobile (<768px) se
+   mantiene la bottom_nav original.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Design Tokens ────────────────────────────────────────── */
+
+:root {
+    /* Tipografía Gentelella */
+    --g-ff: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+    /* Sidebar */
+    --g-sidebar-w: 260px;
+    --g-sidebar-w-collapsed: 72px;
+    --g-sidebar-bg: #1a2332;
+    --g-sidebar-bg-hover: rgba(255, 255, 255, .06);
+    --g-sidebar-bg-active: rgba(99, 148, 255, .12);
+    --g-sidebar-text: rgba(255, 255, 255, .58);
+    --g-sidebar-text-hover: rgba(255, 255, 255, .88);
+    --g-sidebar-text-active: #7eb3ff;
+    --g-sidebar-icon: rgba(255, 255, 255, .42);
+    --g-sidebar-icon-active: #7eb3ff;
+    --g-sidebar-divider: rgba(255, 255, 255, .08);
+    --g-sidebar-header: rgba(255, 255, 255, .32);
+
+    /* Topbar */
+    --g-topbar-h: 64px;
+    --g-topbar-bg: #ffffff;
+    --g-topbar-border: #e5e7eb;
+    --g-topbar-text: #374151;
+    --g-topbar-text-muted: #6b7280;
+
+    /* Contenido */
+    --g-content-bg: #f3f4f6;
+    --g-content-text: #111827;
+    --g-content-text-muted: #6b7280;
+    --g-content-text-light: #9ca3af;
+
+    /* Cards */
+    --g-card-bg: #ffffff;
+    --g-card-border: #e5e7eb;
+    --g-card-radius: 12px;
+    --g-card-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --g-card-shadow-hover: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+
+    /* Acentos */
+    --g-primary: #3b82f6;
+    --g-primary-dark: #2563eb;
+    --g-primary-light: #dbeafe;
+    --g-primary-subtle: #eff6ff;
+    --g-success: #10b981;
+    --g-success-light: #d1fae5;
+    --g-warning: #f59e0b;
+    --g-warning-light: #fef3c7;
+    --g-danger: #ef4444;
+    --g-danger-light: #fee2e2;
+    --g-info: #6366f1;
+    --g-info-light: #e0e7ff;
+
+    /* Radios y transiciones */
+    --g-radius-sm: 8px;
+    --g-radius: 12px;
+    --g-radius-lg: 16px;
+    --g-transition: .2s cubic-bezier(.4, 0, .2, 1);
+}
+
+
+/* ── Layout principal ─────────────────────────────────────── */
+
+body.admin-gentelella {
+    font-family: var(--g-ff);
+    background: var(--g-content-bg);
+    color: var(--g-content-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+}
+
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+
+.g-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--g-sidebar-w);
+    background: var(--g-sidebar-bg);
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: transform var(--g-transition), width var(--g-transition);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.1) transparent;
+}
+
+/* En mobile: sidebar oculto a la izquierda */
+@media (max-width: 767.98px) {
+    .g-sidebar {
+        transform: translateX(-100%);
+        width: 280px;
+        box-shadow: 4px 0 24px rgba(0,0,0,.3);
+    }
+    .g-sidebar.open {
+        transform: translateX(0);
+    }
+}
+
+/* Brand / logo */
+.g-sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: 1.25rem 1.25rem 1rem;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.g-sidebar__brand-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--g-primary), #60a5fa);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.125rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, .35);
+}
+
+.g-sidebar__brand-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.g-sidebar__brand-name {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.2;
+    letter-spacing: -.01em;
+}
+
+.g-sidebar__brand-sub {
+    color: rgba(255,255,255,.45);
+    font-size: .6875rem;
+    font-weight: 500;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* Navegación sidebar */
+.g-sidebar__nav {
+    flex: 1;
+    padding: .5rem 0;
+}
+
+.g-sidebar__group {
+    margin-bottom: .25rem;
+}
+
+.g-sidebar__group-label {
+    padding: 1rem 1.25rem .5rem;
+    font-size: .625rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--g-sidebar-header);
+    white-space: nowrap;
+}
+
+.g-sidebar__link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .5rem 1.25rem;
+    color: var(--g-sidebar-text);
+    text-decoration: none;
+    font-size: .8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border-radius: 0;
+    margin: 1px .5rem;
+    border-radius: var(--g-radius-sm);
+    transition: background var(--g-transition), color var(--g-transition);
+    position: relative;
+}
+
+.g-sidebar__link i {
+    font-size: 1.125rem;
+    width: 1.375rem;
+    text-align: center;
+    color: var(--g-sidebar-icon);
+    flex-shrink: 0;
+    transition: color var(--g-transition);
+}
+
+.g-sidebar__link:hover {
+    background: var(--g-sidebar-bg-hover);
+    color: var(--g-sidebar-text-hover);
+}
+
+.g-sidebar__link:hover i {
+    color: var(--g-sidebar-text-hover);
+}
+
+.g-sidebar__link.active {
+    background: var(--g-sidebar-bg-active);
+    color: var(--g-sidebar-text-active);
+    font-weight: 600;
+}
+
+.g-sidebar__link.active i {
+    color: var(--g-sidebar-icon-active);
+}
+
+/* Badge en el sidebar (e.g. solicitudes pendientes) */
+.g-sidebar__badge {
+    margin-left: auto;
+    padding: .125rem .5rem;
+    border-radius: 999px;
+    font-size: .625rem;
+    font-weight: 700;
+    background: var(--g-primary);
+    color: #fff;
+    min-width: 1.25rem;
+    text-align: center;
+}
+
+.g-sidebar__badge--warning {
+    background: var(--g-warning);
+    color: #1a1a1a;
+}
+
+/* Footer sidebar */
+.g-sidebar__footer {
+    padding: .75rem 1rem;
+    border-top: 1px solid var(--g-sidebar-divider);
+    flex-shrink: 0;
+}
+
+.g-sidebar__user {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .5rem;
+    border-radius: var(--g-radius-sm);
+    text-decoration: none;
+    color: var(--g-sidebar-text);
+    transition: background var(--g-transition);
+}
+
+.g-sidebar__user:hover {
+    background: var(--g-sidebar-bg-hover);
+    color: var(--g-sidebar-text-hover);
+}
+
+.g-sidebar__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--g-primary), #818cf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: .8125rem;
+    flex-shrink: 0;
+}
+
+.g-sidebar__user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.g-sidebar__user-name {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: rgba(255,255,255,.85);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.g-sidebar__user-role {
+    font-size: .6875rem;
+    color: rgba(255,255,255,.42);
+}
+
+
+/* ── Overlay del sidebar mobile ──────────────────────────── */
+
+.g-sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 1039;
+    backdrop-filter: blur(2px);
+}
+
+.g-sidebar-overlay.active {
+    display: block;
+}
+
+
+/* ── Topbar ───────────────────────────────────────────────── */
+
+.g-topbar {
+    height: var(--g-topbar-h);
+    background: var(--g-topbar-bg);
+    border-bottom: 1px solid var(--g-topbar-border);
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 1035;
+    gap: 1rem;
+}
+
+@media (min-width: 768px) {
+    .g-topbar {
+        margin-left: var(--g-sidebar-w);
+    }
+}
+
+/* Hamburguesa mobile */
+.g-topbar__toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: none;
+    color: var(--g-topbar-text);
+    font-size: 1.375rem;
+    border-radius: var(--g-radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background var(--g-transition);
+}
+
+.g-topbar__toggle:hover {
+    background: var(--g-content-bg);
+}
+
+@media (min-width: 768px) {
+    .g-topbar__toggle { display: none; }
+}
+
+/* Breadcrumb en topbar */
+.g-topbar__breadcrumb {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+    font-size: .8125rem;
+    color: var(--g-topbar-text-muted);
+    min-width: 0;
+}
+
+.g-topbar__breadcrumb a {
+    color: var(--g-topbar-text-muted);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.g-topbar__breadcrumb a:hover {
+    color: var(--g-primary);
+}
+
+.g-topbar__breadcrumb-current {
+    color: var(--g-topbar-text);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.g-topbar__breadcrumb-sep {
+    color: var(--g-content-text-light);
+    font-size: .75rem;
+}
+
+/* Acciones topbar (notificaciones, perfil) */
+.g-topbar__actions {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-shrink: 0;
+}
+
+.g-topbar__btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: none;
+    color: var(--g-topbar-text-muted);
+    font-size: 1.25rem;
+    border-radius: var(--g-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--g-transition), color var(--g-transition);
+}
+
+.g-topbar__btn:hover {
+    background: var(--g-content-bg);
+    color: var(--g-topbar-text);
+}
+
+.g-topbar__dot {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--g-danger);
+    border: 2px solid var(--g-topbar-bg);
+}
+
+.g-topbar__avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--g-primary), #818cf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: .8125rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color var(--g-transition);
+}
+
+.g-topbar__avatar:hover {
+    border-color: var(--g-primary-light);
+}
+
+
+/* ── Área de contenido ────────────────────────────────────── */
+
+.g-content {
+    padding: 1.5rem;
+    min-height: calc(100dvh - var(--g-topbar-h));
+}
+
+@media (min-width: 768px) {
+    .g-content {
+        margin-left: var(--g-sidebar-w);
+        padding: 2rem 2.5rem;
+    }
+}
+
+/* Page header */
+.g-page-header {
+    margin-bottom: 1.5rem;
+}
+
+.g-page-title {
+    font-family: var(--g-ff);
+    font-weight: 700;
+    font-size: 1.625rem;
+    line-height: 1.2;
+    color: var(--g-content-text);
+    margin: 0;
+    letter-spacing: -.02em;
+}
+
+.g-page-subtitle {
+    font-size: .875rem;
+    color: var(--g-content-text-muted);
+    margin-top: .25rem;
+}
+
+
+/* ── Cards Gentelella ─────────────────────────────────────── */
+
+.g-card {
+    background: var(--g-card-bg);
+    border: 1px solid var(--g-card-border);
+    border-radius: var(--g-card-radius);
+    box-shadow: var(--g-card-shadow);
+    transition: box-shadow var(--g-transition), transform var(--g-transition);
+}
+
+.g-card:hover {
+    box-shadow: var(--g-card-shadow-hover);
+}
+
+.g-card__header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--g-card-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+.g-card__title {
+    font-weight: 600;
+    font-size: .875rem;
+    color: var(--g-content-text);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.g-card__title i {
+    color: var(--g-primary);
+    font-size: 1rem;
+}
+
+.g-card__body {
+    padding: 1.25rem;
+}
+
+.g-card__footer {
+    padding: .75rem 1.25rem;
+    border-top: 1px solid var(--g-card-border);
+    background: #f9fafb;
+    border-radius: 0 0 var(--g-card-radius) var(--g-card-radius);
+}
+
+
+/* ── Tiles de métricas (stat cards) ──────────────────────── */
+
+.g-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .g-stat-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: .75rem;
+    }
+}
+
+.g-stat {
+    background: var(--g-card-bg);
+    border: 1px solid var(--g-card-border);
+    border-radius: var(--g-card-radius);
+    padding: 1.25rem;
+    box-shadow: var(--g-card-shadow);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow var(--g-transition), transform var(--g-transition);
+}
+
+.g-stat:hover {
+    box-shadow: var(--g-card-shadow-hover);
+    transform: translateY(-2px);
+}
+
+.g-stat__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    margin-bottom: .875rem;
+}
+
+.g-stat__icon--blue    { background: var(--g-primary-light); color: var(--g-primary); }
+.g-stat__icon--green   { background: var(--g-success-light); color: var(--g-success); }
+.g-stat__icon--orange  { background: var(--g-warning-light); color: var(--g-warning); }
+.g-stat__icon--red     { background: var(--g-danger-light);  color: var(--g-danger); }
+.g-stat__icon--purple  { background: var(--g-info-light);    color: var(--g-info); }
+
+.g-stat__value {
+    font-family: var(--g-ff);
+    font-weight: 800;
+    font-size: 1.75rem;
+    line-height: 1;
+    color: var(--g-content-text);
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: .25rem;
+}
+
+.g-stat__label {
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--g-content-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+/* Stat con acento (recaudado) */
+.g-stat--accent {
+    background: linear-gradient(135deg, var(--g-primary), #2563eb);
+    border-color: transparent;
+}
+
+.g-stat--accent .g-stat__icon {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+}
+
+.g-stat--accent .g-stat__value { color: #fff; }
+.g-stat--accent .g-stat__label { color: rgba(255,255,255,.75); }
+
+
+/* ── Hero card (pozo acumulado) ──────────────────────────── */
+
+.g-hero {
+    background: linear-gradient(135deg, #1e3a5f, #1a2332);
+    border-radius: var(--g-card-radius);
+    padding: 1.75rem;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 16px rgba(26, 35, 50, .3);
+}
+
+.g-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 85% 20%, rgba(59,130,246,.15) 0%, transparent 60%),
+                radial-gradient(circle at 15% 80%, rgba(99,102,241,.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.g-hero::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 50%;
+    height: 200%;
+    background: linear-gradient(135deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    transform: rotate(25deg);
+    pointer-events: none;
+}
+
+.g-hero__label {
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.6);
+    margin-bottom: .5rem;
+    position: relative;
+}
+
+.g-hero__amount {
+    font-family: var(--g-ff);
+    font-weight: 800;
+    font-size: clamp(2.25rem, 8vw, 3rem);
+    line-height: 1;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-variant-numeric: tabular-nums;
+    position: relative;
+}
+
+.g-hero__detail {
+    font-size: .8125rem;
+    color: rgba(255,255,255,.5);
+    margin-top: .75rem;
+    position: relative;
+}
+
+.g-hero__detail i {
+    color: rgba(255,255,255,.35);
+}
+
+.g-hero__subsidy {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    margin-top: .75rem;
+    padding: .375rem .75rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    backdrop-filter: blur(8px);
+    font-size: .75rem;
+    color: rgba(255,255,255,.65);
+    position: relative;
+}
+
+.g-hero__subsidy i {
+    color: #60a5fa;
+    font-size: .875rem;
+}
+
+
+/* ── Alert banner (solicitudes, extractos faltantes) ──────── */
+
+.g-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .875rem 1.125rem;
+    border-radius: var(--g-radius);
+    margin-bottom: 1rem;
+    font-size: .875rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: transform var(--g-transition), box-shadow var(--g-transition);
+}
+
+a.g-alert-banner:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.06);
+}
+
+.g-alert-banner--warning {
+    background: var(--g-warning-light);
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.g-alert-banner--info {
+    background: var(--g-primary-subtle);
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
+}
+
+.g-alert-banner i {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.g-alert-banner__arrow {
+    margin-left: auto;
+    color: inherit;
+    opacity: .5;
+}
+
+
+/* ── Botones Gentelella ──────────────────────────────────── */
+
+.g-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .625rem 1.25rem;
+    font-family: var(--g-ff);
+    font-size: .875rem;
+    font-weight: 600;
+    border-radius: var(--g-radius-sm);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--g-transition);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.g-btn--primary,
+a.g-btn--primary,
+button.g-btn--primary {
+    background: var(--g-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--g-primary) !important;
+    box-shadow: 0 1px 3px rgba(59, 130, 246, .3);
+}
+
+.g-btn--primary:hover,
+a.g-btn--primary:hover,
+button.g-btn--primary:hover {
+    background: var(--g-primary-dark) !important;
+    border-color: var(--g-primary-dark) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, .3);
+    transform: translateY(-1px);
+    color: #ffffff !important;
+}
+
+.g-btn--outline,
+a.g-btn--outline,
+button.g-btn--outline {
+    background: var(--g-card-bg) !important;
+    color: var(--g-content-text) !important;
+    border-color: var(--g-card-border) !important;
+}
+
+.g-btn--outline:hover,
+a.g-btn--outline:hover,
+button.g-btn--outline:hover {
+    background: var(--g-content-bg) !important;
+    border-color: var(--g-primary) !important;
+    color: var(--g-primary) !important;
+}
+
+.g-btn--ghost {
+    background: none;
+    color: var(--g-primary);
+}
+
+.g-btn--ghost:hover {
+    background: var(--g-primary-subtle);
+}
+
+.g-btn--sm {
+    padding: .375rem .75rem;
+    font-size: .8125rem;
+}
+
+.g-btn--block {
+    width: 100%;
+}
+
+/* Acciones rápidas (grid de botones) */
+.g-quick-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 575.98px) {
+    .g-quick-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+.g-quick-action {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: 1rem;
+    background: var(--g-card-bg);
+    border: 1px solid var(--g-card-border);
+    border-radius: var(--g-card-radius);
+    text-decoration: none;
+    color: var(--g-content-text);
+    font-weight: 600;
+    font-size: .875rem;
+    transition: all var(--g-transition);
+    box-shadow: var(--g-card-shadow);
+}
+
+.g-quick-action:hover {
+    border-color: var(--g-primary);
+    box-shadow: var(--g-card-shadow-hover);
+    transform: translateY(-2px);
+    color: var(--g-primary);
+}
+
+.g-quick-action__icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    flex-shrink: 0;
+}
+
+
+/* ── Filas de listado (últimas jugadas etc) ────────────────── */
+
+.g-list-card .g-card__body {
+    padding: 0;
+}
+
+.g-list-item {
+    display: block;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--g-transition);
+}
+
+.g-list-item:last-child {
+    border-bottom: none;
+}
+
+.g-list-item:hover {
+    background: #f9fafb;
+}
+
+.g-list-item__title {
+    font-weight: 600;
+    font-size: .875rem;
+    color: var(--g-content-text);
+    margin: 0;
+}
+
+.g-list-item__meta {
+    font-size: .75rem;
+    color: var(--g-content-text-muted);
+    margin-top: .125rem;
+}
+
+
+/* ── Badges / etiquetas ──────────────────────────────────── */
+
+.g-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .1875rem .5rem;
+    border-radius: 999px;
+    font-size: .6875rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.g-badge--success { background: var(--g-success-light); color: #065f46; }
+.g-badge--warning { background: var(--g-warning-light); color: #92400e; }
+.g-badge--danger  { background: var(--g-danger-light);  color: #991b1b; }
+.g-badge--info    { background: var(--g-info-light);    color: #3730a3; }
+.g-badge--blue    { background: var(--g-primary-light); color: #1d4ed8; }
+
+
+/* ── Bolillas (reutilizo la semántica pero con tema azul) ── */
+
+body.admin-gentelella .bolilla {
+    background: var(--g-primary-light);
+    border-color: #bfdbfe;
+    color: var(--g-primary-dark);
+}
+
+body.admin-gentelella .bolilla--acertada {
+    background: var(--g-primary);
+    border-color: var(--g-primary);
+    color: #fff;
+}
+
+
+/* ── Formularios Gentelella ──────────────────────────────── */
+
+body.admin-gentelella .form-control:focus,
+body.admin-gentelella .form-select:focus {
+    border-color: var(--g-primary);
+    box-shadow: 0 0 0 .2rem rgba(59, 130, 246, .15);
+}
+
+body.admin-gentelella .form-check-input:checked {
+    background-color: var(--g-primary);
+    border-color: var(--g-primary);
+}
+
+body.admin-gentelella .form-check-input:focus {
+    border-color: var(--g-primary);
+    box-shadow: 0 0 0 .2rem rgba(59, 130, 246, .15);
+}
+
+
+/* ── Botones Bootstrap override ──────────────────────────── */
+
+body.admin-gentelella .btn-primary {
+    background: var(--g-primary);
+    border-color: var(--g-primary);
+}
+
+body.admin-gentelella .btn-primary:hover,
+body.admin-gentelella .btn-primary:focus,
+body.admin-gentelella .btn-primary:active {
+    background: var(--g-primary-dark) !important;
+    border-color: var(--g-primary-dark) !important;
+}
+
+body.admin-gentelella .btn-outline-secondary {
+    border-color: var(--g-card-border);
+    color: var(--g-content-text-muted);
+}
+
+body.admin-gentelella .btn-outline-secondary:hover {
+    background: var(--g-content-bg);
+    border-color: var(--g-primary);
+    color: var(--g-primary);
+}
+
+body.admin-gentelella a {
+    color: var(--g-primary);
+    text-decoration: none;
+}
+
+body.admin-gentelella a:hover {
+    color: var(--g-primary-dark);
+}
+
+
+/* ── Alertas Bootstrap override ──────────────────────────── */
+
+body.admin-gentelella .alert-warning {
+    background: var(--g-warning-light);
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+body.admin-gentelella .alert-success {
+    background: var(--g-success-light);
+    border-color: #6ee7b7;
+    color: #065f46;
+}
+
+body.admin-gentelella .alert-danger {
+    background: var(--g-danger-light);
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+
+/* ── Dropdown Bootstrap override ─────────────────────────── */
+
+body.admin-gentelella .dropdown-menu {
+    border-color: var(--g-card-border);
+    border-radius: var(--g-radius);
+    box-shadow: 0 8px 24px -4px rgba(0,0,0,.12), 0 4px 8px -4px rgba(0,0,0,.06);
+    padding: .375rem;
+}
+
+body.admin-gentelella .dropdown-item {
+    border-radius: var(--g-radius-sm);
+    font-size: .8125rem;
+}
+
+body.admin-gentelella .dropdown-item:hover,
+body.admin-gentelella .dropdown-item:focus {
+    background: var(--g-primary-subtle);
+    color: var(--g-primary);
+}
+
+body.admin-gentelella .dropdown-item.active,
+body.admin-gentelella .dropdown-item:active {
+    background: var(--g-primary);
+    color: #fff;
+}
+
+
+/* ── Mobile: ocultar sidebar, mostrar bottom nav ─────────── */
+
+@media (max-width: 767.98px) {
+    body.admin-gentelella {
+        padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    }
+
+    /* Mostrar bottom nav y topbar original en mobile */
+    body.admin-gentelella .navbar-abajo {
+        background: var(--g-sidebar-bg);
+    }
+
+    body.admin-gentelella .navbar-abajo__item.active {
+        color: var(--g-sidebar-text-active);
+        background: var(--g-sidebar-bg-active);
+        box-shadow: inset 0 3px 0 var(--g-primary);
+    }
+}
+
+@media (min-width: 768px) {
+    /* En desktop: ocultar bottom nav, mostrar sidebar */
+    body.admin-gentelella .navbar-abajo {
+        display: none;
+    }
+
+    body.admin-gentelella {
+        padding-bottom: 0;
+    }
+}
+
+
+/* ── Transiciones y animaciones ──────────────────────────── */
+
+@keyframes g-fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.g-animate {
+    animation: g-fadeInUp .35s cubic-bezier(.4, 0, .2, 1) both;
+}
+
+.g-animate-delay-1 { animation-delay: .05s; }
+.g-animate-delay-2 { animation-delay: .1s; }
+.g-animate-delay-3 { animation-delay: .15s; }
+.g-animate-delay-4 { animation-delay: .2s; }
+
+
+/* ── Respeto por prefers-reduced-motion ──────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .g-stat:hover { transform: none; }
+    .g-quick-action:hover { transform: none; }
+    .g-btn--primary:hover { transform: none; }
+    a.g-alert-banner:hover { transform: none; }
+    .g-animate { animation: none; }
+}

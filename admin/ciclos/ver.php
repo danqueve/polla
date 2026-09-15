@@ -1,7 +1,6 @@
 <?php
 /**
- * Resumen de un ciclo: pozo, jugadas, sorteos cargados y, si hubo
- * ganador, quien gano y cuanto le toco.
+ * Resumen de un ciclo con diseño Gentelella: pozo, jugadas, cotejos, ganadores y desglose.
  */
 require_once __DIR__ . '/../../config/app.php';
 
@@ -39,14 +38,6 @@ $esProgramado = $ciclo['estado'] === CicloService::ESTADO_PROGRAMADO;
 $arrastre     = (float) ($ciclo['monto_arrastrado'] ?? 0);
 $pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 
-// Fase 7: que cifra es "el pozo" depende de si el ciclo sigue abierto
-// (se calcula en caliente contra el premio base vigente) o ya se
-// liquido (monto_pagado ya quedo fijado con el piso vigente en ese
-// momento — ver PozoService::liquidar()). Un ciclo cerrado SIN
-// ganador no pago nada: se muestra el real tal cual, sin ningun piso.
-// Un ciclo "programado" tampoco aplico nunca ningun piso: todavia no
-// es el ciclo vigente para el cotejo, solo va acumulando lo que se le
-// carga por anticipado.
 if ($abierto) {
     $premioBase   = (new ParametroService($db))->premioBase();
     $pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
@@ -59,261 +50,313 @@ if ($abierto) {
     $pisoAplicado = 0.0;
 }
 $subsidio = max(0.0, $pisoAplicado - $pozoReal);
+$salidos  = PortalService::numerosSalidos($lista);
 
-// Numeros que ya salieron en la semana, para marcar los aciertos parciales
-// de cada jugada en el listado.
-$salidos = PortalService::numerosSalidos($lista);
+$pageTitle        = 'Ciclo ' . (int) $ciclo['numero'] . ' · ' . APP_NAME;
+$navSeccion       = 'ciclos';
+$pageSectionTitle = 'Detalle de Ciclo';
+$breadcrumb       = [
+    ['label' => 'Ciclos', 'url' => APP_URL . '/admin/ciclos/index.php'],
+    ['label' => 'Ciclo ' . (int) $ciclo['numero'], 'url' => '']
+];
 
-$pageTitle  = 'Ciclo ' . (int) $ciclo['numero'] . ' · ' . APP_NAME;
-$navSeccion = 'ciclos';
-require __DIR__ . '/../../includes/head.php';
-require __DIR__ . '/../../includes/topbar.php';
+require __DIR__ . '/../../includes/admin_head.php';
+require __DIR__ . '/../../includes/admin_sidebar.php';
+require __DIR__ . '/../../includes/admin_topbar.php';
 ?>
 
-<main class="pantalla">
-
-    <a href="<?= APP_URL ?>/admin/ciclos/index.php" class="btn btn-sm btn-outline-secondary mb-3">
-        <i class="bi bi-arrow-left"></i> Todos los ciclos
-    </a>
+<main class="g-content">
 
     <?php require __DIR__ . '/../../includes/flash.php'; ?>
 
-    <div class="d-flex align-items-baseline justify-content-between gap-2 mb-3">
+    <!-- Encabezado de Página -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 g-animate">
         <div>
-            <span class="rotulo">Ciclo <?= (int) $ciclo['numero'] ?></span>
-            <h1 class="pantalla__titulo"><?= e(CicloService::rotulo($ciclo)) ?></h1>
-        </div>
-        <?php if ($esProgramado): ?>
-            <span class="etiqueta etiqueta--gris">
-                <i class="bi bi-clock-history"></i> Próxima semana (en formación)
-            </span>
-        <?php elseif ($abierto): ?>
-            <span class="etiqueta etiqueta--verde">Abierto</span>
-        <?php elseif ($conGanador): ?>
-            <span class="etiqueta etiqueta--oro">Con ganador</span>
-        <?php else: ?>
-            <span class="etiqueta etiqueta--gris">Sin ganador</span>
-        <?php endif; ?>
-    </div>
-
-    <!-- Pozo -->
-    <section class="pozo mb-3">
-        <div class="pozo__rotulo mb-1">
-            <?php if ($abierto): ?>
-                Pozo acumulado
-            <?php elseif ($esProgramado): ?>
-                Pozo acumulado (semana en formación)
-            <?php else: ?>
-                Pozo al cierre
-            <?php endif; ?>
-        </div>
-        <div class="pozo__monto"><?= e(formatPesos($pozoMostrado)) ?></div>
-
-        <?php if ($arrastre > 0): ?>
-            <div class="mt-2" style="color:rgba(255,255,255,.72);font-size:.8125rem">
-                Incluye <?= e(formatPesos($arrastre)) ?> que venian de la semana anterior.
+            <div class="d-flex align-items-center gap-2">
+                <span class="g-badge g-badge--blue">Ciclo <?= (int) $ciclo['numero'] ?></span>
+                <?php if ($esProgramado): ?>
+                    <span class="g-badge g-badge--info">
+                        <i class="bi bi-clock me-1"></i> Próxima Semana (En Formación)
+                    </span>
+                <?php elseif ($abierto): ?>
+                    <span class="g-badge g-badge--success">Ciclo Abierto</span>
+                <?php elseif ($conGanador): ?>
+                    <span class="g-badge g-badge--warning">
+                        <i class="bi bi-trophy-fill me-1"></i> Finalizado con Ganador
+                    </span>
+                <?php else: ?>
+                    <span class="g-badge" style="background:#e5e7eb;color:#4b5563">Cerrado Sin Ganador</span>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
-
-        <?php if ((float) ($ciclo['monto_pagado'] ?? 0) > 0): ?>
-            <div class="mt-2" style="color:#f2d382;font-size:.8125rem">
-                <i class="bi bi-check-circle-fill"></i>
-                Liquidado el <?= e(formatFechaHora($ciclo['fecha_liquidacion'])) ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if (isAdmin() && $subsidio > 0): ?>
-            <div class="pozo__desglose mt-3">
-                <i class="bi bi-info-circle-fill"></i>
-                De los cuales <?= e(formatPesos($pozoReal)) ?> son reales ·
-                Decena de Oro <?= $conGanador ? 'cubrió' : 'está cubriendo' ?>
-                <?= e(formatPesos($subsidio)) ?>
-            </div>
-        <?php endif; ?>
-    </section>
-
-    <?php if (isAdmin() && ($abierto || $conGanador)): ?>
-        <div class="tarjeta p-3 mb-4">
-            <span class="rotulo d-block mb-2">Desglose del pozo</span>
-            <div class="desglose-pozo__fila">
-                <span>Acumulado real (ventas de la semana)</span>
-                <span class="cifra"><?= e(formatPesos($pozoReal)) ?></span>
-            </div>
-            <div class="desglose-pozo__fila">
-                <span>Piso garantizado<?= $abierto ? ' (vigente)' : ' (aplicado al liquidar)' ?></span>
-                <span class="cifra"><?= e(formatPesos($pisoAplicado)) ?></span>
-            </div>
-            <div class="desglose-pozo__fila desglose-pozo__fila--total">
-                <span><?= $conGanador ? 'Pagado' : 'A pagar si hay ganador' ?></span>
-                <span class="cifra"><?= e(formatPesos($pozoMostrado)) ?></span>
-            </div>
-            <?php if ($subsidio > 0): ?>
-                <div class="desglose-pozo__fila desglose-pozo__fila--subsidio">
-                    <span>Subsidiado por Decena de Oro</span>
-                    <span class="cifra"><?= e(formatPesos($subsidio)) ?></span>
-                </div>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
-
-    <div class="row g-2 mb-4">
-        <div class="col-4">
-            <div class="metrica">
-                <div class="metrica__valor"><?= (int) $resumen['jugadas_total'] ?></div>
-                <div class="metrica__rotulo">Jugadas</div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="metrica">
-                <div class="metrica__valor"><?= count($lista) ?>/5</div>
-                <div class="metrica__rotulo">Sorteos</div>
-            </div>
-        </div>
-        <div class="col-4">
-            <div class="metrica">
-                <div class="metrica__valor metrica__valor--oro"><?= e(formatPesos($resumen['recaudado'])) ?></div>
-                <div class="metrica__rotulo">Recaudado</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Ganadores -->
-    <?php if ($ganadores): ?>
-        <span class="rotulo d-block mb-2">
-            <?= count($ganadores) === 1 ? 'Ganador' : 'Ganadores' ?>
-        </span>
-
-        <?php foreach ($ganadores as $ganador): ?>
-            <article class="tarjeta tarjeta--realce p-3 mb-2" style="border-color:#e8d6a4">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="min-w-0">
-                        <p class="fila__titulo">
-                            <i class="bi bi-trophy-fill" style="color:var(--oro)"></i>
-                            <?= e($ganador['cliente_nombre']) ?>
-                        </p>
-                        <p class="fila__meta">
-                            <span class="cifra">N° <?= e($ganador['nro_cliente']) ?></span>
-                            <?php if ($ganador['telefono']): ?>
-                                · <?= e($ganador['telefono']) ?>
-                            <?php endif; ?>
-                        </p>
-                        <p class="fila__meta">
-                            Jugada #<?= (int) $ganador['jugada_id'] ?>
-                            · sorteo del <?= e(formatFecha($ganador['sorteo_fecha'])) ?>
-                        </p>
-                    </div>
-                    <div class="text-end text-nowrap">
-                        <div class="rotulo">Le toca</div>
-                        <div class="cifra fw-bold fs-4" style="color:var(--oro)">
-                            <?= e(formatPesos($ganador['monto_premio'])) ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bolillas mt-2">
-                    <?php foreach ($ganador['numeros'] as $numero): ?>
-                        <span class="bolilla bolilla--acertada"><?= e(num2($numero)) ?></span>
-                    <?php endforeach; ?>
-                </div>
-            </article>
-        <?php endforeach; ?>
-
-        <?php if (count($ganadores) > 1): ?>
-            <p class="fila__meta mb-4">
-                El pozo de <?= e(formatPesos($ciclo['monto_pagado'])) ?> se dividio
-                en partes iguales entre los <?= count($ganadores) ?> ganadores.
+            <h1 class="g-page-title mt-2"><?= e(CicloService::rotulo($ciclo)) ?></h1>
+            <p class="g-page-subtitle">
+                Desde <?= e(formatFecha($ciclo['fecha_inicio'])) ?> hasta <?= e(formatFecha($ciclo['fecha_fin'])) ?>
             </p>
-        <?php else: ?>
-            <div class="mb-4"></div>
-        <?php endif; ?>
-    <?php endif; ?>
-
-    <!-- Sorteos -->
-    <span class="rotulo d-block mb-2">Sorteos de la semana</span>
-
-    <?php if (!$lista): ?>
-        <div class="vacio tarjeta mb-4">
-            <i class="bi bi-dice-5" aria-hidden="true"></i>
-            Todavia no se cargo ningun extracto.
         </div>
-    <?php else: ?>
-        <div class="mb-4">
-            <?php foreach ($lista as $sorteo): ?>
-                <div class="fila">
-                    <div class="d-flex justify-content-between align-items-baseline gap-2">
-                        <p class="fila__titulo"><?= e(formatFechaDia($sorteo['fecha'])) ?></p>
-                        <?php if ((int) $sorteo['ganadores_total'] > 0): ?>
-                            <span class="etiqueta etiqueta--oro text-nowrap">
-                                <i class="bi bi-trophy-fill"></i> Corto la semana
-                            </span>
-                        <?php endif; ?>
+
+        <div class="d-flex gap-2">
+            <a href="<?= APP_URL ?>/admin/ciclos/index.php" class="g-btn g-btn--outline">
+                <i class="bi bi-arrow-left"></i> Todos los Ciclos
+            </a>
+        </div>
+    </div>
+
+    <!-- Layout Grid -->
+    <div class="row g-4">
+
+        <!-- Columna Izquierda: Pozo y Desglose -->
+        <div class="col-12 col-lg-8">
+
+            <!-- Hero Card Pozo -->
+            <div class="g-hero g-animate g-animate-delay-1">
+                <div class="g-hero__label">
+                    <i class="bi bi-trophy-fill me-1"></i>
+                    <?= $abierto ? 'Pozo Acumulado Estimado' : ($conGanador ? 'Premio Total Repartido' : 'Pozo al Cierre') ?>
+                </div>
+                <div class="g-hero__amount">
+                    <?= e(formatPesos($pozoMostrado)) ?>
+                </div>
+
+                <div class="g-hero__detail">
+                    <i class="bi bi-info-circle me-1"></i>
+                    <?php if ($arrastre > 0): ?>
+                        Incluye <?= e(formatPesos($arrastre)) ?> arrastrados del ciclo anterior.
+                    <?php else: ?>
+                        Acumulado por porcentaje de jugadas de la semana.
+                    <?php endif; ?>
+                </div>
+
+                <?php if ((float) ($ciclo['monto_pagado'] ?? 0) > 0): ?>
+                    <div class="g-hero__subsidy mt-2">
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        <span>Liquidado el <?= e(formatFechaHora($ciclo['fecha_liquidacion'])) ?></span>
                     </div>
-                    <div class="bolillas mt-2">
-                        <?php foreach ($sorteo['numeros'] as $numero): ?>
-                            <span class="bolilla"><?= e(num2($numero)) ?></span>
+                <?php endif; ?>
+
+                <?php if (isAdmin() && $subsidio > 0): ?>
+                    <div class="g-hero__subsidy mt-2">
+                        <i class="bi bi-shield-check"></i>
+                        <span><?= e(formatPesos($pozoReal)) ?> de recaudación real · Decena de Oro subsidia <?= e(formatPesos($subsidio)) ?></span>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Métricas Stats -->
+            <div class="g-stat-grid g-animate g-animate-delay-2">
+                <div class="g-stat">
+                    <div class="g-stat__icon g-stat__icon--blue">
+                        <i class="bi bi-ticket-perforated"></i>
+                    </div>
+                    <div class="g-stat__value"><?= (int) $resumen['jugadas_total'] ?></div>
+                    <div class="g-stat__label">Jugadas Cargadas</div>
+                </div>
+
+                <div class="g-stat">
+                    <div class="g-stat__icon g-stat__icon--purple">
+                        <i class="bi bi-dice-5"></i>
+                    </div>
+                    <div class="g-stat__value"><?= count($lista) ?> / 5</div>
+                    <div class="g-stat__label">Sorteos Realizados</div>
+                </div>
+
+                <div class="g-stat g-stat--accent">
+                    <div class="g-stat__icon">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
+                    <div class="g-stat__value"><?= e(formatPesos($resumen['recaudado'])) ?></div>
+                    <div class="g-stat__label">Total Recaudado</div>
+                </div>
+            </div>
+
+            <!-- Ganadores si los hubo -->
+            <?php if ($ganadores): ?>
+                <div class="g-card mb-4 g-animate g-animate-delay-2 border-warning">
+                    <div class="g-card__header bg-warning-subtle">
+                        <h2 class="g-card__title text-warning-emphasis">
+                            <i class="bi bi-trophy-fill me-1"></i>
+                            <?= count($ganadores) === 1 ? '¡Ganador Consagrado!' : '¡' . count($ganadores) . ' Ganadores Consagrados!' ?>
+                        </h2>
+                    </div>
+                    <div class="g-card__body">
+                        <?php foreach ($ganadores as $ganador): ?>
+                            <div class="p-3 mb-2 rounded" style="background:#fffbeb;border:1px solid #fef3c7">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <div>
+                                        <h3 class="fw-bold mb-1 fs-5 text-dark"><?= e($ganador['cliente_nombre']) ?></h3>
+                                        <div class="text-muted small">
+                                            Cliente N° <?= e($ganador['nro_cliente']) ?>
+                                            <?php if ($ganador['telefono']): ?>
+                                                · Tel: <?= e($ganador['telefono']) ?>
+                                            <?php endif; ?>
+                                            · Sorteo del <?= e(formatFecha($ganador['sorteo_fecha'])) ?>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small text-muted">Premio Ganado:</div>
+                                        <div class="fs-3 fw-extrabold text-success"><?= e(formatPesos($ganador['monto_premio'])) ?></div>
+                                    </div>
+                                </div>
+                                <div class="bolillas mt-3">
+                                    <?php foreach ($ganador['numeros'] as $numero): ?>
+                                        <span class="bolilla bolilla--acertada"><?= e(num2($numero)) ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
                         <?php endforeach; ?>
                     </div>
                 </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
+            <?php endif; ?>
 
-    <!-- Jugadas con sus aciertos -->
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="rotulo">Jugadas del ciclo</span>
-        <span class="fila__meta">verde = ya salio</span>
+            <!-- Jugadas del ciclo -->
+            <div class="g-card g-list-card g-animate g-animate-delay-3">
+                <div class="g-card__header">
+                    <h2 class="g-card__title">
+                        <i class="bi bi-ticket-perforated"></i>
+                        Jugadas del Ciclo (<?= count($jugadas) ?>)
+                    </h2>
+                    <span class="small text-muted">
+                        <span class="bolilla bolilla--acertada d-inline-block" style="width:16px;height:16px;font-size:10px;line-height:16px"></span>
+                        = número ya sorteado
+                    </span>
+                </div>
+
+                <div class="g-card__body">
+                    <?php if (!$jugadas): ?>
+                        <div class="p-5 text-center text-secondary">
+                            <i class="bi bi-ticket-perforated fs-1 d-block mb-3 text-muted"></i>
+                            No hay jugadas cargadas en este ciclo.
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($jugadas as $jugada): ?>
+                            <?php
+                            $aciertos = 0;
+                            foreach ($jugada['numeros'] as $numero) {
+                                if (isset($salidos[$numero])) {
+                                    $aciertos++;
+                                }
+                            }
+                            ?>
+                            <div class="g-list-item">
+                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                    <div>
+                                        <h3 class="g-list-item__title">
+                                            <?= e($jugada['cliente_nombre']) ?>
+                                            <span class="text-muted fw-normal fs-7 ms-1">N° <?= e($jugada['nro_cliente']) ?></span>
+                                        </h3>
+                                        <div class="g-list-item__meta mt-1">
+                                            <i class="bi bi-clock me-1"></i><?= e(formatFechaHora($jugada['fecha_carga'])) ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="text-end">
+                                        <?php if ($jugada['estado'] === 'ganadora'): ?>
+                                            <span class="g-badge g-badge--warning">Ganadora</span>
+                                        <?php elseif ($jugada['estado'] === 'perdedora'): ?>
+                                            <span class="g-badge" style="background:#e5e7eb;color:#4b5563">Perdió</span>
+                                        <?php else: ?>
+                                            <span class="g-badge g-badge--success">Activa</span>
+                                        <?php endif; ?>
+                                        <div class="small fw-semibold text-primary mt-1">
+                                            <?= $aciertos ?> / <?= count($jugada['numeros']) ?> aciertos
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bolillas mt-2">
+                                    <?php foreach ($jugada['numeros'] as $numero): ?>
+                                        <span class="bolilla <?= isset($salidos[$numero]) ? 'bolilla--acertada' : '' ?>">
+                                            <?= e(num2($numero)) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Columna Derecha: Desglose Admin y Sorteos -->
+        <div class="col-12 col-lg-4">
+
+            <!-- Desglose de Pozo (Admin) -->
+            <?php if (isAdmin() && ($abierto || $conGanador)): ?>
+                <div class="g-card mb-4 g-animate g-animate-delay-2">
+                    <div class="g-card__header">
+                        <h3 class="g-card__title">
+                            <i class="bi bi-calculator me-1"></i>
+                            Desglose de Liquidación
+                        </h3>
+                    </div>
+                    <div class="g-card__body">
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span>Ventas brutas acumuladas:</span>
+                            <span class="fw-semibold text-dark"><?= e(formatPesos($pozoReal)) ?></span>
+                        </div>
+                        <div class="d-flex justify-content-between small text-muted mb-2">
+                            <span>Piso base garantizado:</span>
+                            <span class="fw-semibold text-dark"><?= e(formatPesos($pisoAplicado)) ?></span>
+                        </div>
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between fw-bold mb-2">
+                            <span><?= $conGanador ? 'Monto pagado:' : 'Pozo a pagar:' ?></span>
+                            <span class="text-primary fs-5"><?= e(formatPesos($pozoMostrado)) ?></span>
+                        </div>
+                        <?php if ($subsidio > 0): ?>
+                            <div class="d-flex justify-content-between small text-danger fw-semibold bg-danger-subtle p-2 rounded">
+                                <span>Subsidio cubierto:</span>
+                                <span><?= e(formatPesos($subsidio)) ?></span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <!-- Extractos de la Semana -->
+            <div class="g-card g-animate g-animate-delay-3">
+                <div class="g-card__header">
+                    <h3 class="g-card__title">
+                        <i class="bi bi-calendar-check me-1"></i>
+                        Sorteos Semanales
+                    </h3>
+                    <span class="g-badge g-badge--info"><?= count($lista) ?>/5</span>
+                </div>
+                <div class="g-card__body">
+                    <?php if (!$lista): ?>
+                        <div class="text-center py-3 text-muted small">
+                            Aún no se registraron extractos en este ciclo.
+                        </div>
+                    <?php else: ?>
+                        <div class="d-flex flex-column gap-3">
+                            <?php foreach ($lista as $sorteo): ?>
+                                <div class="p-2 rounded border" style="background:#f9fafb">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="fw-semibold small">
+                                            <i class="bi bi-check-circle-fill text-success me-1"></i>
+                                            <?= e(formatFechaDia($sorteo['fecha'])) ?>
+                                        </span>
+                                        <?php if ((int) $sorteo['ganadores_total'] > 0): ?>
+                                            <span class="g-badge g-badge--warning">Cortó ciclo</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="bolillas">
+                                        <?php foreach ($sorteo['numeros'] as $numero): ?>
+                                            <span class="bolilla" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+        </div>
+
     </div>
 
-    <?php if (!$jugadas): ?>
-        <div class="vacio tarjeta">
-            <i class="bi bi-ticket-perforated" aria-hidden="true"></i>
-            No hay jugadas en este ciclo.
-        </div>
-    <?php else: ?>
-        <?php foreach ($jugadas as $jugada): ?>
-            <?php
-            $aciertos = 0;
-            foreach ($jugada['numeros'] as $numero) {
-                if (isset($salidos[$numero])) {
-                    $aciertos++;
-                }
-            }
-            ?>
-            <article class="fila">
-                <div class="d-flex justify-content-between align-items-start gap-2">
-                    <div class="min-w-0">
-                        <p class="fila__titulo"><?= e($jugada['cliente_nombre']) ?></p>
-                        <p class="fila__meta">
-                            <span class="cifra">N° <?= e($jugada['nro_cliente']) ?></span>
-                            · <?= e(formatFechaHora($jugada['fecha_carga'])) ?>
-                        </p>
-                    </div>
-                    <div class="text-end text-nowrap">
-                        <?php if ($jugada['estado'] === 'ganadora'): ?>
-                            <span class="etiqueta etiqueta--oro">Ganadora</span>
-                        <?php elseif ($jugada['estado'] === 'perdedora'): ?>
-                            <span class="etiqueta etiqueta--gris">Perdio</span>
-                        <?php else: ?>
-                            <span class="etiqueta etiqueta--verde">Activa</span>
-                        <?php endif; ?>
-                        <div class="fila__meta mt-1">
-                            <?= $aciertos ?>/<?= count($jugada['numeros']) ?> salidos
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bolillas mt-2">
-                    <?php foreach ($jugada['numeros'] as $numero): ?>
-                        <span class="bolilla <?= isset($salidos[$numero]) ? 'bolilla--acertada' : '' ?>">
-                            <?= e(num2($numero)) ?>
-                        </span>
-                    <?php endforeach; ?>
-                </div>
-            </article>
-        <?php endforeach; ?>
-    <?php endif; ?>
 </main>
 
 <?php
-require __DIR__ . '/../../includes/bottom_nav.php';
-require __DIR__ . '/../../includes/foot.php';
+require __DIR__ . '/../../includes/admin_foot.php';

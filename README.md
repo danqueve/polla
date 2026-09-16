@@ -34,6 +34,12 @@ parciales. El detalle funcional completo está en
    mysql -u root -p polla_quevedo < db/seed.sql
    ```
 
+   `polla_quevedo` es solo un nombre de ejemplo: ninguno de los `.sql`
+   de `db/` ni de `demo/` trae `CREATE DATABASE` ni `USE` — la base la
+   elige siempre la línea de comandos (o tu cliente de MySQL), así que
+   podés usar el nombre que prefieras mientras sea el mismo en las tres
+   líneas de arriba y en `config/db.php`.
+
    `db/schema.sql` es el script de instalación limpia (crea todas las
    tablas desde cero); `db/migrations/` son los cambios incrementales
    ya aplicados en orden, útiles solo si estás actualizando una base

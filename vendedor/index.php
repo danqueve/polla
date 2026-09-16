@@ -23,6 +23,7 @@ $linkWhatsapp = 'https://wa.me/?text=' . rawurlencode($mensajeWhatsapp);
 
 $pageTitle  = 'Mi panel · ' . APP_NAME;
 $navSeccion = 'vendedor-inicio';
+$bodyClass  = 'sin-barra'; // esta pantalla no tiene barra de navegacion inferior
 $pageScripts = ['copiar.js'];
 require __DIR__ . '/../includes/head.php';
 require __DIR__ . '/../includes/vendedor_cabecera.php';

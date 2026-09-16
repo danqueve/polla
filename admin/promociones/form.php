@@ -2,11 +2,14 @@
 /** Alta y edicion de una promocion. Sin ?id es alta; con ?id es edicion. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\ParametroService;
 use Polla\Services\PromocionService;
 
 requireAdmin();
 
-$promociones = new PromocionService(getPDO());
+$db          = getPDO();
+$promociones = new PromocionService($db);
+$porcentajePozo = (new ParametroService($db))->porcentajePozo();
 
 $id    = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $promo = $id > 0 ? $promociones->buscarPorId($id) : null;
@@ -48,8 +51,8 @@ require __DIR__ . '/../../includes/admin_topbar.php';
             <h1 class="g-page-title mt-2"><?= $esAlta ? 'Nueva Promoción' : 'Editar Promoción' ?></h1>
             <p class="g-page-subtitle">
                 Cada jugada del paquete se carga con el precio total dividido la
-                cantidad. El pozo sigue sumando el 60% de ese importe, jugada por
-                jugada, como siempre.
+                cantidad. El pozo sigue sumando el <?= $porcentajePozo ?>% de ese importe,
+                jugada por jugada, como siempre.
             </p>
         </div>
         <a href="<?= APP_URL ?>/admin/promociones/index.php" class="g-btn g-btn--outline">

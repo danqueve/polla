@@ -1,6 +1,13 @@
 # Credenciales reales del entorno (usar config/db.example.php como plantilla)
 /config/db.php
 
+# Dumps de base de datos: pueden tener datos reales de clientes,
+# nunca deben viajar al repo ni quedar accesibles desde la web.
+# El .htaccess sí se versiona -- es la traba que protege la carpeta
+# si algún día vuelve a aparecer un dump ahí.
+/sql/*
+!/sql/.htaccess
+
 # Windows / macOS
 Thumbs.db
 .DS_Store

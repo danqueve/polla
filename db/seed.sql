@@ -1,9 +1,8 @@
 -- ============================================================
 -- Decena de Oro - Datos iniciales
--- Correr DESPUES de schema.sql
+-- Correr DESPUES de schema.sql, sobre la misma base (sin USE:
+-- la elige quien ejecuta, ver la nota de schema.sql)
 -- ============================================================
-
-USE `iifatgdb_decena`;
 
 SET NAMES utf8mb4;
 

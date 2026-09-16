@@ -10,5 +10,8 @@ deployment:
     - /bin/cp -R portal $DEPLOYPATH
     - /bin/cp -R src $DEPLOYPATH
     - /bin/cp -R vendedor $DEPLOYPATH
+    - /bin/cp -R img $DEPLOYPATH
     - /bin/cp index.php $DEPLOYPATH
     - /bin/cp registro.php $DEPLOYPATH
+    - /bin/cp manifest.json $DEPLOYPATH
+    - /bin/cp service-worker.js $DEPLOYPATH

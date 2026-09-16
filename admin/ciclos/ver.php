@@ -26,6 +26,15 @@ if (!$ciclo) {
     exit;
 }
 
+// Esta pantalla es solo para semanal (premioBase(), "Sorteos
+// Semanales", etc.): un ciclo de sabado tiene su propia vista, con su
+// propio premio base -- sin esta guarda, ?id=<un sabado> mostraba el
+// piso del semanal en vez del de sabados y un "subsidio" inventado.
+if ($ciclo['tipo'] === CicloService::TIPO_SABADO) {
+    header('Location: ' . APP_URL . '/admin/sabados/ver.php?id=' . (int) $ciclo['id']);
+    exit;
+}
+
 $cicloId   = (int) $ciclo['id'];
 $resumen   = $ciclos->resumen($cicloId);
 $lista     = $sorteos->listarPorCiclo($cicloId);
@@ -35,6 +44,24 @@ $jugadas   = JugadaService::crearDesde($db)->listarPorCiclo($cicloId);
 $abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
 $conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
 $esProgramado = $ciclo['estado'] === CicloService::ESTADO_PROGRAMADO;
+
+// Dias habiles del ciclo ya pasados que todavia no tienen extracto --
+// mientras falte alguno, el ciclo no cierra (recotejarCiclo() no lo
+// trata como completo), asi que conviene que se vea, no que quede en
+// silencio hasta que alguien note que la semana no termina de cerrar.
+$sinCargar = 0;
+if ($abierto) {
+    $fechasHechas = array_column($lista, 'fecha');
+    $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
+    $fin = new DateTimeImmutable($ciclo['fecha_fin']);
+    $hoy = new DateTimeImmutable('today');
+    while ($dia <= $fin) {
+        if ($dia <= $hoy && !in_array($dia->format('Y-m-d'), $fechasHechas, true)) {
+            $sinCargar++;
+        }
+        $dia = $dia->modify('+1 day');
+    }
+}
 $arrastre     = (float) ($ciclo['monto_arrastrado'] ?? 0);
 $pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 
@@ -215,7 +242,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                         Jugadas del Ciclo (<?= count($jugadas) ?>)
                     </h2>
                     <span class="small text-muted">
-                        <span class="bolilla bolilla--acertada d-inline-block" style="width:16px;height:16px;font-size:10px;line-height:16px"></span>
+                        <span class="bolilla bolilla--acertada bolilla--chica d-inline-block" style="width:16px;height:16px;font-size:10px;line-height:16px"></span>
                         = número ya sorteado
                     </span>
                 </div>
@@ -323,6 +350,17 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                     <span class="g-badge g-badge--info"><?= count($lista) ?>/5</span>
                 </div>
                 <div class="g-card__body">
+                    <?php if ($sinCargar > 0): ?>
+                        <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0" style="margin-top:.15rem"></i>
+                            <div>
+                                <?= $sinCargar === 1
+                                    ? 'Falta cargar el extracto de un día de esta semana.'
+                                    : "Faltan cargar los extractos de $sinCargar días de esta semana." ?>
+                                Hasta que no se carguen, la semana no cierra.
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!$lista): ?>
                         <div class="text-center py-3 text-muted small">
                             Aún no se registraron extractos en este ciclo.
@@ -342,7 +380,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     </div>
                                     <div class="bolillas">
                                         <?php foreach ($sorteo['numeros'] as $numero): ?>
-                                            <span class="bolilla" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
+                                            <span class="bolilla bolilla--chica" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>

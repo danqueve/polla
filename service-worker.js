@@ -16,7 +16,7 @@
    pisar su cache vieja.
    ============================================================ */
 
-const CACHE_NAME = 'decena-static-v1';
+const CACHE_NAME = 'decena-static-v2';
 
 /**
  * Sin barra inicial a proposito: el sitio vive en la raiz en
@@ -29,6 +29,7 @@ const CACHE_NAME = 'decena-static-v1';
  */
 const ARCHIVOS_PRECACHE = [
     'assets/css/app.css',
+    'assets/css/admin.css',
     'assets/js/copiar.js',
     'assets/js/mostrar_clave.js',
     'assets/js/numeros.js',

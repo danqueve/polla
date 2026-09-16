@@ -78,16 +78,16 @@ require __DIR__ . '/../../includes/admin_topbar.php';
             </h2>
         </div>
 
-        <div class="g-card__body p-0">
+        <div class="g-card__body p-0" style="overflow:hidden">
             <?php if (!$jugadas): ?>
                 <div class="p-5 text-center text-secondary">
                     <i class="bi bi-ticket-perforated fs-1 d-block mb-3 text-muted"></i>
                     No hay jugadas que coincidan con los filtros aplicados.
                 </div>
             <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
+                <div class="tabla-scroll">
+                    <table class="tabla-reporte">
+                        <thead>
                             <tr>
                                 <th>Fecha</th>
                                 <th>Cliente</th>
@@ -113,7 +113,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     <td>
                                         <div class="bolillas">
                                             <?php foreach ($j['numeros'] as $num): ?>
-                                                <span class="bolilla" style="width:24px;height:24px;font-size:.65rem;line-height:24px"><?= num2($num) ?></span>
+                                                <span class="bolilla bolilla--chica" style="width:24px;height:24px;font-size:.65rem;line-height:24px"><?= num2($num) ?></span>
                                             <?php endforeach; ?>
                                         </div>
                                     </td>
@@ -129,7 +129,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                             <span class="g-badge g-badge--success">Activa</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-end fw-bold text-success">
+                                    <td class="text-end fw-bold texto-oro">
                                         <?= $j['monto_premio'] !== null ? e(formatPesos($j['monto_premio'])) : '—' ?>
                                     </td>
                                     <td class="small text-muted"><?= e($j['cargado_por'] ?? '—') ?></td>
@@ -138,6 +138,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                         </tbody>
                     </table>
                 </div>
+                <p class="tabla-pista px-3 pb-2 mb-0 d-md-none">
+                    <i class="bi bi-arrow-left-right"></i> Deslizá para ver todas las columnas.
+                </p>
             <?php endif; ?>
         </div>
     </div>

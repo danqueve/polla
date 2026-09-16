@@ -137,7 +137,10 @@ class ReporteService
      */
     public function recaudadoGlobal(FiltroReporte $filtro): array
     {
-        $where  = ["j.estado <> 'anulada'"];
+        // pagada = 1: una jugada armada desde el portal y nunca pagada
+        // (estado_pago = 'pendiente_pago') ya tiene el importe cargado
+        // pero no debe contar como recaudado.
+        $where  = ["j.estado <> 'anulada'", 'j.pagada = 1'];
         $params = [];
         if ($filtro->desde)   { $where[] = 'DATE(j.fecha_carga) >= :desde'; $params[':desde'] = $filtro->desde; }
         if ($filtro->hasta)   { $where[] = 'DATE(j.fecha_carga) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
@@ -617,7 +620,13 @@ class ReporteService
      */
     private function condicionesJugadas(FiltroReporte $filtro): array
     {
-        $where  = ["j.estado <> 'anulada'"];
+        // pagada = 1: mismo motivo que recaudadoGlobal() -- sin esto,
+        // una jugada pendiente_pago (importe ya cargado, plata nunca
+        // confirmada) entraba en Recaudado/Al pozo/A gastos, y las
+        // barras "por ciclo" (que sí quedan afuera via el JOIN a
+        // ciclos sobre ciclo_id NULL) dejaban de coincidir con la
+        // tarjeta.
+        $where  = ["j.estado <> 'anulada'", 'j.pagada = 1'];
         $params = [];
 
         if ($cond = $this->alcance->condicion('j.cargado_por')) {

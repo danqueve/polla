@@ -105,14 +105,20 @@ class PortalService
      */
     public function sorteosDelCiclo(int $cicloId): array
     {
+        // ORDER BY fecha, turno: en sabados los 5 turnos comparten
+        // fecha, y sin el turno como segundo criterio el desempate
+        // queda a criterio de MySQL -- evaluar() (mas abajo) documenta
+        // que recibe los sorteos en orden cronologico real, y con
+        // turnos mezclados el acumulado podia quedar atribuido a un
+        // turno distinto del que realmente lo completo.
         $stmt = $this->db->prepare(
-            'SELECT s.id, s.fecha,
+            'SELECT s.id, s.fecha, s.turno,
                     GROUP_CONCAT(n.numero ORDER BY n.posicion ASC) AS numeros
                FROM sorteos s
                LEFT JOIN sorteo_numeros n ON n.sorteo_id = s.id
               WHERE s.ciclo_id = :ciclo
               GROUP BY s.id
-              ORDER BY s.fecha ASC'
+              ORDER BY s.fecha ASC, s.turno ASC'
         );
         $stmt->execute([':ciclo' => $cicloId]);
 
@@ -144,7 +150,7 @@ class PortalService
      * @return array{
      *     acertados: array<int,bool>,
      *     aciertos: int,
-     *     porSorteo: array<int,array{fecha:string, acertados:array<int,bool>, acumulado:int}>
+     *     porSorteo: array<int,array{fecha:string, turno:int, acertados:array<int,bool>, acumulado:int}>
      * }
      */
     public static function evaluar(array $numerosJugada, array $sorteos): array
@@ -169,6 +175,7 @@ class PortalService
 
             $porSorteo[] = [
                 'fecha'     => $sorteo['fecha'],
+                'turno'     => (int) ($sorteo['turno'] ?? 1),
                 'acertados' => $deEseDia,
                 'acumulado' => count($acumulados),
             ];

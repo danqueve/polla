@@ -24,12 +24,12 @@ $_puedeJugar = $_venDatos && $_venDatos['cliente_id'] !== null;
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow">
                 <li>
-                    <a class="dropdown-item py-2<?= navActivo('vendedor-inicio') ? ' active' : '' ?>" href="<?= APP_URL ?>/vendedor/index.php">
+                    <a class="dropdown-item py-2<?= navActivo('vendedor-inicio') ?>" href="<?= APP_URL ?>/vendedor/index.php">
                         <i class="bi bi-house me-2"></i>Mi panel
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item py-2<?= navActivo('vendedor-historial') ? ' active' : '' ?>" href="<?= APP_URL ?>/vendedor/historial.php">
+                    <a class="dropdown-item py-2<?= navActivo('vendedor-historial') ?>" href="<?= APP_URL ?>/vendedor/historial.php">
                         <i class="bi bi-clock-history me-2"></i>Historial de pagos
                     </a>
                 </li>

@@ -1,9 +1,9 @@
 -- ============================================================
 -- Decena de Oro - Datos de muestra (demo)
--- Correr DESPUES de schema.sql + seed.sql. Ver demo/README.md.
+-- Correr DESPUES de schema.sql + seed.sql, sobre la misma base
+-- (sin USE: la elige quien ejecuta, ver la nota de schema.sql).
+-- Ver demo/README.md.
 -- ============================================================
-
-USE `iifatgdb_decena`;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;

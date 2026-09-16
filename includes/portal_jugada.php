@@ -10,6 +10,8 @@
  *   $evaluacion   salida de PortalService::evaluar()
  *   $cicloAbierto bool
  *   $totalSorteos cantidad de sorteos cargados en el ciclo
+ *   $esSabado     bool -- en sabados se etiqueta "Turno N" en vez de
+ *                 la fecha, porque los 5 turnos comparten fecha
  *   $sorteos      salida de PortalService::sorteosDelCiclo() -- el
  *                 MISMO array que se le paso a evaluar() para armar
  *                 $evaluacion, en el mismo orden: $sorteos[$i] y
@@ -124,7 +126,7 @@ $marcados = $acertados;
                         class="reng-sorteo reng-sorteo--clic collapsed"
                         data-bs-toggle="collapse" data-bs-target="#<?= e($idCollapse) ?>"
                         aria-expanded="false" aria-controls="<?= e($idCollapse) ?>">
-                    <span><?= e(formatFechaDia($entrada['fecha'])) ?></span>
+                    <span><?= $esSabado ? 'Turno ' . (int) $entrada['turno'] : e(formatFechaDia($entrada['fecha'])) ?></span>
                     <span class="reng-sorteo__conteo">
                         <?= $entrada['acumulado'] ?> de <?= $total ?> acumulados
                         <i class="bi bi-chevron-down ms-1 reng-sorteo__flecha" aria-hidden="true"></i>

@@ -34,7 +34,11 @@ while ($dia <= $fin) {
     $dia = $dia->modify('+1 day');
 }
 
-$fechaPrevia = old('fecha', $pendientes ? end($pendientes)->format('Y-m-d') : '');
+// La mas vieja pendiente, no la mas nueva: con un dia atrasado sin
+// cargar, preseleccionar el mas nuevo empuja a saltearse el que
+// realmente falta (el motor ya soporta cargar fuera de orden, pero
+// el flujo natural del formulario tiene que ser el correcto).
+$fechaPrevia = old('fecha', $pendientes ? $pendientes[0]->format('Y-m-d') : '');
 $numerosPrevios = old('numeros', []);
 
 $pageTitle        = 'Cargar Sorteo · ' . APP_NAME;

@@ -30,6 +30,7 @@ $estado = $solicitud['estado'];
 
 $pageTitle   = 'Tu código · ' . APP_NAME;
 $navSeccion  = 'jugar';
+$bodyClass   = 'sin-barra'; // esta pantalla no tiene barra de navegacion inferior
 $pageScripts = ['copiar.js'];
 require __DIR__ . '/../includes/head.php';
 require __DIR__ . '/../includes/portal_cabecera.php';

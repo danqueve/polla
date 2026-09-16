@@ -497,6 +497,28 @@ class JugadaService
             throw ValidacionException::de('No se puede borrar una jugada ganadora ya liquidada.');
         }
 
+        // Si esta jugada genero una comision de referido y esa comision
+        // ya se pago (el modelo es de saldo corrido, no un flag por
+        // fila: ComisionService::saldoPendiente() = SUM(comisiones) -
+        // SUM(liquidaciones)), borrarla dejaria el saldo del referidor
+        // negativo la proxima vez que se calcule, porque las
+        // liquidaciones ya cobradas seguirian contando contra un total
+        // de comisiones ahora mas chico.
+        $comisionStmt = $this->db->prepare(
+            'SELECT referidor_tipo, referidor_id, monto FROM comisiones WHERE jugada_id = :id'
+        );
+        $comisionStmt->execute([':id' => $id]);
+        $comision = $comisionStmt->fetch();
+        if ($comision) {
+            $saldoSinEsta = $this->comisiones->saldoPendiente($comision['referidor_tipo'], (int) $comision['referidor_id'])
+                - (float) $comision['monto'];
+            if ($saldoSinEsta < 0) {
+                throw ValidacionException::de(
+                    'No se puede borrar: la comisión de esta jugada ya fue liquidada al referidor.'
+                );
+            }
+        }
+
         $this->db->beginTransaction();
         try {
             // Si el ciclo ya se cerro y liquido, el pozo no se toca.

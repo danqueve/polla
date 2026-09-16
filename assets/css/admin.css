@@ -10,7 +10,10 @@
    mantiene la bottom_nav original.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Inter ya se carga como <link> en includes/admin_head.php (paralelo,
+   no bloqueante) -- un @import duplicado acá adentro es serialmente
+   bloqueante: el navegador tiene que bajar y parsear admin.css entero
+   antes de descubrirlo y recien ahi empezar a pedir la fuente. */
 
 /* ── Design Tokens ────────────────────────────────────────── */
 
@@ -83,7 +86,48 @@ body.admin-gentelella {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
-    padding: 0;
+}
+
+/* Reserva bajo la barra de accion fija (.accion-fija, definida en
+   app.css -- admin.css no la redefine). body.con-accion-fija de
+   app.css tiene la MISMA especificidad que el body.admin-gentelella de
+   arriba (0,1,1 los dos), asi que sin esto el "sin padding" de arriba
+   le gana por venir despues en el orden de carga, y las 10 pantallas
+   con boton de accion fija (Confirmar y cobrar, etc.) pierden la
+   reserva y el ultimo campo del formulario queda tapado. */
+/* app.css declara h1,h2,h3,h4 { font-family: Bricolage Grotesque }
+   directo sobre el elemento -- gana siempre a Inter heredado del body,
+   asi que .g-card__title y .g-list-item__title (que viven sobre
+   h2/h3 y no declaran su propia font-family) salian en la tipografia
+   vieja, mezcladas con el resto de la pantalla en Inter. */
+body.admin-gentelella h1,
+body.admin-gentelella h2,
+body.admin-gentelella h3,
+body.admin-gentelella h4 { font-family: var(--g-ff); }
+
+/* Bootstrap trae su propio --bs-primary/--bs-success (usados por
+   text-primary, bg-primary, btn-primary, etc. en 14 archivos del
+   admin) y ninguno de los dos CSS los redefinia: el azul #0d6efd de
+   Bootstrap y el verde #198754 de Bootstrap convivian al lado del
+   #3b82f6 y el #10b981 propios de Gentelella en la misma pantalla
+   (el "Total a Cobrar" de jugadas/nueva.php, por ejemplo). Se
+   redefinen para que coincidan con la paleta del admin nuevo. */
+body.admin-gentelella {
+    --bs-primary:      #3b82f6;
+    --bs-primary-rgb:  59, 130, 246;
+    --bs-success:      #10b981;
+    --bs-success-rgb:  16, 185, 129;
+}
+
+/* Bootstrap 5.3 no tiene fw-extrabold (ni ningun CSS del proyecto la
+   definia) -- 5 usos en cifras destacadas (Total a Cobrar, montos de
+   solicitud/premio) renderizaban en peso normal en vez de resaltar. */
+.fw-extrabold { font-weight: 800; }
+
+body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
+
+@media (min-width: 768px) {
+    body.admin-gentelella.con-accion-fija { padding-bottom: 2rem; }
 }
 
 
@@ -100,6 +144,9 @@ body.admin-gentelella {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    /* mismo motivo que .g-topbar: el notch no se coma el logo/toggle
+       de arriba del sidebar en la PWA instalada. */
+    padding-top: env(safe-area-inset-top);
     overflow-x: hidden;
     transition: transform var(--g-transition), width var(--g-transition);
     scrollbar-width: thin;
@@ -193,7 +240,6 @@ body.admin-gentelella {
     font-size: .8125rem;
     font-weight: 500;
     white-space: nowrap;
-    border-radius: 0;
     margin: 1px .5rem;
     border-radius: var(--g-radius-sm);
     transition: background var(--g-transition), color var(--g-transition);
@@ -322,12 +368,16 @@ body.admin-gentelella {
 /* ── Topbar ───────────────────────────────────────────────── */
 
 .g-topbar {
-    height: var(--g-topbar-h);
+    /* +env(safe-area-inset-top): con viewport-fit=cover y status bar
+       translucida (admin_head.php), la PWA instalada en iPhone dejaba
+       la hamburguesa y el avatar debajo de la barra de estado -- una
+       regresion respecto del .topbar viejo, que ya reservaba esto. */
+    height: calc(var(--g-topbar-h) + env(safe-area-inset-top));
     background: var(--g-topbar-bg);
     border-bottom: 1px solid var(--g-topbar-border);
     display: flex;
     align-items: center;
-    padding: 0 1.5rem;
+    padding: env(safe-area-inset-top) 1.5rem 0;
     position: sticky;
     top: 0;
     z-index: 1035;
@@ -474,11 +524,6 @@ body.admin-gentelella {
     }
 }
 
-/* Page header */
-.g-page-header {
-    margin-bottom: 1.5rem;
-}
-
 .g-page-title {
     font-family: var(--g-ff);
     font-weight: 700;
@@ -536,13 +581,6 @@ body.admin-gentelella {
 
 .g-card__body {
     padding: 1.25rem;
-}
-
-.g-card__footer {
-    padding: .75rem 1.25rem;
-    border-top: 1px solid var(--g-card-border);
-    background: #f9fafb;
-    border-radius: 0 0 var(--g-card-radius) var(--g-card-radius);
 }
 
 
@@ -829,24 +867,6 @@ button.g-btn--outline:hover {
     font-size: .8125rem;
 }
 
-.g-btn--block {
-    width: 100%;
-}
-
-/* Acciones rápidas (grid de botones) */
-.g-quick-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .75rem;
-    margin-bottom: 1.5rem;
-}
-
-@media (max-width: 575.98px) {
-    .g-quick-actions {
-        grid-template-columns: 1fr;
-    }
-}
-
 .g-quick-action {
     display: flex;
     align-items: center;
@@ -952,6 +972,50 @@ body.admin-gentelella .bolilla--acertada {
     background: var(--g-primary);
     border-color: var(--g-primary);
     color: #fff;
+}
+
+/* ── Mas islas verdes que se quedaron afuera del repintado ──
+   .bolilla arriba fue lo unico que se repinto de aac0118 -- estos
+   siete siguen en el verde/beige del tema viejo (app.css), sueltos
+   dentro de pantallas por lo demas azules. */
+
+body.admin-gentelella .casilla__input:focus {
+    border-color: var(--g-primary);
+    box-shadow: 0 0 0 .2rem rgba(59, 130, 246, .15);
+}
+
+body.admin-gentelella .casilla__input.cargada {
+    border-color: var(--g-primary);
+    background: var(--g-primary-light);
+    color: var(--g-primary-dark);
+}
+
+body.admin-gentelella .tablero__celda.marcada {
+    background: var(--g-primary);
+    color: #fff;
+}
+
+body.admin-gentelella .contador--completo { color: var(--g-primary); }
+
+body.admin-gentelella .nav-pills .nav-link.active {
+    background: var(--g-primary);
+    color: #fff;
+}
+
+body.admin-gentelella .accion-fija {
+    background: rgba(255, 255, 255, .94);
+    border-top-color: var(--g-card-border);
+}
+
+body.admin-gentelella .filtros {
+    background: var(--g-card-bg);
+    border-color: var(--g-card-border);
+}
+
+body.admin-gentelella .alert-info {
+    background: var(--g-info-light);
+    border-color: #c7d2fe;
+    color: #3730a3;
 }
 
 
@@ -1108,7 +1172,6 @@ body.admin-gentelella .dropdown-item:active {
 .g-animate-delay-1 { animation-delay: .05s; }
 .g-animate-delay-2 { animation-delay: .1s; }
 .g-animate-delay-3 { animation-delay: .15s; }
-.g-animate-delay-4 { animation-delay: .2s; }
 
 
 /* ── Respeto por prefers-reduced-motion ──────────────────── */

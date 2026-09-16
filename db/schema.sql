@@ -2,13 +2,13 @@
 -- Decena de Oro - Esquema de base de datos
 -- Motor: MySQL 8.x / MariaDB 11.x . InnoDB . utf8mb4
 -- Instalador limpio con el acumulado de las fases 1 a 6
+--
+-- Sin CREATE DATABASE ni USE a proposito: la base la elige quien
+-- ejecuta este script (linea de comandos o cliente), nunca el
+-- archivo. Un USE interno pisaria esa eleccion silenciosamente --
+-- si el nombre de aca coincidiera con el de una base real, los
+-- DROP TABLE de abajo la vaciarian sin que nadie lo haya pedido.
 -- ============================================================
-
-CREATE DATABASE IF NOT EXISTS `iifatgdb_decena`
-    CHARACTER SET utf8mb4
-    COLLATE utf8mb4_unicode_ci;
-
-USE `iifatgdb_decena`;
 
 SET NAMES utf8mb4;
 

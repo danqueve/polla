@@ -3,17 +3,12 @@
 --
 -- A diferencia de db/seed.sql (pensado para desarrollo/demo, con
 -- el usuario admin/quevedo2026 de siempre), este script deja UN
--- SOLO usuario administrador, con las credenciales reales.
+-- SOLO usuario administrador, con una clave a elegir en el momento
+-- (ver la nota junto al INSERT de `usuarios`, mas abajo).
 --
--- Correr DESPUES de schema.sql, sobre la base de produccion.
---
---   usuario: danqueve
---   clave:   Vera0803
--- >>> CAMBIAR LA CLAVE APENAS ENTRES POR PRIMERA VEZ <<<
--- (admin/usuarios/ -> tu usuario -> cambiar clave)
+-- Correr DESPUES de schema.sql, sobre la base de produccion (sin
+-- USE: la elige quien ejecuta, ver la nota de db/schema.sql).
 -- ============================================================
-
-USE `iifatgdb_decena`;
 
 SET NAMES utf8mb4;
 
@@ -40,12 +35,18 @@ ON DUPLICATE KEY UPDATE `valor` = VALUES(`valor`);
 
 -- ------------------------------------------------------------
 -- Usuario administrador (unico usuario de arranque)
---   usuario: danqueve
---   clave:   Vera0803
--- >>> CAMBIAR LA CLAVE APENAS ENTRES POR PRIMERA VEZ <<<
+--
+-- El hash de aca abajo es un PLACEHOLDER, no sirve para loguearse.
+-- Antes de correr este script, generá el hash real de tu clave:
+--
+--   php -r "echo password_hash('tu-clave-elegida', PASSWORD_DEFAULT), \"\n\";"
+--
+-- y pegalo en el INSERT en lugar del placeholder. No dejes la
+-- clave en texto plano en este archivo ni en ningun comentario:
+-- es un script versionado en git.
 -- ------------------------------------------------------------
 INSERT INTO `usuarios` (`usuario`, `nombre`, `password_hash`, `rol`, `activo`) VALUES
-    ('danqueve', 'Administrador', '$2y$10$QbqROt5VQ26FIDqXo8pih.F5bYfONOETnX03hY9QUXJBEBp.hCz.W', 'admin', 1)
+    ('danqueve', 'Administrador', '$2y$10$REEMPLAZAR.CON.EL.HASH.GENERADO.ARRIBA', 'admin', 1)
 ON DUPLICATE KEY UPDATE `nombre` = VALUES(`nombre`);
 
 

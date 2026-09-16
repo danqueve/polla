@@ -9,9 +9,10 @@
 -- NULL no colisiona contra otro NULL en un UNIQUE de MySQL (mismo
 -- criterio ya usado en usuarios.codigo_referido), asi que los
 -- vendedores sin cliente vinculado conviven sin problema.
+--
+-- Sin USE a proposito (ver la nota de db/schema.sql): la base la
+-- elige quien ejecuta la migracion, nunca el archivo.
 -- ============================================================
-
-USE `iifatgdb_decena`;
 
 ALTER TABLE `vendedores`
     ADD COLUMN `cliente_id` INT UNSIGNED NULL AFTER `dni`,

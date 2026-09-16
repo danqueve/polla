@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    body{margin:0;background:#f4f3ee;font-family:'Sora',sans-serif;-webkit-font-smoothing:antialiased}
+    input:focus{outline:none;box-shadow:0 0 0 3px rgba(20,102,63,.15)}
+    select:focus{outline:none;box-shadow:0 0 0 3px rgba(20,102,63,.15)}
+    ::placeholder{color:#cbc8bc}
+  </style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:18px;padding:28px 16px 60px;">
+
+  <div style="width:100%;max-width:410px;background:#fff;border:1px solid #e2e0d8;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
+    <div style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8b9a93;">Prototipo clickeable — no es la app real</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <button onClick="{{goLogin}}" style="{{btnToolbar_login}}">Login</button>
+      <button onClick="{{goPortal}}" style="{{btnToolbar_portal}}">Mis jugadas</button>
+      <button onClick="{{goJugar}}" style="{{btnToolbar_jugar}}">Jugar</button>
+      <button onClick="{{goHistorial}}" style="{{btnToolbar_historial}}">Historial</button>
+      <button onClick="{{goSolicitud}}" style="{{btnToolbar_solicitud}}">Código de pago</button>
+      <button onClick="{{goAdminTablero}}" style="{{btnToolbar_tablero}}">Tablero staff</button>
+      <button onClick="{{goAdminCargar}}" style="{{btnToolbar_cargar}}">Cargar jugada</button>
+      <button onClick="{{goAdminSorteo}}" style="{{btnToolbar_sorteo}}">Cargar sorteo</button>
+      <button onClick="{{goAdminReportes}}" style="{{btnToolbar_reportes}}">Reportes</button>
+    </div>
+  </div>
+
+  <div style="width:390px;max-width:100%;height:800px;background:#f4f3ee;border-radius:32px;box-shadow:0 30px 60px -20px rgba(16,32,26,.35),0 0 0 8px #10201a;position:relative;overflow:hidden;">
+
+    <div style="position:absolute;inset:0;overflow-y:auto;padding-bottom:{{scrollPadding}}px;">
+
+      <sc-if value="{{isLogin}}" hint-placeholder-val="{{true}}">
+        <main style="min-height:800px;background:#0d4a2d;display:flex;flex-direction:column;justify-content:center;padding:36px 22px;position:relative;box-sizing:border-box;">
+          <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.04) 0 1px,transparent 1px 12px);pointer-events:none;"></div>
+          <div style="position:relative;">
+            <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:32px;line-height:1.05;letter-spacing:-.035em;color:#fff;margin:0 0 6px;">Decena<span style="display:block;color:#f2d382;">de Oro</span></h1>
+            <p style="color:rgba(255,255,255,.68);font-size:14px;margin:0 0 22px;">Quiniela Nocturna de Tucumán</p>
+
+            <form onSubmit="{{onLogin}}" style="background:#fff;border-radius:14px;padding:22px 18px;box-shadow:0 24px 48px -24px rgba(0,0,0,.5);">
+              <label style="font-size:13px;font-weight:600;color:#4b5b54;display:block;margin-bottom:6px;">Usuario o DNI</label>
+              <input value="{{usuario}}" onChange="{{setUsuario}}" placeholder="Tu usuario o DNI" style="width:100%;min-height:48px;border-radius:10px;border:1.5px solid #cbc8bc;font-size:16px;padding:10px 14px;margin-bottom:16px;box-sizing:border-box;font-family:'Sora',sans-serif;">
+
+              <label style="font-size:13px;font-weight:600;color:#4b5b54;display:block;margin-bottom:6px;">Contraseña</label>
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input type="{{passwordType}}" placeholder="••••••" style="flex:1;min-width:0;min-height:48px;border-radius:10px;border:1.5px solid #cbc8bc;font-size:16px;padding:10px 14px;box-sizing:border-box;font-family:'Sora',sans-serif;">
+                <button type="button" onClick="{{togglePassword}}" aria-label="Mostrar contraseña" style="min-height:48px;min-width:48px;border:1.5px solid #cbc8bc;border-radius:10px;background:#fff;color:#4b5b54;">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+              <div style="font-size:12.5px;color:#4b5b54;margin-bottom:20px;">Si sos cliente, tu contraseña es tu DNI. Probá con "admin" para ver el panel de staff.</div>
+
+              <button type="submit" style="width:100%;min-height:48px;border-radius:10px;background:#14663f;border:none;color:#fff;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;">
+                <i class="bi bi-box-arrow-in-right"></i> Ingresar
+              </button>
+            </form>
+
+            <p style="text-align:center;margin:18px 0 4px;color:rgba(255,255,255,.7);font-size:13.5px;">¿Todavía no jugaste? <span style="text-decoration:underline;">Registrate acá</span>.</p>
+            <p style="text-align:center;margin:0;color:rgba(255,255,255,.75);font-size:12.5px;">¿No podés entrar? <span style="text-decoration:underline;">Hablá con Decena de Oro</span>.</p>
+          </div>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isClienteScreen}}" hint-placeholder-val="{{false}}">
+        <header style="background:#0d4a2d;color:#fff;padding:16px 16px 20px;position:relative;">
+          <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.05) 0 1px,transparent 1px 12px);pointer-events:none;"></div>
+          <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+            <div>
+              <p style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:21px;margin:0;letter-spacing:-.02em;">Hola, Marcos</p>
+              <span style="font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75);">Cliente N° 0128 · Decena de Oro</span>
+            </div>
+            <button style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.14);border:none;color:#fff;flex-shrink:0;"><i class="bi bi-three-dots-vertical"></i></button>
+          </div>
+        </header>
+      </sc-if>
+
+      <sc-if value="{{isStaffScreen}}" hint-placeholder-val="{{false}}">
+        <header style="background:#0d4a2d;color:#fff;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.02em;line-height:1.1;">Decena</div>
+              <div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.75);">de Oro</div>
+            </div>
+            <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">S</div>
+          </div>
+        </header>
+      </sc-if>
+
+      <sc-if value="{{flash}}" hint-placeholder-val="{{false}}">
+        <div style="{{flashStyle}}">{{flash.text}}</div>
+      </sc-if>
+
+      <sc-if value="{{isPortal}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 16px;">
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <span style="padding:6px 14px;border-radius:999px;background:#14663f;color:#fff;font-size:13px;font-weight:600;">Semana</span>
+            <span style="padding:6px 14px;border-radius:999px;color:#4b5b54;font-size:13px;font-weight:600;">Sábado</span>
+          </div>
+
+          <section style="background:#0d4a2d;border-radius:14px;color:#fff;padding:24px 20px;position:relative;overflow:hidden;text-align:center;margin-bottom:16px;">
+            <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.05) 0 1px,transparent 1px 11px);pointer-events:none;"></div>
+            <div style="position:relative;">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:8px;">Pozo de esta semana</div>
+              <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:44px;line-height:1;color:#f2d382;">$184.400</div>
+              <div style="margin-top:12px;color:rgba(255,255,255,.72);font-size:12.5px;">Semana del 8 al 12 de sept.</div>
+            </div>
+          </section>
+
+          <a style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e8d6a4;border-radius:14px;padding:12px;margin-bottom:16px;text-decoration:none;color:inherit;cursor:pointer;" onClick="{{goSolicitud}}">
+            <span style="display:flex;align-items:center;gap:8px;font-size:14px;"><i class="bi bi-hourglass-split" style="color:#a67c12;"></i> Tenés una solicitud sin pagar: código <strong style="font-family:'Space Grotesk',monospace;">DGO-482913</strong> por $6.000</span>
+            <i class="bi bi-chevron-right" style="color:#8b9a93;flex-shrink:0;"></i>
+          </a>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Tus 2 jugadas</span>
+            <span style="font-size:13px;color:#4b5b54;">3 de 5 sorteos</span>
+          </div>
+
+          <article style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;box-shadow:0 1px 3px rgba(16,32,26,.06),0 8px 24px -12px rgba(16,32,26,.12);overflow:hidden;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 16px 14px;background:#0d4a2d;color:#fff;">
+              <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:#f2d382;color:#0d4a2d;font-size:22px;flex-shrink:0;"><i class="bi bi-trophy-fill"></i></span>
+              <div style="min-width:0;">
+                <p style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;margin:0;color:#f2d382;">¡Ganaste!</p>
+                <p style="font-size:13.5px;margin:2px 0 0;opacity:.85;">Con el sorteo del jueves 11/09</p>
+              </div>
+            </div>
+            <div style="padding:14px 16px 4px;text-align:center;background:#0d4a2d;">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:4px;">Te tocó</div>
+              <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:38px;line-height:1;color:#f2d382;">$184.400</div>
+              <p style="margin:10px 0 14px;color:rgba(255,255,255,.72);font-size:12.5px;"><span style="text-decoration:underline;">Hablá con Decena de Oro</span> para cobrarlo.</p>
+            </div>
+            <div style="padding:14px 16px;">
+              <p style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;margin:0 0 10px;">Tus números en ese sorteo</p>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+                <sc-for list="{{numsGano}}" as="num" hint-placeholder-count="10">
+                  <div style="position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;background:#14663f;border:2px solid #14663f;color:#fff;font-family:'Space Grotesk',monospace;font-weight:700;font-size:19px;">{{num}}</div>
+                </sc-for>
+              </div>
+            </div>
+          </article>
+
+          <article style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;box-shadow:0 1px 3px rgba(16,32,26,.06),0 8px 24px -12px rgba(16,32,26,.12);overflow:hidden;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:12px;padding:16px 16px 14px;background:#e6f1eb;color:#0d4a2d;">
+              <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:#14663f;color:#fff;font-size:22px;flex-shrink:0;"><i class="bi bi-hourglass-split"></i></span>
+              <div style="min-width:0;">
+                <p style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;margin:0;">Todavía jugando</p>
+                <p style="font-size:13.5px;margin:2px 0 0;opacity:.85;">En tu mejor sorteo te faltó 1 número</p>
+              </div>
+            </div>
+            <div style="padding:14px 16px;">
+              <p style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;margin:0 0 10px;">Tus números en el sorteo del miércoles</p>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+                <sc-for list="{{numsJugando}}" as="num" hint-placeholder-count="10">
+                  <div style="position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:10px;background:{{num.bg}};border:2px solid {{num.border}};color:{{num.color}};font-family:'Space Grotesk',monospace;font-weight:700;font-size:19px;">{{num.label}}</div>
+                </sc-for>
+              </div>
+            </div>
+          </article>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isJugar}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 4px;box-sizing:border-box;">
+          <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:24px;margin:0;letter-spacing:-.02em;">Armar jugada</h1>
+          <p style="color:#4b5b54;font-size:14px;margin:6px 0 14px;">Elegí 10 números. Después pagás en persona o por transferencia con el código que te va a quedar.</p>
+
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <span style="padding:6px 14px;border-radius:999px;background:#14663f;color:#fff;font-size:13px;font-weight:600;">Semana</span>
+            <span style="padding:6px 14px;border-radius:999px;color:#4b5b54;font-size:13px;font-weight:600;">Sábado</span>
+          </div>
+
+          <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Los 10 números de tu jugada</span>
+          <p style="font-size:12.5px;color:#4b5b54;margin:2px 0 8px;">Distintos entre 00 y 99. Se salta solo a la casilla siguiente.</p>
+
+          <div style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;box-shadow:0 1px 2px rgba(16,32,26,.05);padding:14px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;justify-content:between;justify-content:space-between;margin-bottom:10px;">
+              <span style="font-weight:600;font-size:14px;">Jugada 1</span>
+              <button onClick="{{limpiarJugada}}" style="min-height:32px;padding:4px 10px;border-radius:8px;border:1px solid #cbc8bc;background:#fff;color:#4b5b54;font-size:12.5px;"><i class="bi bi-eraser"></i> Limpiar</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+              <sc-for list="{{jugadaCasillas}}" as="c" hint-placeholder-count="10">
+                <div style="position:relative;">
+                  <span style="position:absolute;top:4px;left:7px;font-size:10px;font-weight:700;color:#8b9a93;pointer-events:none;">{{c.indice}}</span>
+                  <input id="{{c.id}}" value="{{c.value}}" onChange="{{c.onChange}}" inputmode="numeric" maxlength="2" placeholder="--" style="{{c.style}}"></input>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;padding:14px;margin-bottom:16px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Cuánto vas a pagar</span>
+            <div style="display:flex;justify-content:space-between;margin:12px 0 8px;font-size:14px;"><span>Monto por jugada</span><span style="font-family:'Space Grotesk',monospace;">$3.000</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;"><span>Cantidad de jugadas</span><span style="font-family:'Space Grotesk',monospace;">1</span></div>
+            <hr style="border:none;border-top:1px solid #e2e0d8;margin:8px 0;">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:18px;"><span>Total a pagar</span><span style="font-family:'Space Grotesk',monospace;">$3.000</span></div>
+            <div style="margin-top:12px;background:#fbf3dd;border:1px solid #e8d6a4;border-radius:10px;padding:10px 12px;font-size:13px;color:#7a5a0d;">Al confirmar se genera un código, pero todavía no se cobra nada.</div>
+          </section>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isHistorial}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 24px;">
+          <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:24px;margin:0;letter-spacing:-.02em;">Historial</h1>
+          <p style="color:#4b5b54;font-size:14px;margin:6px 0 14px;">Tus semanas anteriores</p>
+
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <span style="padding:6px 14px;border-radius:999px;background:#14663f;color:#fff;font-size:13px;font-weight:600;">Semana</span>
+            <span style="padding:6px 14px;border-radius:999px;color:#4b5b54;font-size:13px;font-weight:600;">Sábado</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;">
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:22px;">17</div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Jugadas en total</div></div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:22px;color:#a67c12;">$184.400</div><div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Ganado en total</div></div>
+          </div>
+
+          <div style="margin-bottom:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+              <div><span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Semana 11</span><p style="font-weight:600;margin:2px 0 0;">1 al 5 de sept.</p></div>
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:#fbf3dd;color:#a67c12;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;"><i class="bi bi-trophy-fill"></i> Ganaste</span>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px;">
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+                <sc-for list="{{numsHistGano}}" as="num" hint-placeholder-count="10">
+                  <div style="display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:8px;background:#14663f;color:#fff;font-family:'Space Grotesk',monospace;font-weight:700;font-size:15px;">{{num}}</div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+              <div><span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Semana 10</span><p style="font-weight:600;margin:2px 0 0;">25 al 29 de agosto</p></div>
+              <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:#eceae3;color:#4b5b54;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Sin ganador</span>
+            </div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px;">
+              <p style="font-size:12.5px;color:#4b5b54;margin:0 0 8px;">Tu mejor sorteo fue de 7 de 10</p>
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;">
+                <sc-for list="{{numsHistPerdio}}" as="num" hint-placeholder-count="10">
+                  <div style="display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:8px;background:{{num.bg}};color:{{num.color}};font-family:'Space Grotesk',monospace;font-weight:700;font-size:15px;">{{num.label}}</div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isSolicitud}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 24px;">
+          <div style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:#fbf3dd;color:#a67c12;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;"><i class="bi bi-hourglass-split"></i> Pendiente de pago</div>
+          <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:23px;margin:0;letter-spacing:-.02em;">Presentá este código</h1>
+          <p style="color:#4b5b54;font-size:14px;margin:6px 0 16px;">Guardalo o hacele una captura de pantalla: lo vas a necesitar para pagar.</p>
+
+          <section style="background:#0d4a2d;border-radius:14px;color:#fff;padding:28px 20px;text-align:center;position:relative;overflow:hidden;">
+            <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.05) 0 1px,transparent 1px 12px);pointer-events:none;"></div>
+            <div style="position:relative;">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.62);">Tu código · Semanal</div>
+              <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:34px;letter-spacing:.25em;padding-left:.25em;margin:14px 0;word-break:break-all;">{{codigo}}</div>
+              <button onClick="{{onCopiar}}" style="min-height:38px;padding:0 14px;border-radius:8px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-size:13px;"><i class="bi bi-clipboard"></i> Copiar código</button>
+            </div>
+          </section>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;padding:20px;text-align:center;margin-top:14px;">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;margin-bottom:6px;">Total a pagar</div>
+            <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:34px;">$3.000</div>
+            <p style="font-size:13px;color:#4b5b54;margin:8px 0 0;">1 jugada</p>
+          </section>
+
+          <div style="background:#fbf3dd;border:1px solid #e8d6a4;border-radius:10px;padding:14px;margin-top:14px;font-size:13.5px;color:#7a5a0d;">
+            <strong>Cómo pagar:</strong> hacé la transferencia a este alias:
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;">
+              <div style="display:inline-block;padding:6px 14px;background:#fff;border:1.5px dashed #a67c12;border-radius:10px;font-family:'Space Grotesk',monospace;font-weight:700;font-size:16px;color:#10201a;">decenadeoro</div>
+            </div>
+            Una vez transferido, compartile el código al vendedor para que te confirme el pago.
+          </div>
+
+          <p style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;margin:18px 0 8px;">Tu jugada</p>
+          <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px;">
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
+              <sc-for list="{{numsGano}}" as="num" hint-placeholder-count="10">
+                <span style="display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;padding:0 6px;border-radius:8px;background:#e6f1eb;border:1px solid #cfe2d8;color:#0d4a2d;font-family:'Space Grotesk',monospace;font-weight:700;font-size:15px;">{{num}}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:18px;">
+            <button onClick="{{goPortal}}" style="min-height:48px;border-radius:10px;background:#14663f;border:none;color:#fff;font-weight:600;font-size:15px;"><i class="bi bi-ticket-perforated"></i> Ir a Mis jugadas</button>
+            <button onClick="{{goJugar}}" style="min-height:48px;border-radius:10px;border:1.5px solid #cbc8bc;background:#fff;color:#4b5b54;font-weight:600;font-size:15px;"><i class="bi bi-plus-lg"></i> Armar otra jugada</button>
+          </div>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isAdminTablero}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+            <div><span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Ciclo 47</span><h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px;margin:2px 0 0;letter-spacing:-.02em;">Semana del 8 al 12 de sept.</h1></div>
+            <span style="padding:3px 9px;border-radius:999px;background:#e6f1eb;color:#0d4a2d;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">Abierto</span>
+          </div>
+
+          <section style="background:#0d4a2d;border-radius:14px;color:#fff;padding:20px;position:relative;overflow:hidden;margin-bottom:12px;">
+            <div style="position:absolute;inset:0;background-image:repeating-linear-gradient(-45deg,rgba(255,255,255,.05) 0 1px,transparent 1px 11px);pointer-events:none;"></div>
+            <div style="position:relative;">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:4px;">Pozo acumulado</div>
+              <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:38px;color:#f2d382;">$184.400</div>
+              <div style="margin-top:8px;color:rgba(255,255,255,.72);font-size:12.5px;">60% de cada jugada pagada de esta semana</div>
+            </div>
+          </section>
+
+          <a onClick="{{goCargarSolicitudesDemo}}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #e8d6a4;border-radius:14px;padding:12px;margin-bottom:12px;text-decoration:none;color:inherit;cursor:pointer;">
+            <span style="display:flex;align-items:center;gap:8px;font-size:14px;"><i class="bi bi-hourglass-split" style="color:#a67c12;"></i> 3 solicitudes de pago pendientes</span>
+            <i class="bi bi-chevron-right" style="color:#8b9a93;"></i>
+          </a>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px 8px;text-align:center;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;">86</div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Jugadas</div></div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px 8px;text-align:center;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;">3/5</div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Sorteos</div></div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px 8px;text-align:center;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:16px;color:#a67c12;">$172.000</div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Recaudado</div></div>
+          </div>
+
+          <div style="background:#fbf3dd;border:1px solid #e8d6a4;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13.5px;color:#7a5a0d;display:flex;gap:8px;">
+            <i class="bi bi-exclamation-triangle-fill" style="margin-top:1px;flex-shrink:0;"></i>
+            <span>Faltan cargar los extractos de 2 sorteos de esta semana. Hasta que no se carguen, no se cotejan las jugadas.</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+            <button onClick="{{goAdminCargar}}" style="min-height:48px;border-radius:10px;background:#14663f;border:none;color:#fff;font-weight:600;font-size:15px;"><i class="bi bi-plus-lg"></i> Cargar una jugada</button>
+            <button onClick="{{goAdminSorteo}}" style="min-height:48px;border-radius:10px;background:#14663f;border:none;color:#fff;font-weight:600;font-size:15px;"><i class="bi bi-dice-5"></i> Cargar el sorteo de la Nocturna</button>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Últimas jugadas</span>
+          </div>
+
+          <sc-for list="{{ultimasJugadas}}" as="j" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px;margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;gap:8px;"><p style="font-weight:600;font-size:15px;margin:0;">{{j.nombre}}</p><span style="font-size:12.5px;color:#4b5b54;white-space:nowrap;">{{j.hora}}</span></div>
+              <p style="font-size:12.5px;color:#4b5b54;margin:2px 0 8px;">N° {{j.nro}} · {{j.importe}}</p>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                <sc-for list="{{j.numeros}}" as="num" hint-placeholder-count="10">
+                  <span style="display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 5px;border-radius:8px;background:#e6f1eb;border:1px solid #cfe2d8;color:#0d4a2d;font-family:'Space Grotesk',monospace;font-weight:700;font-size:13.5px;">{{num}}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+            <button onClick="{{goAdminReportes}}" style="min-height:44px;border-radius:10px;border:1.5px solid #cbc8bc;background:#fff;color:#4b5b54;font-weight:600;font-size:14px;"><i class="bi bi-bar-chart-line"></i> Reportes y recaudación</button>
+          </div>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isAdminCargar}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 4px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px;margin:0;letter-spacing:-.02em;">Cargar jugada</h1>
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;white-space:nowrap;">Ciclo 47</span>
+          </div>
+          <p style="color:#4b5b54;font-size:13.5px;margin:6px 0 12px;">Semana del 8 al 12 de sept.</p>
+
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <span style="padding:6px 14px;border-radius:999px;background:#14663f;color:#fff;font-size:13px;font-weight:600;">Semanal</span>
+            <span style="padding:6px 14px;border-radius:999px;color:#4b5b54;font-size:13px;font-weight:600;">Sábados</span>
+          </div>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;box-shadow:0 1px 2px rgba(16,32,26,.05);padding:14px;margin-bottom:12px;">
+            <label style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;display:block;">Paso 1</label>
+            <label style="font-weight:600;display:block;margin:2px 0 8px;">Cliente</label>
+            <select value="{{clienteSel}}" onChange="{{setClienteSel}}" style="width:100%;min-height:48px;border-radius:10px;border:1.5px solid #cbc8bc;font-size:15px;padding:8px 12px;box-sizing:border-box;background:#fff;">
+              <option value="">Elegí un cliente...</option>
+              <option value="1">Marcos Ibáñez — N° 0128</option>
+              <option value="2">Rosa Paz — N° 0094</option>
+              <option value="3">Julio Romero — N° 0151</option>
+              <option value="4">Elena Vega — N° 0033</option>
+              <option value="5">Carlos Díaz — N° 0207</option>
+            </select>
+          </section>
+
+          <label style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Paso 2 · Los 10 números de la jugada</label>
+          <p style="font-size:12.5px;color:#4b5b54;margin:2px 0 8px;">Distintos entre 00 y 99. Se salta solo a la casilla siguiente.</p>
+
+          <div style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;box-shadow:0 1px 2px rgba(16,32,26,.05);padding:14px;margin-bottom:12px;">
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+              <sc-for list="{{adminCasillas}}" as="c" hint-placeholder-count="10">
+                <div style="position:relative;">
+                  <span style="position:absolute;top:4px;left:7px;font-size:10px;font-weight:700;color:#8b9a93;pointer-events:none;">{{c.indice}}</span>
+                  <input id="{{c.id}}" value="{{c.value}}" onChange="{{c.onChange}}" inputmode="numeric" maxlength="2" placeholder="--" style="{{c.style}}"></input>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;padding:14px;margin-bottom:16px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Paso 3 · Pago</span>
+            <div style="display:flex;justify-content:space-between;margin:12px 0 8px;font-size:14px;"><span>Monto por jugada</span><span style="font-family:'Space Grotesk',monospace;">$3.000</span></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;"><span>Cantidad de jugadas</span><span style="font-family:'Space Grotesk',monospace;">1</span></div>
+            <hr style="border:none;border-top:1px solid #e2e0d8;margin:8px 0;">
+            <div style="display:flex;justify-content:space-between;font-weight:700;font-size:18px;margin-bottom:8px;"><span>Total a cobrar</span><span style="font-family:'Space Grotesk',monospace;">$3.000</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:#4b5b54;"><span>Va al pozo (60%)</span><span style="font-family:'Space Grotesk',monospace;">$1.800</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;color:#4b5b54;"><span>Gastos y ganancias</span><span style="font-family:'Space Grotesk',monospace;">$1.200</span></div>
+            <div style="margin-top:12px;background:#fbf3dd;border:1px solid #e8d6a4;border-radius:10px;padding:10px 12px;font-size:13px;color:#7a5a0d;">Al confirmar, la jugada queda pagada y entra al pozo.</div>
+          </section>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isAdminSorteo}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 4px;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px;margin:0;letter-spacing:-.02em;">Cargar sorteo</h1>
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;white-space:nowrap;">Ciclo 47</span>
+          </div>
+          <p style="color:#4b5b54;font-size:13.5px;margin:6px 0 12px;">Extracto de la Nocturna de Tucumán · semana del 8 al 12 de sept.</p>
+
+          <div style="background:#fbf3dd;border:1px solid #e8d6a4;border-radius:10px;padding:12px;margin-bottom:12px;font-size:13.5px;color:#7a5a0d;display:flex;gap:8px;">
+            <i class="bi bi-exclamation-triangle-fill" style="margin-top:1px;flex-shrink:0;"></i>
+            <span>Quedan 2 sorteos sin cargar en esta semana. Cargalos en orden: el del viernes es el que cierra el ciclo.</span>
+          </div>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;padding:14px;margin-bottom:12px;">
+            <label style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;display:block;">Paso 1</label>
+            <label style="font-weight:600;display:block;margin:2px 0 8px;">Fecha del sorteo</label>
+            <select value="{{fechaSel}}" onChange="{{setFechaSel}}" style="width:100%;min-height:48px;border-radius:10px;border:1.5px solid #cbc8bc;font-size:15px;padding:8px 12px;box-sizing:border-box;background:#fff;">
+              <option value="">Elegí una fecha...</option>
+              <option value="2026-09-10">Miércoles 10/09</option>
+              <option value="2026-09-11">Jueves 11/09</option>
+              <option value="2026-09-12">Viernes 12/09 — hoy</option>
+            </select>
+          </section>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;padding:14px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+              <div><span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Paso 2</span><div style="font-weight:600;">Los 20 números</div></div>
+              <button onClick="{{limpiarExtracto}}" style="min-height:32px;padding:4px 10px;border-radius:8px;border:1px solid #cbc8bc;background:#fff;color:#4b5b54;font-size:12.5px;"><i class="bi bi-eraser"></i> Limpiar</button>
+            </div>
+            <p style="font-size:12.5px;color:#4b5b54;margin:0 0 12px;">En el orden del extracto, del 1° al 20° premio. Acá <strong>sí</strong> puede repetirse un número.</p>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
+              <sc-for list="{{extractoCasillas}}" as="c" hint-placeholder-count="20">
+                <div style="position:relative;">
+                  <span style="position:absolute;top:4px;left:7px;font-size:10px;font-weight:700;color:#8b9a93;pointer-events:none;">{{c.indice}}</span>
+                  <input id="{{c.id}}" value="{{c.value}}" onChange="{{c.onChange}}" inputmode="numeric" maxlength="2" placeholder="--" style="{{c.style}}"></input>
+                </div>
+              </sc-for>
+            </div>
+
+            <hr style="border:none;border-top:1px solid #e2e0d8;margin:16px 0 12px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;display:block;margin-bottom:8px;">Tablero 00 – 99</span>
+            <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:2px;">
+              <sc-for list="{{tableroCells}}" as="cell" hint-placeholder-count="100">
+                <div style="{{cell.style}}">{{cell.label}}</div>
+              </sc-for>
+            </div>
+          </section>
+
+          <section style="background:#fff;border:1px solid #e2e0d8;border-radius:14px;padding:14px;margin-bottom:16px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Paso 3</span>
+            <div style="font-weight:600;margin:4px 0 8px;">Cotejo automático</div>
+            <p style="font-size:13px;color:#4b5b54;margin:0 0 10px;">Al guardar, el sistema compara estos 20 números contra todas las jugadas activas del ciclo.</p>
+            <div style="background:#fbf3dd;border:1px solid #e8d6a4;border-radius:10px;padding:10px 12px;font-size:13px;color:#7a5a0d;"><i class="bi bi-exclamation-triangle-fill"></i> Revisá bien los números: si hay ganador, el pozo se liquida y el ciclo se cierra.</div>
+          </section>
+        </main>
+      </sc-if>
+
+      <sc-if value="{{isAdminReportes}}" hint-placeholder-val="{{false}}">
+        <main style="max-width:720px;margin:0 auto;padding:16px 16px 24px;">
+          <button onClick="{{goAdminTablero}}" style="min-height:36px;padding:0 12px;border-radius:8px;border:1px solid #cbc8bc;background:#fff;color:#4b5b54;font-size:13px;margin-bottom:12px;"><i class="bi bi-arrow-left"></i> Tablero</button>
+
+          <h1 style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:22px;margin:0;letter-spacing:-.02em;">Reportes</h1>
+          <div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#e6f1eb;color:#0d4a2d;font-size:12px;font-weight:600;margin:10px 0 16px;"><i class="bi bi-globe2"></i> Vista global</div>
+
+          <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;display:block;margin-bottom:8px;">Recaudación histórica</span>
+          <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;margin-bottom:8px;">
+            <div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:24px;">$1.240.000</div>
+            <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Recaudado en total</div>
+            <div style="font-size:12px;color:#4b5b54;margin-top:6px;">312 jugadas · 64 clientes · 15 ciclos</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;">$744.000</div><div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Al pozo (60%)</div></div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;color:#a67c12;">$496.000</div><div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Gastos (40%)</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;">64</div><div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Clientes</div></div>
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:14px;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;">15</div><div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;margin-top:4px;">Sorteos cargados</div></div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8b9a93;">Recaudación por semana</span>
+            <span style="font-size:12px;color:#4b5b54;">máx $184.000</span>
+          </div>
+
+          <sc-for list="{{barrasCiclo}}" as="b" hint-placeholder-count="3">
+            <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:12px;margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:14px;"><span style="font-weight:600;">Ciclo {{b.numero}} <span style="font-weight:400;color:#4b5b54;">· {{b.fechas}}</span></span><span style="font-family:'Space Grotesk',monospace;font-weight:700;">{{b.monto}}</span></div>
+              <div style="position:relative;height:10px;margin-top:8px;border-radius:999px;background:#eceae3;overflow:hidden;"><div style="position:absolute;inset:0 auto 0 0;border-radius:0 999px 999px 0;background:{{b.color}};width:{{b.ancho}};"></div></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;"><span style="font-size:12.5px;color:#4b5b54;">{{b.jugadas}} jugadas</span><span style="{{b.etiquetaStyle}}">{{b.etiquetaTexto}}</span></div>
+            </div>
+          </sc-for>
+
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;">
+            <button style="min-height:44px;border-radius:10px;border:1.5px solid #cbc8bc;background:#fff;color:#4b5b54;font-weight:600;font-size:14px;"><i class="bi bi-ticket-perforated"></i> Detalle de jugadas</button>
+            <button style="min-height:44px;border-radius:10px;border:1.5px solid #cbc8bc;background:#fff;color:#4b5b54;font-weight:600;font-size:14px;"><i class="bi bi-trophy"></i> Ganadores</button>
+            <button style="min-height:44px;border-radius:10px;border:1.5px solid #cbc8bc;background:#fff;color:#4b5b54;font-weight:600;font-size:14px;"><i class="bi bi-clock-history"></i> Auditoría: quién cargó qué</button>
+          </div>
+        </main>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{showClienteNav}}" hint-placeholder-val="{{false}}">
+      <nav style="position:absolute;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid #e2e0d8;">
+        <button onClick="{{goPortal}}" style="{{navClienteItemStyle_portal}}"><i class="bi bi-ticket-perforated" style="font-size:20px;"></i><span style="font-size:11px;font-weight:600;">Mis jugadas</span></button>
+        <button onClick="{{goJugar}}" style="{{navClienteItemStyle_jugar}}"><i class="bi bi-plus-circle-fill" style="font-size:20px;"></i><span style="font-size:11px;font-weight:600;">Jugar</span></button>
+        <button onClick="{{goHistorial}}" style="{{navClienteItemStyle_historial}}"><i class="bi bi-clock-history" style="font-size:20px;"></i><span style="font-size:11px;font-weight:600;">Historial</span></button>
+      </nav>
+    </sc-if>
+
+    <sc-if value="{{showStaffNav}}" hint-placeholder-val="{{false}}">
+      <nav style="position:absolute;left:0;right:0;bottom:0;display:flex;background:#fff;border-top:1px solid #e2e0d8;">
+        <button onClick="{{goAdminTablero}}" style="{{navStaffItemStyle_tablero}}"><i class="bi bi-grid-1x2" style="font-size:19px;"></i><span style="font-size:10.5px;font-weight:600;">Tablero</span></button>
+        <button onClick="{{noDisponible}}" style="{{navStaffItemStyle_disabled}}"><i class="bi bi-ticket-perforated" style="font-size:19px;"></i><span style="font-size:10.5px;font-weight:600;">Jugadas</span></button>
+        <button onClick="{{goAdminCargar}}" style="{{navStaffItemStyle_normal}}"><i class="bi bi-plus-circle-fill" style="font-size:19px;"></i><span style="font-size:10.5px;font-weight:600;">Cargar</span></button>
+        <button onClick="{{goAdminSorteo}}" style="{{navStaffItemStyle_normal}}"><i class="bi bi-dice-5" style="font-size:19px;"></i><span style="font-size:10.5px;font-weight:600;">Sorteos</span></button>
+        <button onClick="{{noDisponible}}" style="{{navStaffItemStyle_disabled}}"><i class="bi bi-people" style="font-size:19px;"></i><span style="font-size:10.5px;font-weight:600;">Clientes</span></button>
+      </nav>
+    </sc-if>
+
+    <sc-if value="{{showAccionJugar}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(244,243,238,.96);backdrop-filter:blur(8px);border-top:1px solid #e2e0d8;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+        <div style="text-align:center;white-space:nowrap;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:20px;color:{{contadorJugadaColor}};">{{contadorJugadaTexto}}</div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;">números</div></div>
+        <button onClick="{{onGenerarCodigo}}" disabled="{{!jugadaListaParaEnviar}}" style="{{btnConfirmarJugarStyle}}"><i class="bi bi-check-lg"></i> Generar código</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showAccionAdminCargar}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(244,243,238,.96);backdrop-filter:blur(8px);border-top:1px solid #e2e0d8;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+        <div style="text-align:center;white-space:nowrap;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:20px;color:{{contadorAdminColor}};">{{contadorAdminTexto}}</div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;">números</div></div>
+        <button onClick="{{onConfirmarCobro}}" disabled="{{!confirmarAdminHabilitado}}" style="{{btnConfirmarAdminStyle}}"><i class="bi bi-check-lg"></i> Confirmar y cobrar $3.000</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showAccionAdminSorteo}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute;left:0;right:0;bottom:0;background:rgba(244,243,238,.96);backdrop-filter:blur(8px);border-top:1px solid #e2e0d8;padding:12px 16px;display:flex;align-items:center;gap:12px;">
+        <div style="text-align:center;white-space:nowrap;"><div style="font-family:'Space Grotesk',monospace;font-weight:700;font-size:20px;color:{{contadorExtractoColor}};">{{contadorExtractoTexto}}</div><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#8b9a93;">premios</div></div>
+        <button onClick="{{onGuardarSorteo}}" disabled="{{!extractoListaParaEnviar}}" style="{{btnConfirmarSorteoStyle}}"><i class="bi bi-check-lg"></i> Guardar y cotejar</button>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    modo: 'cliente',
+    screen: 'login',
+    usuario: '',
+    passwordVisible: false,
+    numJugada: Array(10).fill(''),
+    numAdmin: Array(10).fill(''),
+    extracto: Array(20).fill(''),
+    clienteSel: '',
+    fechaSel: '',
+    codigo: '',
+    flash: null,
+  };
+
+  goTo(modo, screen) {
+    const extra = {};
+    if (screen === 'solicitud' && !this.state.codigo) extra.codigo = 'DGO-482913';
+    this.setState({ modo, screen, flash: null, ...extra });
+  }
+
+  setUsuario(e) { this.setState({ usuario: e.target.value }); }
+  togglePassword() { this.setState(s => ({ passwordVisible: !s.passwordVisible })); }
+
+  onLogin(e) {
+    e.preventDefault();
+    const esStaff = /admin|super/i.test(this.state.usuario);
+    if (esStaff) this.goTo('staff', 'admin_tablero');
+    else this.goTo('cliente', 'portal');
+  }
+
+  setCasilla(which, idx, raw, total) {
+    const digits = raw.replace(/\D/g, '').slice(0, 2);
+    this.setState(s => {
+      const arr = s[which].slice();
+      arr[idx] = digits;
+      return { [which]: arr };
+    });
+    if (digits.length === 2 && idx < total - 1) {
+      setTimeout(() => {
+        const el = document.getElementById(which + '-' + (idx + 1));
+        if (el) el.focus();
+      }, 0);
+    }
+  }
+
+  limpiar(which, total) { this.setState({ [which]: Array(total).fill('') }); }
+  setClienteSel(e) { this.setState({ clienteSel: e.target.value }); }
+  setFechaSel(e) { this.setState({ fechaSel: e.target.value }); }
+
+  onGenerarCodigo() {
+    const codigo = 'DGO-' + Math.floor(100000 + Math.random() * 900000);
+    this.setState({ codigo, screen: 'solicitud' });
+  }
+
+  onConfirmarCobro() {
+    this.setState({
+      numAdmin: Array(10).fill(''),
+      clienteSel: '',
+      screen: 'admin_tablero',
+      flash: { text: 'Jugada cargada y cobrada correctamente.' },
+    });
+  }
+
+  onGuardarSorteo() {
+    this.setState({
+      screen: 'admin_tablero',
+      flash: { text: 'Extracto guardado. Cotejo automático: sin ganador esta vez.' },
+    });
+  }
+
+  onCopiar() {
+    try { navigator.clipboard && navigator.clipboard.writeText(this.state.codigo); } catch (err) {}
+    this.setState({ flash: { text: 'Código copiado.' } });
+  }
+
+  noDisponible() {
+    this.setState({ flash: { text: 'Esta pantalla no está incluida en este prototipo.' } });
+  }
+
+  estiloCasilla(value, dup) {
+    const base = "width:100%;height:60px;padding:12px 0 0;text-align:center;font-family:'Space Grotesk',monospace;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums;border-radius:10px;box-sizing:border-box;transition:border-color .12s ease,background-color .12s ease;";
+    if (dup) return base + 'border:2.5px solid #a52620;background:#fbeae9;color:#a52620;';
+    if (value) return base + 'border:1.5px solid #14663f;background:#e6f1eb;color:#0d4a2d;';
+    return base + 'border:1.5px solid #cbc8bc;background:#fff;color:#10201a;';
+  }
+
+  casillasFor(which, total, checarDup) {
+    const arr = this.state[which];
+    return arr.slice(0, total).map((value, idx) => {
+      const dup = checarDup && value !== '' && arr.filter(v => v === value).length > 1;
+      return {
+        idx, value, id: which + '-' + idx, indice: idx + 1,
+        style: this.estiloCasilla(value, dup),
+        onChange: (e) => this.setCasilla(which, idx, e.target.value, total),
+      };
+    });
+  }
+
+  tableroCells() {
+    const marcados = new Set(this.state.extracto.filter(v => v.length === 2));
+    const cells = [];
+    for (let n = 0; n <= 99; n++) {
+      const label = n < 10 ? '0' + n : '' + n;
+      const marcada = marcados.has(label);
+      cells.push({
+        n, label,
+        style: marcada
+          ? "aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:3px;background:#14663f;color:#fff;font-family:'Space Grotesk',monospace;font-size:9px;font-weight:700;"
+          : "aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:3px;background:#eceae3;color:#8b9a93;font-family:'Space Grotesk',monospace;font-size:9px;font-weight:500;",
+      });
+    }
+    return cells;
+  }
+
+  navBtnStyle(active, disabled) {
+    let s = 'flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:76px;padding:8px 4px;background:none;border:none;font-weight:600;';
+    if (disabled) return s + 'color:#cbc8bc;';
+    return s + (active ? 'color:#14663f;' : 'color:#8b9a93;');
+  }
+
+  toolbarBtnStyle(active) {
+    let s = 'min-height:30px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid #cbc8bc;cursor:pointer;';
+    return s + (active ? 'background:#14663f;color:#fff;border-color:#14663f;' : 'background:#fff;color:#4b5b54;');
+  }
+
+  renderVals() {
+    const { modo, screen, usuario, passwordVisible, numJugada, numAdmin, extracto, clienteSel, fechaSel, codigo, flash } = this.state;
+
+    const isLogin = screen === 'login';
+    const isClienteScreen = modo === 'cliente' && !isLogin;
+    const isStaffScreen = modo === 'staff';
+
+    const isPortal = isClienteScreen && screen === 'portal';
+    const isJugar = isClienteScreen && screen === 'jugar';
+    const isHistorial = isClienteScreen && screen === 'historial';
+    const isSolicitud = isClienteScreen && screen === 'solicitud';
+
+    const isAdminTablero = isStaffScreen && screen === 'admin_tablero';
+    const isAdminCargar = isStaffScreen && screen === 'admin_cargar';
+    const isAdminSorteo = isStaffScreen && screen === 'admin_sorteo';
+    const isAdminReportes = isStaffScreen && screen === 'admin_reportes';
+
+    const showClienteNav = isClienteScreen && (screen === 'portal' || screen === 'historial');
+    const showStaffNav = isStaffScreen && (screen === 'admin_tablero' || screen === 'admin_reportes');
+    const showAccionJugar = isJugar;
+    const showAccionAdminCargar = isAdminCargar;
+    const showAccionAdminSorteo = isAdminSorteo;
+
+    let scrollPadding = 24;
+    if (showClienteNav || showStaffNav) scrollPadding = 96;
+    if (showAccionJugar || showAccionAdminCargar || showAccionAdminSorteo) scrollPadding = 100;
+    if (isLogin) scrollPadding = 0;
+
+    const contJugada = numJugada.filter(v => v !== '').length;
+    const contAdmin = numAdmin.filter(v => v !== '').length;
+    const contExtracto = extracto.filter(v => v !== '').length;
+
+    const jugadaCompleta = numJugada.every(v => v !== '');
+    const jugadaSinDup = new Set(numJugada).size === numJugada.length;
+    const jugadaListaParaEnviar = jugadaCompleta && jugadaSinDup;
+
+    const adminCompleta = numAdmin.every(v => v !== '');
+    const adminSinDup = new Set(numAdmin).size === numAdmin.length;
+    const confirmarAdminHabilitado = adminCompleta && adminSinDup && clienteSel !== '';
+
+    const extractoListaParaEnviar = extracto.every(v => v !== '');
+
+    const btnHabilitado = 'flex-grow:1;min-height:48px;border-radius:10px;background:#14663f;border:none;color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;';
+    const btnDeshabilitado = 'flex-grow:1;min-height:48px;border-radius:10px;background:#cbc8bc;border:none;color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;';
+
+    const numsGano = ['03','17','22','29','34','41','58','63','77','89'];
+    const numsJugando = ['05','12','19','26','33','40','47','54','61','68'].map((label, i) => {
+      const salio = i !== 9;
+      return salio
+        ? { label, bg: '#14663f', border: '#14663f', color: '#fff' }
+        : { label, bg: '#fff', border: '#e2e0d8', color: '#8b9a93' };
+    });
+    const numsHistGano = ['08','14','21','30','37','44','52','66',	'71','95'];
+    const numsHistPerdio = ['02','11','18','25','36','49','57','62','80','93'].map((label, i) => {
+      const salio = i < 7;
+      return salio
+        ? { label, bg: '#14663f', color: '#fff' }
+        : { label, bg: '#eceae3', color: '#4b5b54' };
+    });
+
+    const ultimasJugadas = [
+      { nombre: 'Marcos Ibáñez', hora: 'hoy 18:42', nro: '0128', importe: '$3.000', numeros: ['05','12','19','26','33','40','47','54','61','68'] },
+      { nombre: 'Rosa Paz', hora: 'hoy 17:15', nro: '0094', importe: '$3.000', numeros: ['01','09','15','23','31','39','48','56','64','72'] },
+      { nombre: 'Julio Romero', hora: 'ayer 20:03', nro: '0151', importe: '$3.000', numeros: ['02','10','20','28','35','42','50','58','66','74'] },
+    ];
+
+    const barrasCiclo = [
+      { numero: 47, fechas: '8 al 12 sept.', monto: '$172.000', ancho: '93%', color: '#14663f', jugadas: 86, etiquetaTexto: 'Abierto', etiquetaStyle: 'padding:2px 8px;border-radius:999px;background:#e6f1eb;color:#0d4a2d;font-size:10.5px;font-weight:700;text-transform:uppercase;' },
+      { numero: 46, fechas: '1 al 5 sept.', monto: '$184.400', ancho: '100%', color: '#14663f', jugadas: 91, etiquetaTexto: 'Ganador', etiquetaStyle: 'padding:2px 8px;border-radius:999px;background:#fbf3dd;color:#a67c12;font-size:10.5px;font-weight:700;text-transform:uppercase;' },
+      { numero: 45, fechas: '25 al 29 ago.', monto: '$98.000', ancho: '53%', color: '#8fb3a1', jugadas: 47, etiquetaTexto: 'Sin ganador', etiquetaStyle: 'padding:2px 8px;border-radius:999px;background:#eceae3;color:#4b5b54;font-size:10.5px;font-weight:700;text-transform:uppercase;' },
+    ];
+
+    return {
+      usuario, passwordType: passwordVisible ? 'text' : 'password',
+      codigo, flash,
+      flashStyle: 'margin:12px 16px 0;padding:10px 14px;border-radius:10px;background:#e9eff4;border:1px solid #cddbe6;color:#22475f;font-size:13.5px;',
+      isLogin, isPortal, isJugar, isHistorial, isSolicitud,
+      isAdminTablero, isAdminCargar, isAdminSorteo, isAdminReportes,
+      isClienteScreen, isStaffScreen,
+      showClienteNav, showStaffNav, showAccionJugar, showAccionAdminCargar, showAccionAdminSorteo,
+      scrollPadding,
+
+      goLogin: () => this.goTo('cliente', 'login'),
+      goPortal: () => this.goTo('cliente', 'portal'),
+      goJugar: () => this.goTo('cliente', 'jugar'),
+      goHistorial: () => this.goTo('cliente', 'historial'),
+      goSolicitud: () => this.goTo('cliente', 'solicitud'),
+      goAdminTablero: () => this.goTo('staff', 'admin_tablero'),
+      goAdminCargar: () => this.goTo('staff', 'admin_cargar'),
+      goAdminSorteo: () => this.goTo('staff', 'admin_sorteo'),
+      goAdminReportes: () => this.goTo('staff', 'admin_reportes'),
+      goCargarSolicitudesDemo: () => this.noDisponible(),
+      noDisponible: () => this.noDisponible(),
+
+      setUsuario: (e) => this.setUsuario(e),
+      togglePassword: () => this.togglePassword(),
+      onLogin: (e) => this.onLogin(e),
+      onCopiar: () => this.onCopiar(),
+
+      btnToolbar_login: this.toolbarBtnStyle(isLogin),
+      btnToolbar_portal: this.toolbarBtnStyle(isPortal),
+      btnToolbar_jugar: this.toolbarBtnStyle(isJugar),
+      btnToolbar_historial: this.toolbarBtnStyle(isHistorial),
+      btnToolbar_solicitud: this.toolbarBtnStyle(isSolicitud),
+      btnToolbar_tablero: this.toolbarBtnStyle(isAdminTablero),
+      btnToolbar_cargar: this.toolbarBtnStyle(isAdminCargar),
+      btnToolbar_sorteo: this.toolbarBtnStyle(isAdminSorteo),
+      btnToolbar_reportes: this.toolbarBtnStyle(isAdminReportes),
+
+      navClienteItemStyle_portal: this.navBtnStyle(isPortal, false),
+      navClienteItemStyle_jugar: this.navBtnStyle(isJugar, false),
+      navClienteItemStyle_historial: this.navBtnStyle(isHistorial, false),
+      navStaffItemStyle_tablero: this.navBtnStyle(isAdminTablero, false),
+      navStaffItemStyle_normal: this.navBtnStyle(false, false),
+      navStaffItemStyle_disabled: this.navBtnStyle(false, true),
+
+      numsGano, numsJugando, numsHistGano, numsHistPerdio, ultimasJugadas, barrasCiclo,
+
+      jugadaCasillas: this.casillasFor('numJugada', 10, true),
+      limpiarJugada: () => this.limpiar('numJugada', 10),
+      contadorJugadaTexto: contJugada + '/10',
+      contadorJugadaColor: jugadaCompleta ? '#14663f' : '#10201a',
+      jugadaListaParaEnviar,
+      onGenerarCodigo: () => this.onGenerarCodigo(),
+      btnConfirmarJugarStyle: jugadaListaParaEnviar ? btnHabilitado : btnDeshabilitado,
+
+      clienteSel, setClienteSel: (e) => this.setClienteSel(e),
+      adminCasillas: this.casillasFor('numAdmin', 10, true),
+      contadorAdminTexto: contAdmin + '/10',
+      contadorAdminColor: adminCompleta ? '#14663f' : '#10201a',
+      confirmarAdminHabilitado,
+      onConfirmarCobro: () => this.onConfirmarCobro(),
+      btnConfirmarAdminStyle: confirmarAdminHabilitado ? btnHabilitado : btnDeshabilitado,
+
+      fechaSel, setFechaSel: (e) => this.setFechaSel(e),
+      extractoCasillas: this.casillasFor('extracto', 20, false),
+      limpiarExtracto: () => this.limpiar('extracto', 20),
+      contadorExtractoTexto: contExtracto + '/20',
+      contadorExtractoColor: extractoListaParaEnviar ? '#14663f' : '#10201a',
+      extractoListaParaEnviar,
+      onGuardarSorteo: () => this.onGuardarSorteo(),
+      btnConfirmarSorteoStyle: extractoListaParaEnviar ? btnHabilitado : btnDeshabilitado,
+      tableroCells: this.tableroCells(),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -64,6 +64,11 @@ $_solCount = $solicitudesPendientes ?? 0;
                 <i class="bi bi-bar-chart-line"></i>
                 <span>Reportes</span>
             </a>
+            <a href="<?= APP_URL ?>/admin/ranking/index.php"
+               class="g-sidebar__link <?= ($navSeccion ?? '') === 'ranking' ? 'active' : '' ?>">
+                <i class="bi bi-trophy"></i>
+                <span>Ranking</span>
+            </a>
             <a href="<?= APP_URL ?>/admin/ciclos/index.php"
                class="g-sidebar__link <?= ($navSeccion ?? '') === 'ciclos' ? 'active' : '' ?>">
                 <i class="bi bi-calendar-week"></i>

@@ -96,6 +96,10 @@
                 <i class="bi bi-bar-chart-line" aria-hidden="true"></i>
                 <span>Reportes</span>
             </a>
+            <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/ranking/index.php">
+                <i class="bi bi-trophy" aria-hidden="true"></i>
+                <span>Ranking</span>
+            </a>
             <?php if (isAdmin()): ?>
                 <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/configuracion/index.php">
                     <i class="bi bi-sliders" aria-hidden="true"></i>

@@ -268,6 +268,17 @@ a { color: var(--verde); }
     color: #fff;
 }
 
+/* Para una bolilla mas chica que la de siempre (leyendas, tablas
+   densas): .bolilla trae min-width: 2.125rem, que le gana a cualquier
+   width mas chico puesto inline -- 4 lugares la usaban con
+   style="width:16/24/26px" y salian deformadas (34px de ancho real en
+   vez del que se pedia). Este modificador baja min-width y el padding
+   junto con el width, para que el width que le pongan sea el real. */
+.bolilla--chica {
+    min-width: 0;
+    padding: 0;
+}
+
 .bolillas {
     display: flex;
     flex-wrap: wrap;

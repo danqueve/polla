@@ -170,8 +170,8 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                 <div class="fw-bold fs-6 text-dark"><?= e(formatPesos($recaudado)) ?></div>
                             </div>
 
-                            <div class="barra-ciclo__pista rounded" style="background:#e5e7eb;height:10px;overflow:hidden">
-                                <div class="barra-ciclo__dato h-100 rounded"
+                            <div class="barra-ciclo__pista">
+                                <div class="barra-ciclo__dato"
                                      style="background: <?= $abierto ? 'var(--g-primary)' : ($conGanador ? 'var(--g-warning)' : '#9ca3af') ?>; width: <?= number_format($ancho, 2, '.', '') ?>%"></div>
                             </div>
 

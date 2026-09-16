@@ -242,7 +242,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                         Jugadas del Ciclo (<?= count($jugadas) ?>)
                     </h2>
                     <span class="small text-muted">
-                        <span class="bolilla bolilla--acertada d-inline-block" style="width:16px;height:16px;font-size:10px;line-height:16px"></span>
+                        <span class="bolilla bolilla--acertada bolilla--chica d-inline-block" style="width:16px;height:16px;font-size:10px;line-height:16px"></span>
                         = número ya sorteado
                     </span>
                 </div>
@@ -380,7 +380,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     </div>
                                     <div class="bolillas">
                                         <?php foreach ($sorteo['numeros'] as $numero): ?>
-                                            <span class="bolilla" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
+                                            <span class="bolilla bolilla--chica" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>

@@ -354,7 +354,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     </div>
                                     <div class="bolillas">
                                         <?php foreach ($sorteo['numeros'] as $numero): ?>
-                                            <span class="bolilla" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
+                                            <span class="bolilla bolilla--chica" style="width:26px;height:26px;font-size:.7rem;line-height:26px"><?= e(num2($numero)) ?></span>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>

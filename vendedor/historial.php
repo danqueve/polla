@@ -16,6 +16,7 @@ foreach ($liquidaciones as $l) {
 
 $pageTitle  = 'Historial de pagos · ' . APP_NAME;
 $navSeccion = 'vendedor-historial';
+$bodyClass  = 'sin-barra'; // esta pantalla no tiene barra de navegacion inferior
 require __DIR__ . '/../includes/head.php';
 require __DIR__ . '/../includes/vendedor_cabecera.php';
 ?>

@@ -83,7 +83,19 @@ body.admin-gentelella {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
-    padding: 0;
+}
+
+/* Reserva bajo la barra de accion fija (.accion-fija, definida en
+   app.css -- admin.css no la redefine). body.con-accion-fija de
+   app.css tiene la MISMA especificidad que el body.admin-gentelella de
+   arriba (0,1,1 los dos), asi que sin esto el "sin padding" de arriba
+   le gana por venir despues en el orden de carga, y las 10 pantallas
+   con boton de accion fija (Confirmar y cobrar, etc.) pierden la
+   reserva y el ultimo campo del formulario queda tapado. */
+body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
+
+@media (min-width: 768px) {
+    body.admin-gentelella.con-accion-fija { padding-bottom: 2rem; }
 }
 
 

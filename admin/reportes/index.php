@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\ParametroService;
 use Polla\Services\ReporteService;
 use Polla\Services\UsuarioService;
 use Polla\Support\AlcanceReporte;
@@ -12,12 +13,16 @@ use Polla\Support\FiltroReporte;
 
 requireLogin();
 
-$db      = getPDO();
-$usuario = currentUser();
+$db         = getPDO();
+$usuario    = currentUser();
+$parametros = new ParametroService($db);
 
 $alcance = AlcanceReporte::desdeSesion((int) $usuario['id'], (string) $usuario['rol']);
 $reporte = new ReporteService($db, $alcance);
 $filtro  = FiltroReporte::desdeGet($_GET, $alcance);
+
+$porcentajePozo   = $parametros->porcentajePozo();
+$porcentajeGastos = $parametros->getInt('porcentaje_gastos');
 
 $resumen  = $reporte->resumen($filtro);
 $porCiclo = $reporte->porCiclo($filtro);
@@ -115,7 +120,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                     <i class="bi bi-trophy"></i>
                 </div>
                 <div class="g-stat__value"><?= e(formatPesos($resumen['al_pozo'])) ?></div>
-                <div class="g-stat__label">Al Pozo Acumulado (60%)</div>
+                <div class="g-stat__label">Al Pozo Acumulado (<?= $porcentajePozo ?>%)</div>
             </div>
 
             <div class="g-stat">
@@ -123,7 +128,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                     <i class="bi bi-wallet2"></i>
                 </div>
                 <div class="g-stat__value"><?= e(formatPesos($resumen['a_gastos'])) ?></div>
-                <div class="g-stat__label">Gastos / Ganancias (40%)</div>
+                <div class="g-stat__label">Gastos / Ganancias (<?= $porcentajeGastos ?>%)</div>
             </div>
 
             <div class="g-stat">

@@ -62,7 +62,7 @@ body {
 
 body.sin-barra { padding-bottom: 0; }
 
-h1, h2, h3, h4, .display-titulo {
+h1, h2, h3, h4 {
     font-family: var(--ff-display);
     font-weight: 700;
     letter-spacing: -.02em;
@@ -859,23 +859,6 @@ a.fila:hover { border-color: var(--verde); }
     outline-offset: -2px;
 }
 
-.leyenda-calor {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .5rem;
-    font-size: .75rem;
-    color: var(--tinta-suave);
-}
-
-.leyenda-calor__marca {
-    display: inline-block;
-    width: .75rem;
-    height: .75rem;
-    border-radius: 2px;
-    vertical-align: middle;
-}
-
 /* Contador de la barra fija: 7/10 */
 .contador {
     font-family: var(--ff-cifra);
@@ -1167,50 +1150,6 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     min-width: 3px;
 }
 
-/* Ciclo cerrado sin ganador: mismo tono, más apagado. Nunca otro
-   color, que leería como otra serie. */
-.barra-ciclo__dato--tenue { background: #8fb3a1; }
-
-.barra-ciclo__cifra {
-    font-family: var(--ff-cifra);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    /* Texto con token de texto, nunca del color de la serie */
-    color: var(--tinta);
-}
-
-/* ── Tarjetas resumen ─────────────────────────────────────── */
-
-.tarjeta-dato {
-    background: var(--superficie);
-    border: 1px solid var(--borde);
-    border-radius: var(--radio-sm);
-    padding: .875rem;
-    height: 100%;
-}
-
-.tarjeta-dato__valor {
-    font-family: var(--ff-cifra);
-    font-weight: 700;
-    font-size: clamp(1.25rem, 6vw, 1.625rem);
-    line-height: 1.05;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -.02em;
-}
-
-.tarjeta-dato__rotulo {
-    font-size: .6875rem;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--tinta-tenue);
-    margin-top: .25rem;
-}
-
-.tarjeta-dato__pie {
-    font-size: .75rem;
-    color: var(--tinta-suave);
-    margin-top: .375rem;
-}
 
 /* ── Tablas densas ────────────────────────────────────────── */
 
@@ -1280,52 +1219,6 @@ a.barra-ciclo:hover { border-color: var(--verde); }
 
 .filtros .form-label { margin-bottom: .25rem; }
 
-.chip-alcance {
-    display: inline-flex;
-    align-items: center;
-    gap: .375rem;
-    padding: .25rem .625rem;
-    border-radius: 999px;
-    background: var(--verde-claro);
-    color: var(--verde-oscuro);
-    font-size: .75rem;
-    font-weight: 600;
-}
-
-/* ── Línea de tiempo de auditoría ─────────────────────────── */
-
-.evento {
-    display: flex;
-    gap: .75rem;
-    padding: .75rem 0;
-    border-bottom: 1px solid var(--borde);
-}
-
-.evento:last-child { border-bottom: 0; }
-
-.evento__marca {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    background: var(--verde-claro);
-    color: var(--verde-oscuro);
-    font-size: .875rem;
-}
-
-.evento__marca--sorteo  { background: var(--oro-claro);  color: var(--oro); }
-.evento__marca--cliente { background: #e9eff4;           color: #22475f; }
-
-.evento__cuando {
-    font-family: var(--ff-cifra);
-    font-size: .75rem;
-    color: var(--tinta-tenue);
-    font-variant-numeric: tabular-nums;
-}
-
 /* ============================================================
    Solicitud de pago (Fase 6)
 
@@ -1387,14 +1280,6 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     margin-top: .5rem;
 }
 
-/* Mismo tratamiento tipografico del codigo (localizador, letras
-   separadas) aplicado al buscador del staff en admin/solicitudes,
-   en vez de repetir un style="letter-spacing:..." ad hoc. */
-.input-codigo {
-    letter-spacing: .15em;
-    font-size: 1.25rem;
-}
-
 /* Monto a pagar: a diferencia del premio de portal_jugada, esto es
    plata que el cliente TODAVIA DEBE, no plata que gano — por eso NO
    lleva el oro (reservado para pozo/recaudacion/premio), va en la
@@ -1432,50 +1317,3 @@ a.barra-ciclo:hover { border-color: var(--verde); }
     color: var(--tinta);
 }
 
-/* ============================================================
-   Premio base garantizado (Fase 7)
-
-   El desglose "real vs. subsidiado" es exclusivamente para el
-   admin: un aviso chico, discreto, dentro de la misma tarjeta del
-   pozo — no compite con la cifra grande, que sigue siendo lo
-   primero que se lee.
-   ============================================================ */
-
-.pozo__desglose {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: .375rem;
-    padding-top: .75rem;
-    border-top: 1px solid rgba(255, 255, 255, .16);
-    color: rgba(255, 255, 255, .8);
-    font-size: .75rem;
-    line-height: 1.4;
-}
-
-.pozo__desglose i { margin-top: .0625rem; color: var(--oro-sobre-oscuro); flex-shrink: 0; }
-
-/* Tabla de desglose del detalle de ciclo: real / piso / pagado /
-   subsidiado, en una tarjeta clara — distinto contexto visual del
-   pozo (que va sobre fondo oscuro), aca es sobre superficie blanca. */
-.desglose-pozo__fila {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: .5rem 0;
-    border-bottom: 1px solid var(--borde);
-}
-
-.desglose-pozo__fila:last-child { border-bottom: 0; }
-
-.desglose-pozo__fila--total {
-    font-weight: 700;
-    border-top: 2px solid var(--tinta);
-    margin-top: .25rem;
-    padding-top: .75rem;
-}
-
-.desglose-pozo__fila--subsidio {
-    color: var(--oro);
-    font-weight: 600;
-}

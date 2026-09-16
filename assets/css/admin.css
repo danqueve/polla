@@ -10,7 +10,10 @@
    mantiene la bottom_nav original.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Inter ya se carga como <link> en includes/admin_head.php (paralelo,
+   no bloqueante) -- un @import duplicado acá adentro es serialmente
+   bloqueante: el navegador tiene que bajar y parsear admin.css entero
+   antes de descubrirlo y recien ahi empezar a pedir la fuente. */
 
 /* ── Design Tokens ────────────────────────────────────────── */
 
@@ -237,7 +240,6 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
     font-size: .8125rem;
     font-weight: 500;
     white-space: nowrap;
-    border-radius: 0;
     margin: 1px .5rem;
     border-radius: var(--g-radius-sm);
     transition: background var(--g-transition), color var(--g-transition);
@@ -522,11 +524,6 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
     }
 }
 
-/* Page header */
-.g-page-header {
-    margin-bottom: 1.5rem;
-}
-
 .g-page-title {
     font-family: var(--g-ff);
     font-weight: 700;
@@ -584,13 +581,6 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
 
 .g-card__body {
     padding: 1.25rem;
-}
-
-.g-card__footer {
-    padding: .75rem 1.25rem;
-    border-top: 1px solid var(--g-card-border);
-    background: #f9fafb;
-    border-radius: 0 0 var(--g-card-radius) var(--g-card-radius);
 }
 
 
@@ -875,24 +865,6 @@ button.g-btn--outline:hover {
 .g-btn--sm {
     padding: .375rem .75rem;
     font-size: .8125rem;
-}
-
-.g-btn--block {
-    width: 100%;
-}
-
-/* Acciones rápidas (grid de botones) */
-.g-quick-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: .75rem;
-    margin-bottom: 1.5rem;
-}
-
-@media (max-width: 575.98px) {
-    .g-quick-actions {
-        grid-template-columns: 1fr;
-    }
 }
 
 .g-quick-action {
@@ -1200,7 +1172,6 @@ body.admin-gentelella .dropdown-item:active {
 .g-animate-delay-1 { animation-delay: .05s; }
 .g-animate-delay-2 { animation-delay: .1s; }
 .g-animate-delay-3 { animation-delay: .15s; }
-.g-animate-delay-4 { animation-delay: .2s; }
 
 
 /* ── Respeto por prefers-reduced-motion ──────────────────── */

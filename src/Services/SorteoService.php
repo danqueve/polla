@@ -231,14 +231,6 @@ class SorteoService
         return (bool) $stmt->fetchColumn();
     }
 
-    private function tieneJugadas(int $cicloId): bool
-    {
-        $stmt = $this->db->prepare('SELECT 1 FROM jugadas WHERE ciclo_id = :id LIMIT 1');
-        $stmt->execute([':id' => $cicloId]);
-
-        return (bool) $stmt->fetchColumn();
-    }
-
     /**
      * Corrige los 20 numeros de un sorteo ya cargado y vuelve a correr
      * el cotejo desde cero. Solo corrige numeros, no fecha ni turno.
@@ -300,18 +292,38 @@ class SorteoService
                     );
                 }
 
-                // Si quedo un "programado" vacio de mas (creado al
-                // promover a $siguiente por error), su trabajo lo
+                // El "programado" (un paso mas adelante que $siguiente)
                 // retoma $siguiente en cuanto lo bajemos de categoria.
+                // Desde 8913716 es NORMAL que ya tenga jugadas propias
+                // (el corte del lunes 22hs las manda ahi sin que haya
+                // corrido ningun sorteo de $siguiente todavia) -- lo
+                // unico que de verdad impide reacomodar son sorteos
+                // propios, que significarian que ya paso una semana o
+                // sabado real.
                 $extra = $this->ciclos->buscarProgramado($tipo);
                 if ($extra) {
-                    if ($this->tieneSorteosPropios((int) $extra['id'])
-                        || $this->tieneJugadas((int) $extra['id'])) {
-                        // No deberia poder pasar (ver diseño): defensivo.
+                    if ($this->tieneSorteosPropios((int) $extra['id'])) {
                         throw ValidacionException::de(
-                            'No se puede corregir: hay actividad inesperada en un ciclo posterior.'
+                            'No se puede corregir: el ciclo siguiente ya tiene sorteos propios cargados '
+                          . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
+                          . 'jugadas o pozo acumulado, pero no sorteos.'
                         );
                     }
+
+                    // Las jugadas y el pozo que ya tenia $extra pasan a
+                    // $siguiente, que es quien retoma su rol de
+                    // "programado" -- antes de borrar $extra, que un
+                    // FK RESTRICT rechazaria si todavia tuviera jugadas
+                    // colgando.
+                    $this->db->prepare('UPDATE jugadas SET ciclo_id = :nuevo WHERE ciclo_id = :extra')
+                        ->execute([':nuevo' => $siguiente['id'], ':extra' => $extra['id']]);
+                    $this->db->prepare(
+                        'UPDATE pozo_ciclo AS destino
+                            JOIN pozo_ciclo AS origen ON origen.ciclo_id = :extra
+                            SET destino.monto_acumulado = destino.monto_acumulado + origen.monto_acumulado
+                          WHERE destino.ciclo_id = :siguiente'
+                    )->execute([':extra' => $extra['id'], ':siguiente' => $siguiente['id']]);
+
                     $this->db->prepare('DELETE FROM ciclos WHERE id = :id')
                         ->execute([':id' => $extra['id']]);
                 }

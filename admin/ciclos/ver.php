@@ -26,6 +26,15 @@ if (!$ciclo) {
     exit;
 }
 
+// Esta pantalla es solo para semanal (premioBase(), "Sorteos
+// Semanales", etc.): un ciclo de sabado tiene su propia vista, con su
+// propio premio base -- sin esta guarda, ?id=<un sabado> mostraba el
+// piso del semanal en vez del de sabados y un "subsidio" inventado.
+if ($ciclo['tipo'] === CicloService::TIPO_SABADO) {
+    header('Location: ' . APP_URL . '/admin/sabados/ver.php?id=' . (int) $ciclo['id']);
+    exit;
+}
+
 $cicloId   = (int) $ciclo['id'];
 $resumen   = $ciclos->resumen($cicloId);
 $lista     = $sorteos->listarPorCiclo($cicloId);

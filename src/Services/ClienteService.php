@@ -17,6 +17,11 @@ use Polla\Support\ValidacionException;
  */
 class ClienteService
 {
+    // ── Estados de cliente ───────────────────────────────────
+    public const ESTADO_PENDIENTE  = 'pendiente';
+    public const ESTADO_APROBADO   = 'aprobado';
+    public const ESTADO_RECHAZADO  = 'rechazado';
+
     /** Reintentos ante colision del numero aleatorio con uno ya existente. */
     private const REINTENTOS_NRO = 10;
 
@@ -122,7 +127,7 @@ class ClienteService
         }
 
         // Alta manual: aprobada al instante, el staff ya valido los datos.
-        return $this->insertar($dni, $nombre, $telefono, 'aprobado', 'manual', $altaPor);
+        return $this->insertar($dni, $nombre, $telefono, ClienteService::ESTADO_APROBADO, 'manual', $altaPor);
     }
 
     /**
@@ -154,7 +159,7 @@ class ClienteService
             throw ValidacionException::de('Ya hay un cliente cargado con ese DNI.');
         }
 
-        return $this->insertar($dni, $nombre, $telefono, 'pendiente', 'autorregistro', null, $referidoPor);
+        return $this->insertar($dni, $nombre, $telefono, ClienteService::ESTADO_PENDIENTE, 'autorregistro', null, $referidoPor);
     }
 
     /**

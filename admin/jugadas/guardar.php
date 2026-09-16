@@ -2,6 +2,7 @@
 /** Handler POST de la carga de jugada (una o varias juntas). */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\CicloService;
 use Polla\Services\JugadaService;
 use Polla\Support\ValidacionException;
@@ -27,6 +28,10 @@ try {
     $ids     = $jugadas->crearVarias($clienteId, $listasDeNumeros, currentUserId(), $promocionId, $tipoJuego);
 
     flushOld();
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::JUGADA_CARGADA, 'jugadas', $ids[0],
+        'usuario', currentUserId(), ['cliente_id' => $clienteId, 'cantidad' => count($ids), 'ids' => $ids]
+    );
 
     $primero = $jugadas->buscarPorId($ids[0]);
 

@@ -2,6 +2,7 @@
 /** Handler POST de la configuracion. Exclusivo del administrador. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\ConfiguracionService;
 use Polla\Support\ValidacionException;
 
@@ -39,6 +40,10 @@ try {
     $configuracion->actualizarHorarios($horarioSemanal, $horarioSabado, $usuarioId);
     $configuracion->actualizarComisionJugadaPorcentaje($comisionPorcentaje, $usuarioId);
     $configuracion->actualizarNumerosPorJugadaSabado($cantidadSabado, $usuarioId);
+
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::CONFIG_ACTUALIZADA, 'parametros', null, 'usuario', $usuarioId, $old
+    );
 
     setFlash('success',
         'Configuración actualizada: monto de jugada ' . formatPesos($monto)

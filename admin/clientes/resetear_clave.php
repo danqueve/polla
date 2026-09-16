@@ -6,6 +6,7 @@
  */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\ClienteService;
 use Polla\Support\ValidacionException;
 
@@ -16,6 +17,9 @@ $id = (int) ($_POST['id'] ?? 0);
 
 try {
     $dni = (new ClienteService(getPDO()))->resetearClave($id);
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::CLIENTE_CLAVE_RESET, 'clientes', $id, 'usuario', currentUserId()
+    );
     setFlash('success', 'Clave resincronizada. Entra al portal con su DNI (' . $dni . ').');
 } catch (ValidacionException $e) {
     setFlash('danger', implode("\n", $e->errores()));

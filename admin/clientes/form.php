@@ -71,7 +71,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <a href="<?= APP_URL ?>/admin/vendedores/form.php?id=<?= (int) $vendedorVinculado['id'] ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-person-badge me-1"></i> Perfil Vendedor (<?= e($vendedorVinculado['codigo_referido']) ?>)
                 </a>
-            <?php elseif (!$esAlta && isAdmin() && (int) $cliente['activo'] === 1 && $cliente['estado'] === 'aprobado'): ?>
+            <?php elseif (!$esAlta && isAdmin() && (int) $cliente['activo'] === 1 && $cliente['estado'] === ClienteService::ESTADO_APROBADO): ?>
                 <a href="<?= APP_URL ?>/admin/vendedores/form.php?cliente_id=<?= (int) $cliente['id'] ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-person-badge me-1"></i> Convertir en Vendedor
                 </a>

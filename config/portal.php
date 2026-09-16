@@ -104,14 +104,14 @@ function requireCliente(bool $permitirPendiente = false): void
         exit;
     }
 
-    if ($fila['estado'] === 'rechazado') {
+    if ($fila['estado'] === \Polla\Services\ClienteService::ESTADO_RECHAZADO) {
         cerrarSesionCliente();
         setFlash('danger', 'Tu solicitud de alta fue rechazada. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.');
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }
 
-    if ($fila['estado'] === 'pendiente' && !$permitirPendiente) {
+    if ($fila['estado'] === \Polla\Services\ClienteService::ESTADO_PENDIENTE && !$permitirPendiente) {
         header('Location: ' . APP_URL . '/portal/pendiente.php');
         exit;
     }

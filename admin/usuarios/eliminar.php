@@ -2,6 +2,7 @@
 /** Baja de usuario del panel. Solo admin. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\UsuarioService;
 use Polla\Support\ValidacionException;
 
@@ -12,6 +13,10 @@ $id = (int) ($_POST['id'] ?? 0);
 
 try {
     $resultado = (new UsuarioService(getPDO()))->eliminar($id, (int) currentUserId());
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::USUARIO_ELIMINADO, 'usuarios', $id,
+        'usuario', currentUserId(), ['resultado' => $resultado]
+    );
 
     setFlash('success', $resultado === 'borrado'
         ? 'Usuario borrado.'

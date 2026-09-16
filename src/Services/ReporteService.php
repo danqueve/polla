@@ -74,21 +74,7 @@ class ReporteService
     /** Cuantos sorteos cargo (el negocio, o el supervisor). */
     public function totalSorteos(FiltroReporte $filtro): int
     {
-        $where  = ['1 = 1'];
-        $params = [];
-
-        if ($cond = $this->alcance->condicion('s.cargado_por')) {
-            $where[] = $cond;
-            $params += $this->alcance->parametros();
-        }
-        if ($filtro->desde) { $where[] = 's.fecha >= :desde'; $params[':desde'] = $filtro->desde; }
-        if ($filtro->hasta) { $where[] = 's.fecha <= :hasta'; $params[':hasta'] = $filtro->hasta; }
-        if ($filtro->cicloId)   { $where[] = 's.ciclo_id = :ciclo';      $params[':ciclo'] = $filtro->cicloId; }
-        if ($filtro->usuarioId) { $where[] = 's.cargado_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
-        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
-            $where[] = 'cy.tipo = :tipo_juego';
-            $params[':tipo_juego'] = $filtro->tipoJuego;
-        }
+        [$where, $params] = $this->condicionesSorteos($filtro);
 
         $stmt = $this->db->prepare(
             'SELECT COUNT(*) FROM sorteos s JOIN ciclos cy ON cy.id = s.ciclo_id WHERE ' . implode(' AND ', $where)
@@ -101,16 +87,7 @@ class ReporteService
     /** Cuantos clientes dio de alta (el negocio, o el supervisor). */
     public function totalClientes(FiltroReporte $filtro): int
     {
-        $where  = ['1 = 1'];
-        $params = [];
-
-        if ($cond = $this->alcance->condicion('c.alta_por')) {
-            $where[] = $cond;
-            $params += $this->alcance->parametros();
-        }
-        if ($filtro->desde) { $where[] = 'DATE(c.fecha_alta) >= :desde'; $params[':desde'] = $filtro->desde; }
-        if ($filtro->hasta) { $where[] = 'DATE(c.fecha_alta) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
-        if ($filtro->usuarioId) { $where[] = 'c.alta_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
+        [$where, $params] = $this->condicionesClientes($filtro);
 
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM clientes c WHERE ' . implode(' AND ', $where));
         $stmt->execute($params);
@@ -642,6 +619,50 @@ class ReporteService
             $where[] = 'j.tipo_juego = :tipo_juego';
             $params[':tipo_juego'] = $filtro->tipoJuego;
         }
+
+        return [$where, $params];
+    }
+
+    /**
+     * Builder de condiciones para queries sobre sorteos (alias s, ciclo cy).
+     * Análogo a condicionesJugadas() pero para la tabla sorteos.
+     */
+    private function condicionesSorteos(FiltroReporte $filtro): array
+    {
+        $where  = ['1 = 1'];
+        $params = [];
+
+        if ($cond = $this->alcance->condicion('s.cargado_por')) {
+            $where[] = $cond;
+            $params += $this->alcance->parametros();
+        }
+        if ($filtro->desde)     { $where[] = 's.fecha >= :desde';       $params[':desde']   = $filtro->desde; }
+        if ($filtro->hasta)     { $where[] = 's.fecha <= :hasta';       $params[':hasta']   = $filtro->hasta; }
+        if ($filtro->cicloId)   { $where[] = 's.ciclo_id = :ciclo';     $params[':ciclo']   = $filtro->cicloId; }
+        if ($filtro->usuarioId) { $where[] = 's.cargado_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
+        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+            $where[] = 'cy.tipo = :tipo_juego';
+            $params[':tipo_juego'] = $filtro->tipoJuego;
+        }
+
+        return [$where, $params];
+    }
+
+    /**
+     * Builder de condiciones para queries sobre clientes (alias c).
+     */
+    private function condicionesClientes(FiltroReporte $filtro): array
+    {
+        $where  = ['1 = 1'];
+        $params = [];
+
+        if ($cond = $this->alcance->condicion('c.alta_por')) {
+            $where[] = $cond;
+            $params += $this->alcance->parametros();
+        }
+        if ($filtro->desde)     { $where[] = 'DATE(c.fecha_alta) >= :desde'; $params[':desde']   = $filtro->desde; }
+        if ($filtro->hasta)     { $where[] = 'DATE(c.fecha_alta) <= :hasta'; $params[':hasta']   = $filtro->hasta; }
+        if ($filtro->usuarioId) { $where[] = 'c.alta_por = :usuario';        $params[':usuario'] = $filtro->usuarioId; }
 
         return [$where, $params];
     }

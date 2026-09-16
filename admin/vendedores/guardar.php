@@ -2,6 +2,7 @@
 /** Handler POST del ABM de vendedores. Solo admin. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\VendedorService;
 use Polla\Support\ValidacionException;
 
@@ -14,9 +15,15 @@ $id       = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 try {
     if ($id > 0) {
         $servicio->actualizar($id, $_POST);
+        AuditoriaService::crearDesde(getPDO())->registrar(
+            AuditoriaService::VENDEDOR_EDITADO, 'vendedores', $id, 'usuario', currentUserId()
+        );
         setFlash('success', 'Vendedor actualizado.');
     } else {
         $resultado = $servicio->crear($_POST);
+        AuditoriaService::crearDesde(getPDO())->registrar(
+            AuditoriaService::VENDEDOR_CREADO, 'vendedores', (int) ($resultado['id'] ?? 0), 'usuario', currentUserId()
+        );
         setFlash('success', $resultado['cliente_nuevo']
             ? 'Vendedor creado. Como todavía no era cliente, también se le creó su cuenta para jugar (N° '
               . $resultado['cliente_nro'] . ', clave: su DNI).'

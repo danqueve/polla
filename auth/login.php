@@ -18,7 +18,9 @@
 require_once __DIR__ . '/../config/bootstrap.php';
 
 use Polla\Services\AuthService;
+use Polla\Services\AuditoriaService;
 use Polla\Services\ClienteAuthService;
+use Polla\Services\LoginThrottle;
 use Polla\Services\RememberTokenService;
 use Polla\Services\VendedorAuthService;
 use Polla\Support\CuentaInactivaException;
@@ -82,55 +84,83 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $errores[] = 'La pagina estuvo abierta demasiado tiempo. Reintentá.';
     } else {
-        $db = getPDO();
+        $db       = getPDO();
+        $throttle = new LoginThrottle($db);
+        $audit    = AuditoriaService::crearDesde($db);
+        $ip       = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $bloqueado = false;
 
+        // P1: rate limiting — corta antes de probar credenciales
         try {
-            $fila = (new AuthService($db))->verificar($identificador, $password);
+            $throttle->verificar($identificador, $ip);
+        } catch (ValidacionException $eThrottle) {
+            $audit->loginBloqueado($identificador);
+            $errores   = $eThrottle->errores();
+            $bloqueado = true;
+        }
 
-            // Matcheo contra usuarios: soltamos la sesion activa y recien
-            // ahi abrimos la del panel, que no puede convivir con otra.
-            cambiarASesion($sesionPanel);
-            (new AuthService($db))->abrirSesion($fila);
-
-            header('Location: ' . APP_URL . '/admin/index.php');
-            exit;
-        } catch (CuentaInactivaException $e) {
-            // Matcheo real contra usuarios pero la cuenta esta
-            // desactivada: mensaje especifico, no probamos las demas.
-            $errores = $e->errores();
-        } catch (ValidacionException $eStaff) {
+        if (!$bloqueado) {
             try {
-                $cliente = (new ClienteAuthService($db))->verificar($identificador, $password);
+                $fila = (new AuthService($db))->verificar($identificador, $password);
 
-                // Matcheo contra clientes: cambio explicito siempre, sin
-                // asumir que la sesion activa ya es la correcta -- con
-                // tres mundos en cascada, cual quedo activa depende del
-                // orden en que se probaron arriba, no conviene confiar
-                // en eso.
-                cambiarASesion('POLLA_CLIENTE');
-                (new ClienteAuthService($db))->abrirSesion($cliente);
-                RememberTokenService::crearDesde($db)->emitir((int) $cliente['id']);
+                // Matcheo contra usuarios: soltamos la sesion activa y recien
+                // ahi abrimos la del panel, que no puede convivir con otra.
+                cambiarASesion($sesionPanel);
+                (new AuthService($db))->abrirSesion($fila);
+                $throttle->limpiar($identificador, $ip);
+                $audit->loginOk('usuario', (int) $fila['id'], $identificador);
 
-                header('Location: ' . APP_URL . '/portal/index.php');
+                header('Location: ' . APP_URL . '/admin/index.php');
                 exit;
-            } catch (CuentaInactivaException $eCliente) {
-                $errores = $eCliente->errores();
-            } catch (ValidacionException $eClienteGenerico) {
+            } catch (CuentaInactivaException $e) {
+                // Matcheo real contra usuarios pero la cuenta esta
+                // desactivada: mensaje especifico, no probamos las demas.
+                $errores = $e->errores();
+            } catch (ValidacionException $eStaff) {
                 try {
-                    $vendedor = (new VendedorAuthService($db))->verificar($identificador, $password);
+                    $cliente = (new ClienteAuthService($db))->verificar($identificador, $password);
 
-                    cambiarASesion('POLLA_VENDEDOR');
-                    (new VendedorAuthService($db))->abrirSesion($vendedor);
+                    // Matcheo contra clientes: cambio explicito siempre, sin
+                    // asumir que la sesion activa ya es la correcta -- con
+                    // tres mundos en cascada, cual quedo activa depende del
+                    // orden en que se probaron arriba, no conviene confiar
+                    // en eso.
+                    cambiarASesion('POLLA_CLIENTE');
+                    (new ClienteAuthService($db))->abrirSesion($cliente);
+                    RememberTokenService::crearDesde($db)->emitir((int) $cliente['id']);
+                    $throttle->limpiar($identificador, $ip);
+                    $audit->loginOk('cliente', (int) $cliente['id'], $identificador);
 
-                    header('Location: ' . APP_URL . '/vendedor/index.php');
+                    header('Location: ' . APP_URL . '/portal/index.php');
                     exit;
-                } catch (CuentaInactivaException $eVendedor) {
-                    $errores = $eVendedor->errores();
-                } catch (ValidacionException $eVendedorGenerico) {
-                    // Ninguna de las tres tablas matcheo: un solo mensaje
-                    // generico, para no filtrar contra cual se probo.
-                    $errores[] = 'Usuario/DNI o contraseña incorrectos.';
+                } catch (CuentaInactivaException $eCliente) {
+                    $errores = $eCliente->errores();
+                } catch (ValidacionException $eClienteGenerico) {
+                    try {
+                        $vendedor = (new VendedorAuthService($db))->verificar($identificador, $password);
+
+                        cambiarASesion('POLLA_VENDEDOR');
+                        (new VendedorAuthService($db))->abrirSesion($vendedor);
+                        $throttle->limpiar($identificador, $ip);
+                        $audit->loginOk('vendedor', (int) $vendedor['id'], $identificador);
+
+                        header('Location: ' . APP_URL . '/vendedor/index.php');
+                        exit;
+                    } catch (CuentaInactivaException $eVendedor) {
+                        $errores = $eVendedor->errores();
+                    } catch (ValidacionException $eVendedorGenerico) {
+                        // Ninguna de las tres tablas matcheo: un solo mensaje
+                        // generico, para no filtrar contra cual se probo.
+                        $errores[] = 'Usuario/DNI o contraseña incorrectos.';
+                    }
                 }
+            }
+
+            // Si llegamos aca con errores (y no fue por el throttle,
+            // que ya registro lo suyo arriba), registrar intento fallido.
+            if (!empty($errores)) {
+                $throttle->registrarFallo($identificador, $ip);
+                $audit->loginFallido($identificador);
             }
         }
     }

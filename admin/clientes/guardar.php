@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\ClienteService;
 use Polla\Support\ValidacionException;
 
@@ -18,6 +19,9 @@ try {
     if ($id > 0) {
         $clientes->actualizar($id, $_POST);
         flushOld();
+        AuditoriaService::crearDesde(getPDO())->registrar(
+            AuditoriaService::CLIENTE_EDITADO, 'clientes', $id, 'usuario', currentUserId()
+        );
         setFlash('success', 'Cliente actualizado.');
         header('Location: ' . APP_URL . '/admin/clientes/index.php');
         exit;
@@ -26,6 +30,9 @@ try {
     $nuevoId = $clientes->crear($_POST, currentUserId());
     $cliente = $clientes->buscarPorId($nuevoId);
     flushOld();
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::CLIENTE_CREADO, 'clientes', $nuevoId, 'usuario', currentUserId()
+    );
 
     setFlash(
         'success',

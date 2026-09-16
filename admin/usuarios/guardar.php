@@ -2,6 +2,7 @@
 /** Handler POST del ABM de usuarios. Solo admin. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\UsuarioService;
 use Polla\Support\ValidacionException;
 
@@ -14,9 +15,15 @@ $id       = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 try {
     if ($id > 0) {
         $servicio->actualizar($id, $_POST);
+        AuditoriaService::crearDesde(getPDO())->registrar(
+            AuditoriaService::USUARIO_EDITADO, 'usuarios', $id, 'usuario', currentUserId()
+        );
         setFlash('success', 'Usuario actualizado.');
     } else {
-        $servicio->crear($_POST);
+        $nuevoId = $servicio->crear($_POST);
+        AuditoriaService::crearDesde(getPDO())->registrar(
+            AuditoriaService::USUARIO_CREADO, 'usuarios', $nuevoId, 'usuario', currentUserId()
+        );
         setFlash('success', 'Usuario creado.');
     }
 

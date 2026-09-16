@@ -30,22 +30,28 @@ class SorteoService
     private CicloService $ciclos;
     private PozoService $pozo;
     private ParametroService $parametros;
+    private CotejoService $cotejo;
 
     public function __construct(
         PDO $db,
         CicloService $ciclos,
         PozoService $pozo,
-        ParametroService $parametros
+        ParametroService $parametros,
+        ?CotejoService $cotejo = null
     ) {
         $this->db         = $db;
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
         $this->parametros = $parametros;
+        $this->cotejo     = $cotejo ?? new CotejoService($db, $ciclos, $pozo, $parametros);
     }
 
     public static function crearDesde(PDO $db): self
     {
-        return new self($db, new CicloService($db), new PozoService($db), new ParametroService($db));
+        $ciclos     = new CicloService($db);
+        $pozo       = new PozoService($db);
+        $parametros = new ParametroService($db);
+        return new self($db, $ciclos, $pozo, $parametros, new CotejoService($db, $ciclos, $pozo, $parametros));
     }
 
     /**
@@ -84,7 +90,7 @@ class SorteoService
             // Replay completo, no solo este sorteo: un extracto atrasado
             // (ver validarFechaContraCiclo()) puede completar el acumulado
             // de una jugada en un dia anterior a este. Ver recotejarCiclo().
-            $resultado = $this->recotejarCiclo($ciclo, CicloService::TIPO_SEMANAL);
+            $resultado = $this->cotejo->recotejarCiclo($ciclo, CicloService::TIPO_SEMANAL);
 
             $this->db->commit();
 
@@ -142,7 +148,7 @@ class SorteoService
             $sorteoId = $this->insertarSorteo((int) $ciclo['id'], $fecha, $turno, $numeros, $cargadoPor);
 
             // Replay completo por simetria con registrar() -- ver recotejarCiclo().
-            $resultado = $this->recotejarCiclo($ciclo, CicloService::TIPO_SABADO);
+            $resultado = $this->cotejo->recotejarCiclo($ciclo, CicloService::TIPO_SABADO);
 
             $this->db->commit();
 
@@ -383,7 +389,7 @@ class SorteoService
             // Una correccion puede ser de un sorteo anterior. Repetimos el
             // cotejo cronologico completo para que el primer ganador (o el
             // arrastre final) sea el que realmente corresponde.
-            $resultado = $this->recotejarCiclo($viejo, $tipo);
+            $resultado = $this->cotejo->recotejarCiclo($viejo, $tipo);
 
             $this->db->commit();
 
@@ -417,267 +423,17 @@ class SorteoService
      * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
      *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
      */
-    private function recotejarCiclo(array $ciclo, string $tipo): array
-    {
-        $stmt = $this->db->prepare(
-            'SELECT id, fecha, turno FROM sorteos WHERE ciclo_id = :ciclo ORDER BY fecha ASC, turno ASC'
-        );
-        $stmt->execute([':ciclo' => $ciclo['id']]);
-        $sorteos = $stmt->fetchAll();
-
-        $completa = $this->secuenciaCompleta($ciclo, $tipo, $sorteos);
-
-        $resultado = [
-            'ganadores' => [], 'cerro_ciclo' => false, 'estado_cierre' => null,
-            'pozo_repartido' => 0.0, 'ciclo_nuevo_id' => null, 'arrastre' => 0.0,
-        ];
-        foreach ($sorteos as $i => $sorteo) {
-            $esUltimo = $completa && $i === count($sorteos) - 1;
-            $resultado = $this->cotejarYCerrar((int) $sorteo['id'], $ciclo, $esUltimo, $tipo);
-            if ($resultado['cerro_ciclo']) {
-                $this->reasignarSorteosPosteriores(array_slice($sorteos, $i + 1), $resultado['ciclo_nuevo_id']);
-                break;
-            }
-        }
-
-        return $resultado;
-    }
-
-    /**
-     * Sorteos que quedaron cronologicamente despues del que cerro el
-     * ciclo: recotejarCiclo() deja de procesarlos en cuanto encuentra
-     * ganador (corta la secuencia ahi), pero seguian con ciclo_id
-     * apuntando al ciclo que se acaba de cerrar y liquidar. Puede pasar
-     * al corregir() un sorteo anterior y que el nuevo resultado cierre
-     * mas temprano que antes.
-     *
-     * Se reasignan al ciclo siguiente si su fecha entra en su rango; si
-     * no (el caso normal: el siguiente es de la semana/sabado que
-     * viene, una fecha totalmente distinta a la de estos sobrantes),
-     * quedan sin ciclo. Mejor eso que colgados de uno ya pagado, donde
-     * sorteosDelCiclo()/evaluar() los seguirian sumando y un cliente
-     * que perdio veria "10 de 10 / Sin premio" sobre un ciclo cerrado.
-     *
-     * @param array<int,array{id:int,fecha:string,turno:int}> $sorteosSobrantes
-     */
-    private function reasignarSorteosPosteriores(array $sorteosSobrantes, ?int $cicloNuevoId): void
-    {
-        if (!$sorteosSobrantes) {
-            return;
-        }
-
-        $nuevo = $cicloNuevoId ? $this->ciclos->buscarPorId($cicloNuevoId) : null;
-
-        foreach ($sorteosSobrantes as $sorteo) {
-            $entra = $nuevo
-                && $sorteo['fecha'] >= $nuevo['fecha_inicio']
-                && $sorteo['fecha'] <= $nuevo['fecha_fin'];
-
-            $this->db->prepare('UPDATE sorteos SET ciclo_id = :ciclo WHERE id = :id')
-                ->execute([':ciclo' => $entra ? $nuevo['id'] : null, ':id' => $sorteo['id']]);
-        }
-    }
-
-    /**
-     * Si ya estan cargados TODOS los sorteos que le corresponden a
-     * este ciclo -- sabado: los 5 turnos; semanal: un sorteo por cada
-     * dia habil entre fecha_inicio y fecha_fin (mismo recorrido dia a
-     * dia que ya arma admin/sorteos/nuevo.php para "que dias faltan").
-     * Antes de esto confirmado, recotejarCiclo() no puede tratar al
-     * ultimo sorteo CARGADO como el ultimo que le corresponde a la
-     * semana: si un dia intermedio todavia no llego, cerrar "sin
-     * ganador" ahi le negaria el premio a una jugada que se completaba
-     * justo con los numeros de ese dia faltante.
-     *
-     * @param array<int,array{fecha:string,turno:int}> $sorteosCargados
-     */
-    private function secuenciaCompleta(array $ciclo, string $tipo, array $sorteosCargados): bool
-    {
-        if ($tipo === CicloService::TIPO_SABADO) {
-            return count($sorteosCargados) === 5;
-        }
-
-        $fechasCargadas = array_column($sorteosCargados, 'fecha');
-        $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
-        $fin = new DateTimeImmutable($ciclo['fecha_fin']);
-        while ($dia <= $fin) {
-            if (!in_array($dia->format('Y-m-d'), $fechasCargadas, true)) {
-                return false;
-            }
-            $dia = $dia->modify('+1 day');
-        }
-
-        return true;
-    }
-
     // ── Cotejo ──────────────────────────────────────────────
+    // La logica de cotejo, cierre de ciclo y replay vive en
+    // CotejoService (extraida en P2). SorteoService delega via
+    // $this->cotejo->recotejarCiclo() y ->jugadasGanadoras().
 
     /**
-     * Jugadas del ciclo cuyos numeros salieron TODOS, acumulados entre
-     * todos los sorteos/turnos cargados hasta este (inclusive) dentro
-     * del mismo ciclo. No hace falta que salgan juntos en un mismo
-     * sorteo/turno: alcanza con que cada numero de la jugada haya
-     * salido en cualquiera de los sorteos ya cargados hasta ahora de
-     * esa semana o sabado (hasta 100 numeros entre los 5 sorteos o
-     * turnos). Mismo criterio para semanal y sabado -- confirmado con
-     * el cliente, reemplaza la regla anterior de "todos en un mismo
-     * sorteo" para las dos modalidades.
-     *
-     * El orden cronologico se define por (fecha, turno): en el semanal
-     * el turno es siempre 1 y lo que ordena es la fecha; en sabado
-     * todos los turnos comparten la misma fecha y lo que ordena es el
-     * turno. Acotar a "hasta este sorteo" (nunca a todos los del ciclo
-     * aunque ya esten cargados en la tabla) es necesario para que
-     * recotejarCiclo() reproduzca la secuencia real paso a paso al
-     * recotejar un ciclo ya jugado entero -- si no, el primer sorteo
-     * del recorrido veria de entrada el acumulado completo de toda la
-     * semana. Con la carga en vivo (registrar()/registrarTurnoSabado())
-     * esto no cambia nada: ahi solo existen los sorteos ya jugados
-     * hasta el momento, nunca los que faltan.
-     *
-     * El COUNT(DISTINCT) no es decorativo: el extracto puede repetir un
-     * numero entre sus posiciones (dentro de un sorteo, o entre
-     * sorteos/turnos distintos del mismo ciclo), y con un COUNT(*)
-     * comun esa jugada sumaria de mas y quedaria descartada por
-     * pasarse. Es decir, la version ingenua no falla de menos: descarta
-     * al ganador legitimo.
-     *
-     * Y el total se compara contra los numeros que esa jugada realmente
-     * tiene, no contra un valor fijo: si algun dia cambia el parametro,
-     * las jugadas viejas se siguen juzgando por lo que jugaron.
-     *
-     * @return int[] Ids de las jugadas ganadoras.
+     * Proxy para que el admin de ranking siga accediendo sin cambios.
      */
     public function jugadasGanadoras(int $sorteoId, int $cicloId): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT j.id
-               FROM jugadas j
-               JOIN jugada_numeros jn ON jn.jugada_id = j.id
-              WHERE j.ciclo_id = :ciclo1
-                AND j.estado   = 'activa'
-                AND j.pagada   = 1
-                AND jn.numero IN (
-                    SELECT DISTINCT sn.numero
-                      FROM sorteo_numeros sn
-                      JOIN sorteos s   ON s.id = sn.sorteo_id
-                      JOIN sorteos ref ON ref.id = :sorteo
-                     WHERE s.ciclo_id = :ciclo2
-                       AND (s.fecha < ref.fecha OR (s.fecha = ref.fecha AND s.turno <= ref.turno))
-                )
-              GROUP BY j.id
-             HAVING COUNT(DISTINCT jn.numero)
-                  = (SELECT COUNT(*) FROM jugada_numeros x WHERE x.jugada_id = j.id)
-              ORDER BY j.id ASC"
-        );
-        $stmt->execute([':ciclo1' => $cicloId, ':ciclo2' => $cicloId, ':sorteo' => $sorteoId]);
-
-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-    }
-
-    /**
-     * Corre el cotejo y decide que hacer con el ciclo.
-     *
-     * $esUltimoDeLaSecuencia le dice si este sorteo es el ultimo posible
-     * de su ciclo sin ganador (el viernes del ciclo semanal, o el turno 5
-     * del ciclo sabado) — a partir de ahi, sin ganador, el pozo arrastra.
-     *
-     * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
-     *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
-     */
-    private function cotejarYCerrar(
-        int $sorteoId,
-        array $ciclo,
-        bool $esUltimoDeLaSecuencia,
-        string $tipo
-    ): array {
-        $cicloId   = (int) $ciclo['id'];
-        $ganadoras = $this->jugadasGanadoras($sorteoId, $cicloId);
-
-        $base = [
-            'ganadores'      => [],
-            'cerro_ciclo'    => false,
-            'estado_cierre'  => null,
-            'pozo_repartido' => 0.0,
-            'ciclo_nuevo_id' => null,
-            'arrastre'       => 0.0,
-        ];
-
-        $premioBase = $tipo === CicloService::TIPO_SABADO
-            ? $this->parametros->premioBaseSabado()
-            : $this->parametros->premioBase();
-
-        // ── Hay ganador: se corta la secuencia (semana o sabado) ────
-        if ($ganadoras) {
-            $this->marcarEstado($ganadoras, 'ganadora');
-
-            // Fase 7: el piso garantizado se aplica en cada ciclo, sin
-            // excepcion. Se lee el premio_base VIGENTE justo en este
-            // momento, no el que estaba cuando se abrio el ciclo.
-            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras, $premioBase);
-            $repartido = array_sum($premios);
-
-            // Las que no ganaron quedan cerradas junto con el ciclo.
-            $this->marcarRestantesPerdedoras($cicloId);
-
-            $this->ciclos->cerrar($cicloId, CicloService::ESTADO_CON_GANADOR);
-
-            // El pozo se repartio entero: el ciclo nuevo arranca en $0
-            // (salvo que ya hubiera un programado con jugadas propias).
-            $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, 0.0);
-
-            return [
-                'ganadores'      => $premios,
-                'cerro_ciclo'    => true,
-                'estado_cierre'  => CicloService::ESTADO_CON_GANADOR,
-                'pozo_repartido' => $repartido,
-                'ciclo_nuevo_id' => $nuevoId,
-                'arrastre'       => 0.0,
-            ];
-        }
-
-        // ── Sin ganador y todavia quedan sorteos: no pasa nada ──
-        if (!$esUltimoDeLaSecuencia) {
-            return $base;
-        }
-
-        // ── Sin ganador y era el ultimo de la secuencia: cierra ──
-        // El pozo no se pierde: pasa entero al ciclo siguiente.
-        $this->marcarRestantesPerdedoras($cicloId);
-
-        $arrastre = $this->pozo->montoAcumulado($cicloId);
-
-        $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
-        $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, $arrastre);
-
-        return [
-            'ganadores'      => [],
-            'cerro_ciclo'    => true,
-            'estado_cierre'  => CicloService::ESTADO_SIN_GANADOR,
-            'pozo_repartido' => 0.0,
-            'ciclo_nuevo_id' => $nuevoId,
-            'arrastre'       => $arrastre,
-        ];
-    }
-
-    /** @param int[] $jugadaIds */
-    private function marcarEstado(array $jugadaIds, string $estado): void
-    {
-        if (!$jugadaIds) {
-            return;
-        }
-        // Los ids salen de una consulta propia, pero igual van por placeholder.
-        $marcas = implode(',', array_fill(0, count($jugadaIds), '?'));
-        $stmt = $this->db->prepare("UPDATE jugadas SET estado = ? WHERE id IN ($marcas)");
-        $stmt->execute(array_merge([$estado], $jugadaIds));
-    }
-
-    private function marcarRestantesPerdedoras(int $cicloId): void
-    {
-        $this->db->prepare(
-            "UPDATE jugadas SET estado = 'perdedora'
-              WHERE ciclo_id = :ciclo AND estado = 'activa'"
-        )->execute([':ciclo' => $cicloId]);
+        return $this->cotejo->jugadasGanadoras($sorteoId, $cicloId);
     }
 
     // ── Validaciones ────────────────────────────────────────
@@ -750,11 +506,13 @@ class SorteoService
 
     private function ultimoCicloCerradoConGanador(): ?array
     {
-        $fila = $this->db->query(
-            "SELECT numero, fecha_cierre FROM ciclos
-              WHERE estado = '" . CicloService::ESTADO_CON_GANADOR . "'
-              ORDER BY numero DESC LIMIT 1"
-        )->fetch();
+        $stmt = $this->db->prepare(
+            'SELECT numero, fecha_cierre FROM ciclos
+              WHERE estado = :estado
+              ORDER BY numero DESC LIMIT 1'
+        );
+        $stmt->execute([':estado' => CicloService::ESTADO_CON_GANADOR]);
+        $fila = $stmt->fetch();
 
         return $fila ?: null;
     }

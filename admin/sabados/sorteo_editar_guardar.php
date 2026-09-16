@@ -5,6 +5,7 @@
  */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\CicloService;
 use Polla\Services\SorteoService;
 use Polla\Support\ValidacionException;
@@ -21,6 +22,10 @@ try {
     $servicio  = SorteoService::crearDesde($db);
     $resultado = $servicio->corregir($id, $numeros, currentUserId());
     flushOld();
+    AuditoriaService::crearDesde($db)->registrar(
+        AuditoriaService::SORTEO_CORREGIDO, 'sorteos', $id,
+        'usuario', currentUserId(), ['tipo' => 'sabado', 'reabierto' => $resultado['reabierto']]
+    );
 
     $prefijoReabierto = $resultado['reabierto']
         ? 'Se reabrió el sábado y se recotejó todo de nuevo. '

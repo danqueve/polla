@@ -1,0 +1,1870 @@
+diff --git a/admin/clientes/eliminar.php b/admin/clientes/eliminar.php
+index 27623e0..29b5927 100644
+--- a/admin/clientes/eliminar.php
++++ b/admin/clientes/eliminar.php
+@@ -2,6 +2,7 @@
+ /** Baja de cliente. Exclusivo del administrador. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ClienteService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -12,6 +13,10 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     $resultado = (new ClienteService(getPDO()))->eliminar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::CLIENTE_ELIMINADO, 'clientes', $id,
++        'usuario', currentUserId(), ['resultado' => $resultado]
++    );
+ 
+     setFlash('success', $resultado === 'borrado'
+         ? 'Cliente borrado.'
+diff --git a/admin/clientes/form.php b/admin/clientes/form.php
+index 8048c9a..3a39ed9 100644
+--- a/admin/clientes/form.php
++++ b/admin/clientes/form.php
+@@ -71,7 +71,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
+                 <a href="<?= APP_URL ?>/admin/vendedores/form.php?id=<?= (int) $vendedorVinculado['id'] ?>" class="g-btn g-btn--outline">
+                     <i class="bi bi-person-badge me-1"></i> Perfil Vendedor (<?= e($vendedorVinculado['codigo_referido']) ?>)
+                 </a>
+-            <?php elseif (!$esAlta && isAdmin() && (int) $cliente['activo'] === 1 && $cliente['estado'] === 'aprobado'): ?>
++            <?php elseif (!$esAlta && isAdmin() && (int) $cliente['activo'] === 1 && $cliente['estado'] === ClienteService::ESTADO_APROBADO): ?>
+                 <a href="<?= APP_URL ?>/admin/vendedores/form.php?cliente_id=<?= (int) $cliente['id'] ?>" class="g-btn g-btn--outline">
+                     <i class="bi bi-person-badge me-1"></i> Convertir en Vendedor
+                 </a>
+diff --git a/admin/clientes/guardar.php b/admin/clientes/guardar.php
+index 7c677d7..be44798 100644
+--- a/admin/clientes/guardar.php
++++ b/admin/clientes/guardar.php
+@@ -5,6 +5,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ClienteService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -18,6 +19,9 @@ try {
+     if ($id > 0) {
+         $clientes->actualizar($id, $_POST);
+         flushOld();
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::CLIENTE_EDITADO, 'clientes', $id, 'usuario', currentUserId()
++        );
+         setFlash('success', 'Cliente actualizado.');
+         header('Location: ' . APP_URL . '/admin/clientes/index.php');
+         exit;
+@@ -26,6 +30,9 @@ try {
+     $nuevoId = $clientes->crear($_POST, currentUserId());
+     $cliente = $clientes->buscarPorId($nuevoId);
+     flushOld();
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::CLIENTE_CREADO, 'clientes', $nuevoId, 'usuario', currentUserId()
++    );
+ 
+     setFlash(
+         'success',
+diff --git a/admin/clientes/resetear_clave.php b/admin/clientes/resetear_clave.php
+index f51e07e..895c9ed 100644
+--- a/admin/clientes/resetear_clave.php
++++ b/admin/clientes/resetear_clave.php
+@@ -6,6 +6,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ClienteService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -16,6 +17,9 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     $dni = (new ClienteService(getPDO()))->resetearClave($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::CLIENTE_CLAVE_RESET, 'clientes', $id, 'usuario', currentUserId()
++    );
+     setFlash('success', 'Clave resincronizada. Entra al portal con su DNI (' . $dni . ').');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/clientes/solicitud_aprobar.php b/admin/clientes/solicitud_aprobar.php
+index 7d10fac..c547bbb 100644
+--- a/admin/clientes/solicitud_aprobar.php
++++ b/admin/clientes/solicitud_aprobar.php
+@@ -2,6 +2,7 @@
+ /** Aprueba una solicitud de autorregistro. Admin y supervisor por igual. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ClienteRegistroService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -12,6 +13,9 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     ClienteRegistroService::crearDesde(getPDO())->aprobar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::CLIENTE_APROBADO, 'clientes', $id, 'usuario', currentUserId()
++    );
+     setFlash('success', 'Solicitud aprobada. El cliente ya puede operar.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/clientes/solicitud_rechazar.php b/admin/clientes/solicitud_rechazar.php
+index fae00da..85f60e6 100644
+--- a/admin/clientes/solicitud_rechazar.php
++++ b/admin/clientes/solicitud_rechazar.php
+@@ -2,6 +2,7 @@
+ /** Rechaza una solicitud de autorregistro. Exclusivo del administrador. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ClienteRegistroService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -12,6 +13,9 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     ClienteRegistroService::crearDesde(getPDO())->rechazar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::CLIENTE_RECHAZADO, 'clientes', $id, 'usuario', currentUserId()
++    );
+     setFlash('success', 'Solicitud rechazada.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/configuracion/guardar.php b/admin/configuracion/guardar.php
+index 5b3d4cc..a78e9aa 100644
+--- a/admin/configuracion/guardar.php
++++ b/admin/configuracion/guardar.php
+@@ -2,6 +2,7 @@
+ /** Handler POST de la configuracion. Exclusivo del administrador. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ConfiguracionService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -40,6 +41,10 @@ try {
+     $configuracion->actualizarComisionJugadaPorcentaje($comisionPorcentaje, $usuarioId);
+     $configuracion->actualizarNumerosPorJugadaSabado($cantidadSabado, $usuarioId);
+ 
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::CONFIG_ACTUALIZADA, 'parametros', null, 'usuario', $usuarioId, $old
++    );
++
+     setFlash('success',
+         'Configuración actualizada: monto de jugada ' . formatPesos($monto)
+         . ' · premio base ' . formatPesos($premioBase)
+diff --git a/admin/jugadas/eliminar.php b/admin/jugadas/eliminar.php
+index bab04d2..c3407a8 100644
+--- a/admin/jugadas/eliminar.php
++++ b/admin/jugadas/eliminar.php
+@@ -2,6 +2,7 @@
+ /** Borrado de jugada. Exclusivo del administrador. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\JugadaService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -13,6 +14,9 @@ $volverA = (int) ($_POST['volver_a'] ?? 0);
+ 
+ try {
+     JugadaService::crearDesde(getPDO())->eliminar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::JUGADA_ELIMINADA, 'jugadas', $id, 'usuario', currentUserId()
++    );
+     setFlash('success', 'Jugada borrada. El aporte se descontó del pozo.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/jugadas/guardar.php b/admin/jugadas/guardar.php
+index 10cc1ac..7306e50 100644
+--- a/admin/jugadas/guardar.php
++++ b/admin/jugadas/guardar.php
+@@ -2,6 +2,7 @@
+ /** Handler POST de la carga de jugada (una o varias juntas). */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\CicloService;
+ use Polla\Services\JugadaService;
+ use Polla\Support\ValidacionException;
+@@ -27,6 +28,10 @@ try {
+     $ids     = $jugadas->crearVarias($clienteId, $listasDeNumeros, currentUserId(), $promocionId, $tipoJuego);
+ 
+     flushOld();
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::JUGADA_CARGADA, 'jugadas', $ids[0],
++        'usuario', currentUserId(), ['cliente_id' => $clienteId, 'cantidad' => count($ids), 'ids' => $ids]
++    );
+ 
+     $primero = $jugadas->buscarPorId($ids[0]);
+ 
+diff --git a/admin/liquidaciones/guardar.php b/admin/liquidaciones/guardar.php
+index 80bbfb2..d8f7d78 100644
+--- a/admin/liquidaciones/guardar.php
++++ b/admin/liquidaciones/guardar.php
+@@ -2,6 +2,7 @@
+ /** Handler POST de liquidar una comision. Exclusivo del administrador. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\LiquidacionService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -24,6 +25,10 @@ if (!in_array($tipo, ['vendedor', 'supervisor'], true) || $id <= 0) {
+ 
+ try {
+     $monto = LiquidacionService::crearDesde(getPDO())->liquidar($tipo, $id, currentUserId());
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::LIQUIDACION_GENERADA, $tipo, $id,
++        'usuario', currentUserId(), ['monto' => $monto]
++    );
+     setFlash('success', 'Se liquidó ' . formatPesos($monto) . '.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/promociones/guardar.php b/admin/promociones/guardar.php
+index 74211e8..6ba5c88 100644
+--- a/admin/promociones/guardar.php
++++ b/admin/promociones/guardar.php
+@@ -2,6 +2,7 @@
+ /** Handler POST del alta/edicion de promociones. Exclusivo del administrador. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\PromocionService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -14,9 +15,15 @@ $id          = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+ try {
+     if ($id > 0) {
+         $promociones->actualizar($id, $_POST, currentUserId());
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::PROMOCION_GUARDADA, 'promociones', $id, 'usuario', currentUserId(), ['accion' => 'editar']
++        );
+         setFlash('success', 'Promoción actualizada.');
+     } else {
+-        $promociones->crear($_POST, currentUserId());
++        $nuevoId = $promociones->crear($_POST, currentUserId());
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::PROMOCION_GUARDADA, 'promociones', $nuevoId, 'usuario', currentUserId(), ['accion' => 'crear']
++        );
+         setFlash('success', 'Promoción creada.');
+     }
+ 
+diff --git a/admin/sabados/sorteo_editar_guardar.php b/admin/sabados/sorteo_editar_guardar.php
+index f9120d7..a681b77 100644
+--- a/admin/sabados/sorteo_editar_guardar.php
++++ b/admin/sabados/sorteo_editar_guardar.php
+@@ -5,6 +5,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\CicloService;
+ use Polla\Services\SorteoService;
+ use Polla\Support\ValidacionException;
+@@ -21,6 +22,10 @@ try {
+     $servicio  = SorteoService::crearDesde($db);
+     $resultado = $servicio->corregir($id, $numeros, currentUserId());
+     flushOld();
++    AuditoriaService::crearDesde($db)->registrar(
++        AuditoriaService::SORTEO_CORREGIDO, 'sorteos', $id,
++        'usuario', currentUserId(), ['tipo' => 'sabado', 'reabierto' => $resultado['reabierto']]
++    );
+ 
+     $prefijoReabierto = $resultado['reabierto']
+         ? 'Se reabrió el sábado y se recotejó todo de nuevo. '
+diff --git a/admin/sabados/sorteo_eliminar.php b/admin/sabados/sorteo_eliminar.php
+index 66e5afb..df75826 100644
+--- a/admin/sabados/sorteo_eliminar.php
++++ b/admin/sabados/sorteo_eliminar.php
+@@ -2,6 +2,7 @@
+ /** Borrado de un turno de sabado. Exclusivo del admin y solo con el ciclo abierto. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\SorteoService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -13,6 +14,9 @@ $volverA = (int) ($_POST['volver_a'] ?? 0);
+ 
+ try {
+     SorteoService::crearDesde(getPDO())->eliminar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::SORTEO_ELIMINADO, 'sorteos', $id, 'usuario', currentUserId(), ['tipo' => 'sabado']
++    );
+     setFlash('success', 'Turno borrado. Podés volver a cargarlo con los números corregidos.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/sabados/sorteo_guardar.php b/admin/sabados/sorteo_guardar.php
+index e771d0a..aa48ac3 100644
+--- a/admin/sabados/sorteo_guardar.php
++++ b/admin/sabados/sorteo_guardar.php
+@@ -8,6 +8,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\CicloService;
+ use Polla\Services\SorteoService;
+ use Polla\Support\ValidacionException;
+@@ -22,6 +23,10 @@ $db = getPDO();
+ try {
+     $resultado = SorteoService::crearDesde($db)->registrarTurnoSabado($numeros, currentUserId());
+     flushOld();
++    AuditoriaService::crearDesde($db)->registrar(
++        AuditoriaService::SORTEO_CARGADO, 'sorteos', (int) $resultado['sorteo_id'],
++        'usuario', currentUserId(), ['tipo' => 'sabado', 'ciclo_id' => $resultado['ciclo_id']]
++    );
+ 
+     // ── Hubo ganador: el dia se corto ───────────────────────
+     if ($resultado['ganadores']) {
+diff --git a/admin/solicitudes/confirmar.php b/admin/solicitudes/confirmar.php
+index 34c3e36..9e327e1 100644
+--- a/admin/solicitudes/confirmar.php
++++ b/admin/solicitudes/confirmar.php
+@@ -6,6 +6,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\SolicitudService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -16,6 +17,10 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     $r = SolicitudService::crearDesde(getPDO())->confirmar($id, (int) currentUserId());
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::SOLICITUD_CONFIRMADA, 'solicitudes', $id,
++        'usuario', currentUserId(), ['al_pozo' => $r['al_pozo'], 'ciclo_numero' => $r['ciclo_numero']]
++    );
+ 
+     setFlash('success',
+         'Pago confirmado: ' . $r['cantidad'] . ' ' . ($r['cantidad'] === 1 ? 'jugada entró' : 'jugadas entraron')
+diff --git a/admin/solicitudes/rechazar.php b/admin/solicitudes/rechazar.php
+index 49aeefb..126e88e 100644
+--- a/admin/solicitudes/rechazar.php
++++ b/admin/solicitudes/rechazar.php
+@@ -5,6 +5,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\SolicitudService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -15,6 +16,9 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     SolicitudService::crearDesde(getPDO())->rechazar($id, (int) currentUserId());
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::SOLICITUD_RECHAZADA, 'solicitudes', $id, 'usuario', currentUserId()
++    );
+     setFlash('success', 'Solicitud rechazada.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/sorteos/editar_guardar.php b/admin/sorteos/editar_guardar.php
+index 34076fe..88514be 100644
+--- a/admin/sorteos/editar_guardar.php
++++ b/admin/sorteos/editar_guardar.php
+@@ -8,6 +8,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\CicloService;
+ use Polla\Services\SorteoService;
+ use Polla\Support\ValidacionException;
+@@ -24,6 +25,10 @@ try {
+     $servicio  = SorteoService::crearDesde($db);
+     $resultado = $servicio->corregir($id, $numeros, currentUserId());
+     flushOld();
++    AuditoriaService::crearDesde($db)->registrar(
++        AuditoriaService::SORTEO_CORREGIDO, 'sorteos', $id,
++        'usuario', currentUserId(), ['reabierto' => $resultado['reabierto']]
++    );
+ 
+     $prefijoReabierto = $resultado['reabierto']
+         ? 'Se reabrió el ciclo y se recotejó todo de nuevo. '
+diff --git a/admin/sorteos/eliminar.php b/admin/sorteos/eliminar.php
+index bcd6450..4cfefe3 100644
+--- a/admin/sorteos/eliminar.php
++++ b/admin/sorteos/eliminar.php
+@@ -2,6 +2,7 @@
+ /** Borrado de sorteo. Exclusivo del admin y solo con el ciclo abierto. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\SorteoService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -13,6 +14,9 @@ $volverA = (int) ($_POST['volver_a'] ?? 0);
+ 
+ try {
+     SorteoService::crearDesde(getPDO())->eliminar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::SORTEO_ELIMINADO, 'sorteos', $id, 'usuario', currentUserId()
++    );
+     setFlash('success', 'Sorteo borrado. Podés volver a cargarlo con los numeros corregidos.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/sorteos/guardar.php b/admin/sorteos/guardar.php
+index f0c4453..1a6b36b 100644
+--- a/admin/sorteos/guardar.php
++++ b/admin/sorteos/guardar.php
+@@ -8,6 +8,7 @@
+  */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\CicloService;
+ use Polla\Services\SorteoService;
+ use Polla\Support\ValidacionException;
+@@ -23,6 +24,10 @@ $db = getPDO();
+ try {
+     $resultado = SorteoService::crearDesde($db)->registrar($fecha, $numeros, currentUserId());
+     flushOld();
++    AuditoriaService::crearDesde($db)->registrar(
++        AuditoriaService::SORTEO_CARGADO, 'sorteos', (int) $resultado['sorteo_id'],
++        'usuario', currentUserId(), ['fecha' => $fecha, 'ciclo_id' => $resultado['ciclo_id']]
++    );
+ 
+     // ── Hubo ganador: la semana se corto ────────────────────
+     if ($resultado['ganadores']) {
+diff --git a/admin/usuarios/eliminar.php b/admin/usuarios/eliminar.php
+index 411558f..16f8527 100644
+--- a/admin/usuarios/eliminar.php
++++ b/admin/usuarios/eliminar.php
+@@ -2,6 +2,7 @@
+ /** Baja de usuario del panel. Solo admin. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\UsuarioService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -12,6 +13,10 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     $resultado = (new UsuarioService(getPDO()))->eliminar($id, (int) currentUserId());
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::USUARIO_ELIMINADO, 'usuarios', $id,
++        'usuario', currentUserId(), ['resultado' => $resultado]
++    );
+ 
+     setFlash('success', $resultado === 'borrado'
+         ? 'Usuario borrado.'
+diff --git a/admin/usuarios/guardar.php b/admin/usuarios/guardar.php
+index 564500d..084b6bd 100644
+--- a/admin/usuarios/guardar.php
++++ b/admin/usuarios/guardar.php
+@@ -2,6 +2,7 @@
+ /** Handler POST del ABM de usuarios. Solo admin. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\UsuarioService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -14,9 +15,15 @@ $id       = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+ try {
+     if ($id > 0) {
+         $servicio->actualizar($id, $_POST);
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::USUARIO_EDITADO, 'usuarios', $id, 'usuario', currentUserId()
++        );
+         setFlash('success', 'Usuario actualizado.');
+     } else {
+-        $servicio->crear($_POST);
++        $nuevoId = $servicio->crear($_POST);
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::USUARIO_CREADO, 'usuarios', $nuevoId, 'usuario', currentUserId()
++        );
+         setFlash('success', 'Usuario creado.');
+     }
+ 
+diff --git a/admin/vendedores/eliminar.php b/admin/vendedores/eliminar.php
+index 74d4b7d..ae27bff 100644
+--- a/admin/vendedores/eliminar.php
++++ b/admin/vendedores/eliminar.php
+@@ -2,6 +2,7 @@
+ /** Baja de vendedor. Solo admin. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\VendedorService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -12,6 +13,10 @@ $id = (int) ($_POST['id'] ?? 0);
+ 
+ try {
+     $resultado = (new VendedorService(getPDO()))->eliminar($id);
++    AuditoriaService::crearDesde(getPDO())->registrar(
++        AuditoriaService::VENDEDOR_ELIMINADO, 'vendedores', $id,
++        'usuario', currentUserId(), ['resultado' => $resultado]
++    );
+     setFlash('success', $resultado === 'borrado' ? 'Vendedor borrado.' : 'El vendedor ya tenía referidos: se desactivó en vez de borrarse.');
+ } catch (ValidacionException $e) {
+     setFlash('danger', implode("\n", $e->errores()));
+diff --git a/admin/vendedores/guardar.php b/admin/vendedores/guardar.php
+index fe6abc9..d559f76 100644
+--- a/admin/vendedores/guardar.php
++++ b/admin/vendedores/guardar.php
+@@ -2,6 +2,7 @@
+ /** Handler POST del ABM de vendedores. Solo admin. */
+ require_once __DIR__ . '/../../config/app.php';
+ 
++use Polla\Services\AuditoriaService;
+ use Polla\Services\VendedorService;
+ use Polla\Support\ValidacionException;
+ 
+@@ -14,9 +15,15 @@ $id       = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+ try {
+     if ($id > 0) {
+         $servicio->actualizar($id, $_POST);
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::VENDEDOR_EDITADO, 'vendedores', $id, 'usuario', currentUserId()
++        );
+         setFlash('success', 'Vendedor actualizado.');
+     } else {
+         $resultado = $servicio->crear($_POST);
++        AuditoriaService::crearDesde(getPDO())->registrar(
++            AuditoriaService::VENDEDOR_CREADO, 'vendedores', (int) ($resultado['id'] ?? 0), 'usuario', currentUserId()
++        );
+         setFlash('success', $resultado['cliente_nuevo']
+             ? 'Vendedor creado. Como todavía no era cliente, también se le creó su cuenta para jugar (N° '
+               . $resultado['cliente_nro'] . ', clave: su DNI).'
+diff --git a/auth/login.php b/auth/login.php
+index a54d3a5..d58eac5 100644
+--- a/auth/login.php
++++ b/auth/login.php
+@@ -18,7 +18,9 @@
+ require_once __DIR__ . '/../config/bootstrap.php';
+ 
+ use Polla\Services\AuthService;
++use Polla\Services\AuditoriaService;
+ use Polla\Services\ClienteAuthService;
++use Polla\Services\LoginThrottle;
+ use Polla\Services\RememberTokenService;
+ use Polla\Services\VendedorAuthService;
+ use Polla\Support\CuentaInactivaException;
+@@ -82,56 +84,84 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
+         $errores[] = 'La pagina estuvo abierta demasiado tiempo. Reintentá.';
+     } else {
+-        $db = getPDO();
++        $db       = getPDO();
++        $throttle = new LoginThrottle($db);
++        $audit    = AuditoriaService::crearDesde($db);
++        $ip       = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
++        $bloqueado = false;
+ 
++        // P1: rate limiting — corta antes de probar credenciales
+         try {
+-            $fila = (new AuthService($db))->verificar($identificador, $password);
+-
+-            // Matcheo contra usuarios: soltamos la sesion activa y recien
+-            // ahi abrimos la del panel, que no puede convivir con otra.
+-            cambiarASesion($sesionPanel);
+-            (new AuthService($db))->abrirSesion($fila);
+-
+-            header('Location: ' . APP_URL . '/admin/index.php');
+-            exit;
+-        } catch (CuentaInactivaException $e) {
+-            // Matcheo real contra usuarios pero la cuenta esta
+-            // desactivada: mensaje especifico, no probamos las demas.
+-            $errores = $e->errores();
+-        } catch (ValidacionException $eStaff) {
++            $throttle->verificar($identificador, $ip);
++        } catch (ValidacionException $eThrottle) {
++            $audit->loginBloqueado($identificador);
++            $errores   = $eThrottle->errores();
++            $bloqueado = true;
++        }
++
++        if (!$bloqueado) {
+             try {
+-                $cliente = (new ClienteAuthService($db))->verificar($identificador, $password);
+-
+-                // Matcheo contra clientes: cambio explicito siempre, sin
+-                // asumir que la sesion activa ya es la correcta -- con
+-                // tres mundos en cascada, cual quedo activa depende del
+-                // orden en que se probaron arriba, no conviene confiar
+-                // en eso.
+-                cambiarASesion('POLLA_CLIENTE');
+-                (new ClienteAuthService($db))->abrirSesion($cliente);
+-                RememberTokenService::crearDesde($db)->emitir((int) $cliente['id']);
+-
+-                header('Location: ' . APP_URL . '/portal/index.php');
+-                exit;
+-            } catch (CuentaInactivaException $eCliente) {
+-                $errores = $eCliente->errores();
+-            } catch (ValidacionException $eClienteGenerico) {
+-                try {
+-                    $vendedor = (new VendedorAuthService($db))->verificar($identificador, $password);
++                $fila = (new AuthService($db))->verificar($identificador, $password);
+ 
+-                    cambiarASesion('POLLA_VENDEDOR');
+-                    (new VendedorAuthService($db))->abrirSesion($vendedor);
++                // Matcheo contra usuarios: soltamos la sesion activa y recien
++                // ahi abrimos la del panel, que no puede convivir con otra.
++                cambiarASesion($sesionPanel);
++                (new AuthService($db))->abrirSesion($fila);
++                $throttle->limpiar($identificador, $ip);
++                $audit->loginOk('usuario', (int) $fila['id'], $identificador);
+ 
+-                    header('Location: ' . APP_URL . '/vendedor/index.php');
++                header('Location: ' . APP_URL . '/admin/index.php');
++                exit;
++            } catch (CuentaInactivaException $e) {
++                // Matcheo real contra usuarios pero la cuenta esta
++                // desactivada: mensaje especifico, no probamos las demas.
++                $errores = $e->errores();
++            } catch (ValidacionException $eStaff) {
++                try {
++                    $cliente = (new ClienteAuthService($db))->verificar($identificador, $password);
++
++                    // Matcheo contra clientes: cambio explicito siempre, sin
++                    // asumir que la sesion activa ya es la correcta -- con
++                    // tres mundos en cascada, cual quedo activa depende del
++                    // orden en que se probaron arriba, no conviene confiar
++                    // en eso.
++                    cambiarASesion('POLLA_CLIENTE');
++                    (new ClienteAuthService($db))->abrirSesion($cliente);
++                    RememberTokenService::crearDesde($db)->emitir((int) $cliente['id']);
++                    $throttle->limpiar($identificador, $ip);
++                    $audit->loginOk('cliente', (int) $cliente['id'], $identificador);
++
++                    header('Location: ' . APP_URL . '/portal/index.php');
+                     exit;
+-                } catch (CuentaInactivaException $eVendedor) {
+-                    $errores = $eVendedor->errores();
+-                } catch (ValidacionException $eVendedorGenerico) {
+-                    // Ninguna de las tres tablas matcheo: un solo mensaje
+-                    // generico, para no filtrar contra cual se probo.
+-                    $errores[] = 'Usuario/DNI o contraseña incorrectos.';
++                } catch (CuentaInactivaException $eCliente) {
++                    $errores = $eCliente->errores();
++                } catch (ValidacionException $eClienteGenerico) {
++                    try {
++                        $vendedor = (new VendedorAuthService($db))->verificar($identificador, $password);
++
++                        cambiarASesion('POLLA_VENDEDOR');
++                        (new VendedorAuthService($db))->abrirSesion($vendedor);
++                        $throttle->limpiar($identificador, $ip);
++                        $audit->loginOk('vendedor', (int) $vendedor['id'], $identificador);
++
++                        header('Location: ' . APP_URL . '/vendedor/index.php');
++                        exit;
++                    } catch (CuentaInactivaException $eVendedor) {
++                        $errores = $eVendedor->errores();
++                    } catch (ValidacionException $eVendedorGenerico) {
++                        // Ninguna de las tres tablas matcheo: un solo mensaje
++                        // generico, para no filtrar contra cual se probo.
++                        $errores[] = 'Usuario/DNI o contraseña incorrectos.';
++                    }
+                 }
+             }
++
++            // Si llegamos aca con errores (y no fue por el throttle,
++            // que ya registro lo suyo arriba), registrar intento fallido.
++            if (!empty($errores)) {
++                $throttle->registrarFallo($identificador, $ip);
++                $audit->loginFallido($identificador);
++            }
+         }
+     }
+ }
+diff --git a/config/bootstrap.php b/config/bootstrap.php
+index 0d445c0..bd7fbe6 100644
+--- a/config/bootstrap.php
++++ b/config/bootstrap.php
+@@ -49,6 +49,17 @@ if (APP_ENV === 'development') {
+ 
+ date_default_timezone_set('America/Argentina/Buenos_Aires');
+ 
++// ── Headers de seguridad HTTP ───────────────────────────────
++// Se fijan antes de cualquier salida. No interfieren con nada
++// visible; son instrucciones para el navegador.
++if (!headers_sent() && PHP_SAPI !== 'cli') {
++    header('X-Content-Type-Options: nosniff');
++    header('X-Frame-Options: SAMEORIGIN');
++    header('Referrer-Policy: strict-origin-when-cross-origin');
++    header('X-XSS-Protection: 0'); // desactivado a favor de CSP
++    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
++}
++
+ // ── Ajustes de sesion, comunes a las dos ────────────────────
+ // Van aca porque hay que fijarlos antes de cualquier session_start().
+ ini_set('session.cookie_httponly', '1');
+diff --git a/config/portal.php b/config/portal.php
+index e3043f1..cc344a6 100644
+--- a/config/portal.php
++++ b/config/portal.php
+@@ -104,14 +104,14 @@ function requireCliente(bool $permitirPendiente = false): void
+         exit;
+     }
+ 
+-    if ($fila['estado'] === 'rechazado') {
++    if ($fila['estado'] === \Polla\Services\ClienteService::ESTADO_RECHAZADO) {
+         cerrarSesionCliente();
+         setFlash('danger', 'Tu solicitud de alta fue rechazada. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.');
+         header('Location: ' . APP_URL . '/portal/login.php');
+         exit;
+     }
+ 
+-    if ($fila['estado'] === 'pendiente' && !$permitirPendiente) {
++    if ($fila['estado'] === \Polla\Services\ClienteService::ESTADO_PENDIENTE && !$permitirPendiente) {
+         header('Location: ' . APP_URL . '/portal/pendiente.php');
+         exit;
+     }
+diff --git a/db/migrations/2026-09-16_throttle_y_auditoria.sql b/db/migrations/2026-09-16_throttle_y_auditoria.sql
+new file mode 100644
+index 0000000..4a97f7a
+--- /dev/null
++++ b/db/migrations/2026-09-16_throttle_y_auditoria.sql
+@@ -0,0 +1,42 @@
++-- ============================================================
++-- P1: Tabla de rate limiting para login
++-- P8: Tabla de log de auditoria
++-- ============================================================
++
++-- ── Rate limiting ───────────────────────────────────────────
++-- Guarda intentos fallidos por identificador (DNI o usuario) e IP.
++-- Se limpia automaticamente: cada vez que LoginThrottle chequea,
++-- borra filas viejas de paso.
++
++CREATE TABLE IF NOT EXISTS `login_intentos` (
++    `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
++    `identificador`   VARCHAR(100)  NOT NULL COMMENT 'DNI o usuario que intento loguearse',
++    `ip`              VARCHAR(45)   NOT NULL COMMENT 'IPv4 o IPv6 del visitante',
++    `intentos`        SMALLINT UNSIGNED NOT NULL DEFAULT 1,
++    `ultimo_intento`  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++    PRIMARY KEY (`id`),
++    UNIQUE KEY `uk_login_ident_ip` (`identificador`, `ip`),
++    KEY `idx_login_ultimo` (`ultimo_intento`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
++
++
++-- ── Log de auditoria ────────────────────────────────────────
++-- Registro inmutable de acciones sensibles. No tiene FK a proposito:
++-- si se borra un usuario o un cliente, el log sigue intacto.
++
++CREATE TABLE IF NOT EXISTS `auditoria` (
++    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
++    `accion`      VARCHAR(80)     NOT NULL COMMENT 'Clave corta: login_ok, login_fallido, sorteo_cargado, cliente_aprobado, etc.',
++    `entidad`     VARCHAR(40)     DEFAULT NULL COMMENT 'Tabla afectada: clientes, sorteos, jugadas, etc.',
++    `entidad_id`  INT UNSIGNED    DEFAULT NULL COMMENT 'ID del registro afectado',
++    `actor_tipo`  VARCHAR(20)     DEFAULT NULL COMMENT 'usuario, cliente, vendedor, sistema',
++    `actor_id`    INT UNSIGNED    DEFAULT NULL COMMENT 'ID del actor (puede ser NULL para acciones anonimas como login fallido)',
++    `ip`          VARCHAR(45)     DEFAULT NULL,
++    `detalle`     TEXT            DEFAULT NULL COMMENT 'JSON libre con contexto adicional',
++    `creado_en`   DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
++    PRIMARY KEY (`id`),
++    KEY `idx_audit_accion`  (`accion`),
++    KEY `idx_audit_entidad` (`entidad`, `entidad_id`),
++    KEY `idx_audit_actor`   (`actor_tipo`, `actor_id`),
++    KEY `idx_audit_fecha`   (`creado_en`)
++) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+diff --git a/scripts/limpiar_historial_git.sh b/scripts/limpiar_historial_git.sh
+new file mode 100755
+index 0000000..0f4ec2c
+--- /dev/null
++++ b/scripts/limpiar_historial_git.sh
+@@ -0,0 +1,59 @@
++#!/usr/bin/env bash
++# ============================================================
++# P5: Limpieza de datos sensibles del historial de git
++#
++# El código ACTUAL ya está limpio (los commits P0 se encargaron).
++# Pero en el HISTORIAL de commits viejos quedaron inserts con
++# nombres, DNIs, teléfonos y hashes de clientes demo dentro de
++# demo/datos_demo.sql.
++#
++# Este script usa git-filter-repo (pip install git-filter-repo)
++# para reescribir esos commits y eliminar las líneas sensibles.
++#
++# IMPORTANTE:
++# - Hacé un backup del repo antes de correr esto.
++# - Después de correr, hay que hacer `git push --force --all`.
++# - Todos los colaboradores (si hay) tienen que re-clonar.
++# - Corré desde la raíz del repo clonado fresco (no un fork).
++# ============================================================
++
++set -euo pipefail
++
++# 1. Verificar que git-filter-repo esté instalado
++if ! command -v git-filter-repo &>/dev/null; then
++    echo "❌ Necesitás git-filter-repo. Instalalo con:"
++    echo "   pip install git-filter-repo"
++    exit 1
++fi
++
++# 2. Verificar que estamos en la raíz del repo
++if [ ! -f "especificacion-decena-de-oro.md" ]; then
++    echo "❌ Corré este script desde la raíz del repo (donde está especificacion-decena-de-oro.md)"
++    exit 1
++fi
++
++echo "🔍 Esto va a reescribir el historial de git para eliminar datos"
++echo "   sensibles de demo/datos_demo.sql en commits viejos."
++echo ""
++read -rp "¿Continuar? (s/N) " resp
++if [[ "$resp" != "s" && "$resp" != "S" ]]; then
++    echo "Cancelado."
++    exit 0
++fi
++
++# 3. Opción A: eliminar demo/datos_demo.sql del historial completo
++# (el archivo actual se conserva si está limpio en HEAD)
++echo ""
++echo "⚙️  Reescribiendo historial..."
++git filter-repo --invert-paths --path demo/datos_demo.sql --force
++
++echo ""
++echo "✅ Historial reescrito. Ahora:"
++echo "   1. git push --force --all"
++echo "   2. git push --force --tags"
++echo "   3. Si alguien más tiene el repo clonado, que re-clone."
++echo ""
++echo "Si querés mantener demo/datos_demo.sql en HEAD (con datos"
++echo "ficticios limpios), volvé a agregarlo y commitealo:"
++echo "   git add demo/datos_demo.sql"
++echo "   git commit -m 'Re-agrega datos demo limpios (sin datos reales)'"
+diff --git a/src/Services/AuditoriaService.php b/src/Services/AuditoriaService.php
+new file mode 100644
+index 0000000..9b0dd34
+--- /dev/null
++++ b/src/Services/AuditoriaService.php
+@@ -0,0 +1,135 @@
++<?php
++
++namespace Polla\Services;
++
++use PDO;
++
++/**
++ * Log de auditoria inmutable: registra acciones sensibles para
++ * trazabilidad operativa.
++ *
++ * No lanza excepciones a proposito: si falla el INSERT de auditoria,
++ * se loguea a error_log y la operacion original sigue adelante.
++ * Un log roto no debe frenar la operacion que estaba auditando.
++ */
++class AuditoriaService
++{
++    // ── Claves de accion (usar estas constantes, no strings sueltos) ──
++
++    // Login
++    public const LOGIN_OK              = 'login_ok';
++    public const LOGIN_FALLIDO         = 'login_fallido';
++    public const LOGIN_BLOQUEADO       = 'login_bloqueado';
++
++    // Clientes
++    public const CLIENTE_CREADO        = 'cliente_creado';
++    public const CLIENTE_EDITADO       = 'cliente_editado';
++    public const CLIENTE_ELIMINADO     = 'cliente_eliminado';
++    public const CLIENTE_APROBADO      = 'cliente_aprobado';
++    public const CLIENTE_RECHAZADO     = 'cliente_rechazado';
++    public const CLIENTE_CLAVE_RESET   = 'cliente_clave_reset';
++
++    // Sorteos
++    public const SORTEO_CARGADO        = 'sorteo_cargado';
++    public const SORTEO_CORREGIDO      = 'sorteo_corregido';
++    public const SORTEO_ELIMINADO      = 'sorteo_eliminado';
++
++    // Jugadas
++    public const JUGADA_CARGADA        = 'jugada_cargada';
++    public const JUGADA_ELIMINADA      = 'jugada_eliminada';
++
++    // Solicitudes
++    public const SOLICITUD_CONFIRMADA  = 'solicitud_confirmada';
++    public const SOLICITUD_RECHAZADA   = 'solicitud_rechazada';
++
++    // Liquidaciones
++    public const LIQUIDACION_GENERADA  = 'liquidacion_generada';
++
++    // Usuarios
++    public const USUARIO_CREADO        = 'usuario_creado';
++    public const USUARIO_EDITADO       = 'usuario_editado';
++    public const USUARIO_ELIMINADO     = 'usuario_eliminado';
++    public const CLAVE_CAMBIADA        = 'clave_cambiada';
++
++    // Vendedores
++    public const VENDEDOR_CREADO       = 'vendedor_creado';
++    public const VENDEDOR_EDITADO      = 'vendedor_editado';
++    public const VENDEDOR_ELIMINADO    = 'vendedor_eliminado';
++
++    // Promociones
++    public const PROMOCION_GUARDADA    = 'promocion_guardada';
++
++    // Configuracion
++    public const CONFIG_ACTUALIZADA    = 'config_actualizada';
++
++    private PDO $db;
++
++    public function __construct(PDO $db)
++    {
++        $this->db = $db;
++    }
++
++    public static function crearDesde(PDO $db): self
++    {
++        return new self($db);
++    }
++
++    /**
++     * Registra una accion de auditoria.
++     *
++     * @param string      $accion    Constante de esta clase
++     * @param string|null $entidad   Tabla afectada (clientes, sorteos...)
++     * @param int|null    $entidadId ID del registro afectado
++     * @param string|null $actorTipo usuario|cliente|vendedor|sistema
++     * @param int|null    $actorId   ID del actor
++     * @param array|null  $detalle   Contexto extra (se guarda como JSON)
++     */
++    public function registrar(
++        string  $accion,
++        ?string $entidad   = null,
++        ?int    $entidadId = null,
++        ?string $actorTipo = null,
++        ?int    $actorId   = null,
++        ?array  $detalle   = null
++    ): void {
++        try {
++            $this->db->prepare(
++                'INSERT INTO auditoria (accion, entidad, entidad_id, actor_tipo, actor_id, ip, detalle)
++                 VALUES (:accion, :entidad, :entidad_id, :actor_tipo, :actor_id, :ip, :detalle)'
++            )->execute([
++                ':accion'     => $accion,
++                ':entidad'    => $entidad,
++                ':entidad_id' => $entidadId,
++                ':actor_tipo' => $actorTipo,
++                ':actor_id'   => $actorId,
++                ':ip'         => self::ip(),
++                ':detalle'    => $detalle ? json_encode($detalle, JSON_UNESCAPED_UNICODE) : null,
++            ]);
++        } catch (\Throwable $e) {
++            error_log('[auditoria] No se pudo registrar ' . $accion . ': ' . $e->getMessage());
++        }
++    }
++
++    /**
++     * Atajo para acciones de login (no hay actor conocido todavia).
++     */
++    public function loginOk(string $actorTipo, int $actorId, string $identificador): void
++    {
++        $this->registrar(self::LOGIN_OK, null, null, $actorTipo, $actorId, ['identificador' => $identificador]);
++    }
++
++    public function loginFallido(string $identificador): void
++    {
++        $this->registrar(self::LOGIN_FALLIDO, null, null, null, null, ['identificador' => $identificador]);
++    }
++
++    public function loginBloqueado(string $identificador): void
++    {
++        $this->registrar(self::LOGIN_BLOQUEADO, null, null, null, null, ['identificador' => $identificador]);
++    }
++
++    private static function ip(): string
++    {
++        return $_SERVER['REMOTE_ADDR'] ?? 'cli';
++    }
++}
+diff --git a/src/Services/ClienteRegistroService.php b/src/Services/ClienteRegistroService.php
+index 0eb8d4c..3143120 100644
+--- a/src/Services/ClienteRegistroService.php
++++ b/src/Services/ClienteRegistroService.php
+@@ -61,7 +61,7 @@ class ClienteRegistroService
+         return $this->db->query(
+             "SELECT id, nro_cliente, dni, nombre, telefono, fecha_alta
+                FROM clientes
+-              WHERE estado = 'pendiente'
++              WHERE estado = '" . ClienteService::ESTADO_PENDIENTE . "'
+               ORDER BY fecha_alta ASC"
+         )->fetchAll();
+     }
+@@ -69,7 +69,7 @@ class ClienteRegistroService
+     public function contarPendientes(): int
+     {
+         return (int) $this->db->query(
+-            "SELECT COUNT(*) FROM clientes WHERE estado = 'pendiente'"
++            "SELECT COUNT(*) FROM clientes WHERE estado = '" . ClienteService::ESTADO_PENDIENTE . "'"
+         )->fetchColumn();
+     }
+ 
+@@ -83,7 +83,7 @@ class ClienteRegistroService
+     {
+         $this->buscarPendiente($id);
+ 
+-        $this->db->prepare("UPDATE clientes SET estado = 'aprobado' WHERE id = :id")
++        $this->db->prepare("UPDATE clientes SET estado = '" . ClienteService::ESTADO_APROBADO . "' WHERE id = :id")
+                   ->execute([':id' => $id]);
+     }
+ 
+@@ -100,7 +100,7 @@ class ClienteRegistroService
+     {
+         $this->buscarPendiente($id);
+ 
+-        $this->db->prepare("UPDATE clientes SET estado = 'rechazado' WHERE id = :id")
++        $this->db->prepare("UPDATE clientes SET estado = '" . ClienteService::ESTADO_RECHAZADO . "' WHERE id = :id")
+                   ->execute([':id' => $id]);
+     }
+ 
+@@ -114,7 +114,7 @@ class ClienteRegistroService
+         if ($estado === false) {
+             throw ValidacionException::de('La solicitud no existe.');
+         }
+-        if ($estado !== 'pendiente') {
++        if ($estado !== ClienteService::ESTADO_PENDIENTE) {
+             throw ValidacionException::de('Esa solicitud ya fue resuelta.');
+         }
+     }
+diff --git a/src/Services/ClienteService.php b/src/Services/ClienteService.php
+index c833e1c..bbaa490 100644
+--- a/src/Services/ClienteService.php
++++ b/src/Services/ClienteService.php
+@@ -17,6 +17,11 @@ use Polla\Support\ValidacionException;
+  */
+ class ClienteService
+ {
++    // ── Estados de cliente ───────────────────────────────────
++    public const ESTADO_PENDIENTE  = 'pendiente';
++    public const ESTADO_APROBADO   = 'aprobado';
++    public const ESTADO_RECHAZADO  = 'rechazado';
++
+     /** Reintentos ante colision del numero aleatorio con uno ya existente. */
+     private const REINTENTOS_NRO = 10;
+ 
+@@ -122,7 +127,7 @@ class ClienteService
+         }
+ 
+         // Alta manual: aprobada al instante, el staff ya valido los datos.
+-        return $this->insertar($dni, $nombre, $telefono, 'aprobado', 'manual', $altaPor);
++        return $this->insertar($dni, $nombre, $telefono, ClienteService::ESTADO_APROBADO, 'manual', $altaPor);
+     }
+ 
+     /**
+@@ -154,7 +159,7 @@ class ClienteService
+             throw ValidacionException::de('Ya hay un cliente cargado con ese DNI.');
+         }
+ 
+-        return $this->insertar($dni, $nombre, $telefono, 'pendiente', 'autorregistro', null, $referidoPor);
++        return $this->insertar($dni, $nombre, $telefono, ClienteService::ESTADO_PENDIENTE, 'autorregistro', null, $referidoPor);
+     }
+ 
+     /**
+diff --git a/src/Services/CotejoService.php b/src/Services/CotejoService.php
+new file mode 100644
+index 0000000..2c1a854
+--- /dev/null
++++ b/src/Services/CotejoService.php
+@@ -0,0 +1,257 @@
++<?php
++
++namespace Polla\Services;
++
++use DateTimeImmutable;
++use PDO;
++
++/**
++ * Motor de cotejo y cierre de ciclos.
++ *
++ * Responsabilidad unica: comparar los numeros de las jugadas activas
++ * contra los extractos cargados y decidir si el ciclo se cierra (con
++ * o sin ganador). Todo lo que es CRUD de sorteos (registrar, validar
++ * fecha, editar, eliminar) sigue en SorteoService.
++ *
++ * Extraido de SorteoService para que cada clase tenga ~500 lineas y
++ * una sola razon de cambio.
++ */
++class CotejoService
++{
++    private PDO $db;
++    private CicloService $ciclos;
++    private PozoService $pozo;
++    private ParametroService $parametros;
++
++    public function __construct(
++        PDO $db,
++        CicloService $ciclos,
++        PozoService $pozo,
++        ParametroService $parametros
++    ) {
++        $this->db         = $db;
++        $this->ciclos     = $ciclos;
++        $this->pozo       = $pozo;
++        $this->parametros = $parametros;
++    }
++
++    public static function crearDesde(PDO $db): self
++    {
++        return new self($db, new CicloService($db), new PozoService($db), new ParametroService($db));
++    }
++
++    // ── Cotejo de ciclo completo (replay) ───────────────────
++
++    /**
++     * Recoteja un ciclo entero desde cero, sorteo por sorteo en orden
++     * cronologico. Lo usa SorteoService::corregir() para recalcular
++     * el resultado despues de editar un extracto.
++     *
++     * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
++     *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
++     */
++    public function recotejarCiclo(array $ciclo, string $tipo): array
++    {
++        $stmt = $this->db->prepare(
++            'SELECT id, fecha, turno FROM sorteos WHERE ciclo_id = :ciclo ORDER BY fecha ASC, turno ASC'
++        );
++        $stmt->execute([':ciclo' => $ciclo['id']]);
++        $sorteos = $stmt->fetchAll();
++
++        $completa = $this->secuenciaCompleta($ciclo, $tipo, $sorteos);
++
++        $resultado = [
++            'ganadores' => [], 'cerro_ciclo' => false, 'estado_cierre' => null,
++            'pozo_repartido' => 0.0, 'ciclo_nuevo_id' => null, 'arrastre' => 0.0,
++        ];
++        foreach ($sorteos as $i => $sorteo) {
++            $esUltimo = $completa && $i === count($sorteos) - 1;
++            $resultado = $this->cotejarYCerrar((int) $sorteo['id'], $ciclo, $esUltimo, $tipo);
++            if ($resultado['cerro_ciclo']) {
++                $this->reasignarSorteosPosteriores(array_slice($sorteos, $i + 1), $resultado['ciclo_nuevo_id']);
++                break;
++            }
++        }
++
++        return $resultado;
++    }
++
++    // ── Cotejo de un sorteo puntual ─────────────────────────
++
++    /**
++     * Corre el cotejo y decide que hacer con el ciclo.
++     *
++     * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
++     *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
++     */
++    public function cotejarYCerrar(
++        int $sorteoId,
++        array $ciclo,
++        bool $esUltimoDeLaSecuencia,
++        string $tipo
++    ): array {
++        $cicloId   = (int) $ciclo['id'];
++        $ganadoras = $this->jugadasGanadoras($sorteoId, $cicloId);
++
++        $base = [
++            'ganadores'      => [],
++            'cerro_ciclo'    => false,
++            'estado_cierre'  => null,
++            'pozo_repartido' => 0.0,
++            'ciclo_nuevo_id' => null,
++            'arrastre'       => 0.0,
++        ];
++
++        $premioBase = $tipo === CicloService::TIPO_SABADO
++            ? $this->parametros->premioBaseSabado()
++            : $this->parametros->premioBase();
++
++        // ── Hay ganador: se corta la secuencia (semana o sabado) ────
++        if ($ganadoras) {
++            $this->marcarEstado($ganadoras, 'ganadora');
++
++            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras, $premioBase);
++            $repartido = array_sum($premios);
++
++            $this->marcarRestantesPerdedoras($cicloId);
++            $this->ciclos->cerrar($cicloId, CicloService::ESTADO_CON_GANADOR);
++
++            $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, 0.0);
++
++            return [
++                'ganadores'      => $premios,
++                'cerro_ciclo'    => true,
++                'estado_cierre'  => CicloService::ESTADO_CON_GANADOR,
++                'pozo_repartido' => $repartido,
++                'ciclo_nuevo_id' => $nuevoId,
++                'arrastre'       => 0.0,
++            ];
++        }
++
++        // ── Sin ganador y todavia quedan sorteos: no pasa nada ──
++        if (!$esUltimoDeLaSecuencia) {
++            return $base;
++        }
++
++        // ── Sin ganador y era el ultimo de la secuencia: cierra ──
++        $this->marcarRestantesPerdedoras($cicloId);
++
++        $arrastre = $this->pozo->montoAcumulado($cicloId);
++
++        $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
++        $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, $arrastre);
++
++        return [
++            'ganadores'      => [],
++            'cerro_ciclo'    => true,
++            'estado_cierre'  => CicloService::ESTADO_SIN_GANADOR,
++            'pozo_repartido' => 0.0,
++            'ciclo_nuevo_id' => $nuevoId,
++            'arrastre'       => $arrastre,
++        ];
++    }
++
++    // ── Jugadas ganadoras ───────────────────────────────────
++
++    /**
++     * Jugadas del ciclo cuyos numeros salieron TODOS, acumulados entre
++     * todos los sorteos/turnos cargados hasta este (inclusive).
++     *
++     * @return int[] Ids de las jugadas ganadoras.
++     */
++    public function jugadasGanadoras(int $sorteoId, int $cicloId): array
++    {
++        $stmt = $this->db->prepare(
++            "SELECT j.id
++               FROM jugadas j
++               JOIN jugada_numeros jn ON jn.jugada_id = j.id
++              WHERE j.ciclo_id = :ciclo1
++                AND j.estado   = 'activa'
++                AND j.pagada   = 1
++                AND jn.numero IN (
++                    SELECT DISTINCT sn.numero
++                      FROM sorteo_numeros sn
++                      JOIN sorteos s   ON s.id = sn.sorteo_id
++                      JOIN sorteos ref ON ref.id = :sorteo
++                     WHERE s.ciclo_id = :ciclo2
++                       AND (s.fecha < ref.fecha OR (s.fecha = ref.fecha AND s.turno <= ref.turno))
++                )
++              GROUP BY j.id
++             HAVING COUNT(DISTINCT jn.numero)
++                  = (SELECT COUNT(*) FROM jugada_numeros x WHERE x.jugada_id = j.id)
++              ORDER BY j.id ASC"
++        );
++        $stmt->execute([':ciclo1' => $cicloId, ':ciclo2' => $cicloId, ':sorteo' => $sorteoId]);
++
++        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
++    }
++
++    // ── Helpers internos ────────────────────────────────────
++
++    /**
++     * Reasigna sorteos sobrantes al ciclo siguiente o los deja sin ciclo.
++     *
++     * @param array<int,array{id:int,fecha:string,turno:int}> $sorteosSobrantes
++     */
++    private function reasignarSorteosPosteriores(array $sorteosSobrantes, ?int $cicloNuevoId): void
++    {
++        if (!$sorteosSobrantes) {
++            return;
++        }
++
++        $nuevo = $cicloNuevoId ? $this->ciclos->buscarPorId($cicloNuevoId) : null;
++
++        foreach ($sorteosSobrantes as $sorteo) {
++            $entra = $nuevo
++                && $sorteo['fecha'] >= $nuevo['fecha_inicio']
++                && $sorteo['fecha'] <= $nuevo['fecha_fin'];
++
++            $this->db->prepare('UPDATE sorteos SET ciclo_id = :ciclo WHERE id = :id')
++                ->execute([':ciclo' => $entra ? $nuevo['id'] : null, ':id' => $sorteo['id']]);
++        }
++    }
++
++    /**
++     * Secuencia completa: ya estan cargados todos los sorteos que le
++     * corresponden a este ciclo.
++     *
++     * @param array<int,array{fecha:string,turno:int}> $sorteosCargados
++     */
++    private function secuenciaCompleta(array $ciclo, string $tipo, array $sorteosCargados): bool
++    {
++        if ($tipo === CicloService::TIPO_SABADO) {
++            return count($sorteosCargados) === 5;
++        }
++
++        $fechasCargadas = array_column($sorteosCargados, 'fecha');
++        $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
++        $fin = new DateTimeImmutable($ciclo['fecha_fin']);
++        while ($dia <= $fin) {
++            if (!in_array($dia->format('Y-m-d'), $fechasCargadas, true)) {
++                return false;
++            }
++            $dia = $dia->modify('+1 day');
++        }
++
++        return true;
++    }
++
++    /** @param int[] $jugadaIds */
++    private function marcarEstado(array $jugadaIds, string $estado): void
++    {
++        if (!$jugadaIds) {
++            return;
++        }
++        $marcas = implode(',', array_fill(0, count($jugadaIds), '?'));
++        $stmt = $this->db->prepare("UPDATE jugadas SET estado = ? WHERE id IN ($marcas)");
++        $stmt->execute(array_merge([$estado], $jugadaIds));
++    }
++
++    private function marcarRestantesPerdedoras(int $cicloId): void
++    {
++        $this->db->prepare(
++            "UPDATE jugadas SET estado = 'perdedora'
++              WHERE ciclo_id = :ciclo AND estado = 'activa'"
++        )->execute([':ciclo' => $cicloId]);
++    }
++}
+diff --git a/src/Services/LoginThrottle.php b/src/Services/LoginThrottle.php
+new file mode 100644
+index 0000000..24aa6b6
+--- /dev/null
++++ b/src/Services/LoginThrottle.php
+@@ -0,0 +1,92 @@
++<?php
++
++namespace Polla\Services;
++
++use PDO;
++use Polla\Support\ValidacionException;
++
++/**
++ * Rate limiting para login: limita intentos fallidos por identificador + IP.
++ *
++ * Umbral: MAX_INTENTOS en VENTANA_MINUTOS. Al superar el umbral, tira
++ * ValidacionException con un mensaje generico (sin filtrar cuanto falta).
++ * Cada chequeo purga filas viejas de paso, asi que no hace falta un cron.
++ */
++class LoginThrottle
++{
++    private const MAX_INTENTOS     = 5;
++    private const VENTANA_MINUTOS  = 15;
++
++    private PDO $db;
++
++    public function __construct(PDO $db)
++    {
++        $this->db = $db;
++    }
++
++    /**
++     * Chequea si el identificador+IP esta bloqueado. Llamar ANTES de
++     * verificar credenciales.
++     *
++     * @throws ValidacionException si supera el umbral
++     */
++    public function verificar(string $identificador, string $ip): void
++    {
++        $this->purgar();
++
++        $stmt = $this->db->prepare(
++            'SELECT intentos FROM login_intentos
++              WHERE identificador = :ident AND ip = :ip
++                AND ultimo_intento > DATE_SUB(NOW(), INTERVAL :ventana MINUTE)
++              LIMIT 1'
++        );
++        $stmt->execute([
++            ':ident'   => $identificador,
++            ':ip'      => $ip,
++            ':ventana' => self::VENTANA_MINUTOS,
++        ]);
++        $intentos = (int) $stmt->fetchColumn();
++
++        if ($intentos >= self::MAX_INTENTOS) {
++            throw ValidacionException::de(
++                'Demasiados intentos. Esperá unos minutos antes de reintentar.'
++            );
++        }
++    }
++
++    /**
++     * Registra un intento fallido. Llamar despues de que falle la
++     * verificacion de credenciales.
++     */
++    public function registrarFallo(string $identificador, string $ip): void
++    {
++        $this->db->prepare(
++            'INSERT INTO login_intentos (identificador, ip, intentos, ultimo_intento)
++             VALUES (:ident, :ip, 1, NOW())
++             ON DUPLICATE KEY UPDATE intentos = intentos + 1, ultimo_intento = NOW()'
++        )->execute([':ident' => $identificador, ':ip' => $ip]);
++    }
++
++    /**
++     * Limpia el contador al loguearse con exito (para que un fallo viejo
++     * no penalice la proxima vez).
++     */
++    public function limpiar(string $identificador, string $ip): void
++    {
++        $this->db->prepare(
++            'DELETE FROM login_intentos WHERE identificador = :ident AND ip = :ip'
++        )->execute([':ident' => $identificador, ':ip' => $ip]);
++    }
++
++    /**
++     * Purga filas mas viejas que la ventana. Corre en cada verificar(),
++     * asi que la tabla se auto-limpia sin cron.
++     */
++    private function purgar(): void
++    {
++        $this->db->exec(
++            'DELETE FROM login_intentos
++              WHERE ultimo_intento < DATE_SUB(NOW(), INTERVAL ' . (self::VENTANA_MINUTOS * 2) . ' MINUTE)'
++        );
++    }
++}
+diff --git a/src/Services/ReporteService.php b/src/Services/ReporteService.php
+index ef9476d..de7cc66 100644
+--- a/src/Services/ReporteService.php
++++ b/src/Services/ReporteService.php
+@@ -74,21 +74,7 @@ class ReporteService
+     /** Cuantos sorteos cargo (el negocio, o el supervisor). */
+     public function totalSorteos(FiltroReporte $filtro): int
+     {
+-        $where  = ['1 = 1'];
+-        $params = [];
+-
+-        if ($cond = $this->alcance->condicion('s.cargado_por')) {
+-            $where[] = $cond;
+-            $params += $this->alcance->parametros();
+-        }
+-        if ($filtro->desde) { $where[] = 's.fecha >= :desde'; $params[':desde'] = $filtro->desde; }
+-        if ($filtro->hasta) { $where[] = 's.fecha <= :hasta'; $params[':hasta'] = $filtro->hasta; }
+-        if ($filtro->cicloId)   { $where[] = 's.ciclo_id = :ciclo';      $params[':ciclo'] = $filtro->cicloId; }
+-        if ($filtro->usuarioId) { $where[] = 's.cargado_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
+-        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
+-            $where[] = 'cy.tipo = :tipo_juego';
+-            $params[':tipo_juego'] = $filtro->tipoJuego;
+-        }
++        [$where, $params] = $this->condicionesSorteos($filtro);
+ 
+         $stmt = $this->db->prepare(
+             'SELECT COUNT(*) FROM sorteos s JOIN ciclos cy ON cy.id = s.ciclo_id WHERE ' . implode(' AND ', $where)
+@@ -101,16 +87,7 @@ class ReporteService
+     /** Cuantos clientes dio de alta (el negocio, o el supervisor). */
+     public function totalClientes(FiltroReporte $filtro): int
+     {
+-        $where  = ['1 = 1'];
+-        $params = [];
+-
+-        if ($cond = $this->alcance->condicion('c.alta_por')) {
+-            $where[] = $cond;
+-            $params += $this->alcance->parametros();
+-        }
+-        if ($filtro->desde) { $where[] = 'DATE(c.fecha_alta) >= :desde'; $params[':desde'] = $filtro->desde; }
+-        if ($filtro->hasta) { $where[] = 'DATE(c.fecha_alta) <= :hasta'; $params[':hasta'] = $filtro->hasta; }
+-        if ($filtro->usuarioId) { $where[] = 'c.alta_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
++        [$where, $params] = $this->condicionesClientes($filtro);
+ 
+         $stmt = $this->db->prepare('SELECT COUNT(*) FROM clientes c WHERE ' . implode(' AND ', $where));
+         $stmt->execute($params);
+@@ -646,6 +623,50 @@ class ReporteService
+         return [$where, $params];
+     }
+ 
++    /**
++     * Builder de condiciones para queries sobre sorteos (alias s, ciclo cy).
++     * Análogo a condicionesJugadas() pero para la tabla sorteos.
++     */
++    private function condicionesSorteos(FiltroReporte $filtro): array
++    {
++        $where  = ['1 = 1'];
++        $params = [];
++
++        if ($cond = $this->alcance->condicion('s.cargado_por')) {
++            $where[] = $cond;
++            $params += $this->alcance->parametros();
++        }
++        if ($filtro->desde)     { $where[] = 's.fecha >= :desde';       $params[':desde']   = $filtro->desde; }
++        if ($filtro->hasta)     { $where[] = 's.fecha <= :hasta';       $params[':hasta']   = $filtro->hasta; }
++        if ($filtro->cicloId)   { $where[] = 's.ciclo_id = :ciclo';     $params[':ciclo']   = $filtro->cicloId; }
++        if ($filtro->usuarioId) { $where[] = 's.cargado_por = :usuario'; $params[':usuario'] = $filtro->usuarioId; }
++        if ($filtro->tipoJuego !== FiltroReporte::TIPO_JUEGO_TODOS) {
++            $where[] = 'cy.tipo = :tipo_juego';
++            $params[':tipo_juego'] = $filtro->tipoJuego;
++        }
++
++        return [$where, $params];
++    }
++
++    /**
++     * Builder de condiciones para queries sobre clientes (alias c).
++     */
++    private function condicionesClientes(FiltroReporte $filtro): array
++    {
++        $where  = ['1 = 1'];
++        $params = [];
++
++        if ($cond = $this->alcance->condicion('c.alta_por')) {
++            $where[] = $cond;
++            $params += $this->alcance->parametros();
++        }
++        if ($filtro->desde)     { $where[] = 'DATE(c.fecha_alta) >= :desde'; $params[':desde']   = $filtro->desde; }
++        if ($filtro->hasta)     { $where[] = 'DATE(c.fecha_alta) <= :hasta'; $params[':hasta']   = $filtro->hasta; }
++        if ($filtro->usuarioId) { $where[] = 'c.alta_por = :usuario';        $params[':usuario'] = $filtro->usuarioId; }
++
++        return [$where, $params];
++    }
++
+     private static function explotar(?string $concatenado): array
+     {
+         if ($concatenado === null || $concatenado === '') {
+diff --git a/src/Services/SorteoService.php b/src/Services/SorteoService.php
+index 5fd1dc7..b822f52 100644
+--- a/src/Services/SorteoService.php
++++ b/src/Services/SorteoService.php
+@@ -30,22 +30,28 @@ class SorteoService
+     private CicloService $ciclos;
+     private PozoService $pozo;
+     private ParametroService $parametros;
++    private CotejoService $cotejo;
+ 
+     public function __construct(
+         PDO $db,
+         CicloService $ciclos,
+         PozoService $pozo,
+-        ParametroService $parametros
++        ParametroService $parametros,
++        ?CotejoService $cotejo = null
+     ) {
+         $this->db         = $db;
+         $this->ciclos     = $ciclos;
+         $this->pozo       = $pozo;
+         $this->parametros = $parametros;
++        $this->cotejo     = $cotejo ?? new CotejoService($db, $ciclos, $pozo, $parametros);
+     }
+ 
+     public static function crearDesde(PDO $db): self
+     {
+-        return new self($db, new CicloService($db), new PozoService($db), new ParametroService($db));
++        $ciclos     = new CicloService($db);
++        $pozo       = new PozoService($db);
++        $parametros = new ParametroService($db);
++        return new self($db, $ciclos, $pozo, $parametros, new CotejoService($db, $ciclos, $pozo, $parametros));
+     }
+ 
+     /**
+@@ -84,7 +90,7 @@ class SorteoService
+             // Replay completo, no solo este sorteo: un extracto atrasado
+             // (ver validarFechaContraCiclo()) puede completar el acumulado
+             // de una jugada en un dia anterior a este. Ver recotejarCiclo().
+-            $resultado = $this->recotejarCiclo($ciclo, CicloService::TIPO_SEMANAL);
++            $resultado = $this->cotejo->recotejarCiclo($ciclo, CicloService::TIPO_SEMANAL);
+ 
+             $this->db->commit();
+ 
+@@ -142,7 +148,7 @@ class SorteoService
+             $sorteoId = $this->insertarSorteo((int) $ciclo['id'], $fecha, $turno, $numeros, $cargadoPor);
+ 
+             // Replay completo por simetria con registrar() -- ver recotejarCiclo().
+-            $resultado = $this->recotejarCiclo($ciclo, CicloService::TIPO_SABADO);
++            $resultado = $this->cotejo->recotejarCiclo($ciclo, CicloService::TIPO_SABADO);
+ 
+             $this->db->commit();
+ 
+@@ -383,7 +389,7 @@ class SorteoService
+             // Una correccion puede ser de un sorteo anterior. Repetimos el
+             // cotejo cronologico completo para que el primer ganador (o el
+             // arrastre final) sea el que realmente corresponde.
+-            $resultado = $this->recotejarCiclo($viejo, $tipo);
++            $resultado = $this->cotejo->recotejarCiclo($viejo, $tipo);
+ 
+             $this->db->commit();
+ 
+@@ -417,267 +423,17 @@ class SorteoService
+      * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
+      *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
+      */
+-    private function recotejarCiclo(array $ciclo, string $tipo): array
+-    {
+-        $stmt = $this->db->prepare(
+-            'SELECT id, fecha, turno FROM sorteos WHERE ciclo_id = :ciclo ORDER BY fecha ASC, turno ASC'
+-        );
+-        $stmt->execute([':ciclo' => $ciclo['id']]);
+-        $sorteos = $stmt->fetchAll();
+-
+-        $completa = $this->secuenciaCompleta($ciclo, $tipo, $sorteos);
+-
+-        $resultado = [
+-            'ganadores' => [], 'cerro_ciclo' => false, 'estado_cierre' => null,
+-            'pozo_repartido' => 0.0, 'ciclo_nuevo_id' => null, 'arrastre' => 0.0,
+-        ];
+-        foreach ($sorteos as $i => $sorteo) {
+-            $esUltimo = $completa && $i === count($sorteos) - 1;
+-            $resultado = $this->cotejarYCerrar((int) $sorteo['id'], $ciclo, $esUltimo, $tipo);
+-            if ($resultado['cerro_ciclo']) {
+-                $this->reasignarSorteosPosteriores(array_slice($sorteos, $i + 1), $resultado['ciclo_nuevo_id']);
+-                break;
+-            }
+-        }
+-
+-        return $resultado;
+-    }
+-
+-    /**
+-     * Sorteos que quedaron cronologicamente despues del que cerro el
+-     * ciclo: recotejarCiclo() deja de procesarlos en cuanto encuentra
+-     * ganador (corta la secuencia ahi), pero seguian con ciclo_id
+-     * apuntando al ciclo que se acaba de cerrar y liquidar. Puede pasar
+-     * al corregir() un sorteo anterior y que el nuevo resultado cierre
+-     * mas temprano que antes.
+-     *
+-     * Se reasignan al ciclo siguiente si su fecha entra en su rango; si
+-     * no (el caso normal: el siguiente es de la semana/sabado que
+-     * viene, una fecha totalmente distinta a la de estos sobrantes),
+-     * quedan sin ciclo. Mejor eso que colgados de uno ya pagado, donde
+-     * sorteosDelCiclo()/evaluar() los seguirian sumando y un cliente
+-     * que perdio veria "10 de 10 / Sin premio" sobre un ciclo cerrado.
+-     *
+-     * @param array<int,array{id:int,fecha:string,turno:int}> $sorteosSobrantes
+-     */
+-    private function reasignarSorteosPosteriores(array $sorteosSobrantes, ?int $cicloNuevoId): void
+-    {
+-        if (!$sorteosSobrantes) {
+-            return;
+-        }
+-
+-        $nuevo = $cicloNuevoId ? $this->ciclos->buscarPorId($cicloNuevoId) : null;
+-
+-        foreach ($sorteosSobrantes as $sorteo) {
+-            $entra = $nuevo
+-                && $sorteo['fecha'] >= $nuevo['fecha_inicio']
+-                && $sorteo['fecha'] <= $nuevo['fecha_fin'];
+-
+-            $this->db->prepare('UPDATE sorteos SET ciclo_id = :ciclo WHERE id = :id')
+-                ->execute([':ciclo' => $entra ? $nuevo['id'] : null, ':id' => $sorteo['id']]);
+-        }
+-    }
+-
+-    /**
+-     * Si ya estan cargados TODOS los sorteos que le corresponden a
+-     * este ciclo -- sabado: los 5 turnos; semanal: un sorteo por cada
+-     * dia habil entre fecha_inicio y fecha_fin (mismo recorrido dia a
+-     * dia que ya arma admin/sorteos/nuevo.php para "que dias faltan").
+-     * Antes de esto confirmado, recotejarCiclo() no puede tratar al
+-     * ultimo sorteo CARGADO como el ultimo que le corresponde a la
+-     * semana: si un dia intermedio todavia no llego, cerrar "sin
+-     * ganador" ahi le negaria el premio a una jugada que se completaba
+-     * justo con los numeros de ese dia faltante.
+-     *
+-     * @param array<int,array{fecha:string,turno:int}> $sorteosCargados
+-     */
+-    private function secuenciaCompleta(array $ciclo, string $tipo, array $sorteosCargados): bool
+-    {
+-        if ($tipo === CicloService::TIPO_SABADO) {
+-            return count($sorteosCargados) === 5;
+-        }
+-
+-        $fechasCargadas = array_column($sorteosCargados, 'fecha');
+-        $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
+-        $fin = new DateTimeImmutable($ciclo['fecha_fin']);
+-        while ($dia <= $fin) {
+-            if (!in_array($dia->format('Y-m-d'), $fechasCargadas, true)) {
+-                return false;
+-            }
+-            $dia = $dia->modify('+1 day');
+-        }
+-
+-        return true;
+-    }
+-
+     // ── Cotejo ──────────────────────────────────────────────
++    // La logica de cotejo, cierre de ciclo y replay vive en
++    // CotejoService (extraida en P2). SorteoService delega via
++    // $this->cotejo->recotejarCiclo() y ->jugadasGanadoras().
+ 
+     /**
+-     * Jugadas del ciclo cuyos numeros salieron TODOS, acumulados entre
+-     * todos los sorteos/turnos cargados hasta este (inclusive) dentro
+-     * del mismo ciclo. No hace falta que salgan juntos en un mismo
+-     * sorteo/turno: alcanza con que cada numero de la jugada haya
+-     * salido en cualquiera de los sorteos ya cargados hasta ahora de
+-     * esa semana o sabado (hasta 100 numeros entre los 5 sorteos o
+-     * turnos). Mismo criterio para semanal y sabado -- confirmado con
+-     * el cliente, reemplaza la regla anterior de "todos en un mismo
+-     * sorteo" para las dos modalidades.
+-     *
+-     * El orden cronologico se define por (fecha, turno): en el semanal
+-     * el turno es siempre 1 y lo que ordena es la fecha; en sabado
+-     * todos los turnos comparten la misma fecha y lo que ordena es el
+-     * turno. Acotar a "hasta este sorteo" (nunca a todos los del ciclo
+-     * aunque ya esten cargados en la tabla) es necesario para que
+-     * recotejarCiclo() reproduzca la secuencia real paso a paso al
+-     * recotejar un ciclo ya jugado entero -- si no, el primer sorteo
+-     * del recorrido veria de entrada el acumulado completo de toda la
+-     * semana. Con la carga en vivo (registrar()/registrarTurnoSabado())
+-     * esto no cambia nada: ahi solo existen los sorteos ya jugados
+-     * hasta el momento, nunca los que faltan.
+-     *
+-     * El COUNT(DISTINCT) no es decorativo: el extracto puede repetir un
+-     * numero entre sus posiciones (dentro de un sorteo, o entre
+-     * sorteos/turnos distintos del mismo ciclo), y con un COUNT(*)
+-     * comun esa jugada sumaria de mas y quedaria descartada por
+-     * pasarse. Es decir, la version ingenua no falla de menos: descarta
+-     * al ganador legitimo.
+-     *
+-     * Y el total se compara contra los numeros que esa jugada realmente
+-     * tiene, no contra un valor fijo: si algun dia cambia el parametro,
+-     * las jugadas viejas se siguen juzgando por lo que jugaron.
+-     *
+-     * @return int[] Ids de las jugadas ganadoras.
++     * Proxy para que el admin de ranking siga accediendo sin cambios.
+      */
+     public function jugadasGanadoras(int $sorteoId, int $cicloId): array
+     {
+-        $stmt = $this->db->prepare(
+-            "SELECT j.id
+-               FROM jugadas j
+-               JOIN jugada_numeros jn ON jn.jugada_id = j.id
+-              WHERE j.ciclo_id = :ciclo1
+-                AND j.estado   = 'activa'
+-                AND j.pagada   = 1
+-                AND jn.numero IN (
+-                    SELECT DISTINCT sn.numero
+-                      FROM sorteo_numeros sn
+-                      JOIN sorteos s   ON s.id = sn.sorteo_id
+-                      JOIN sorteos ref ON ref.id = :sorteo
+-                     WHERE s.ciclo_id = :ciclo2
+-                       AND (s.fecha < ref.fecha OR (s.fecha = ref.fecha AND s.turno <= ref.turno))
+-                )
+-              GROUP BY j.id
+-             HAVING COUNT(DISTINCT jn.numero)
+-                  = (SELECT COUNT(*) FROM jugada_numeros x WHERE x.jugada_id = j.id)
+-              ORDER BY j.id ASC"
+-        );
+-        $stmt->execute([':ciclo1' => $cicloId, ':ciclo2' => $cicloId, ':sorteo' => $sorteoId]);
+-
+-        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+-    }
+-
+-    /**
+-     * Corre el cotejo y decide que hacer con el ciclo.
+-     *
+-     * $esUltimoDeLaSecuencia le dice si este sorteo es el ultimo posible
+-     * de su ciclo sin ganador (el viernes del ciclo semanal, o el turno 5
+-     * del ciclo sabado) — a partir de ahi, sin ganador, el pozo arrastra.
+-     *
+-     * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
+-     *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
+-     */
+-    private function cotejarYCerrar(
+-        int $sorteoId,
+-        array $ciclo,
+-        bool $esUltimoDeLaSecuencia,
+-        string $tipo
+-    ): array {
+-        $cicloId   = (int) $ciclo['id'];
+-        $ganadoras = $this->jugadasGanadoras($sorteoId, $cicloId);
+-
+-        $base = [
+-            'ganadores'      => [],
+-            'cerro_ciclo'    => false,
+-            'estado_cierre'  => null,
+-            'pozo_repartido' => 0.0,
+-            'ciclo_nuevo_id' => null,
+-            'arrastre'       => 0.0,
+-        ];
+-
+-        $premioBase = $tipo === CicloService::TIPO_SABADO
+-            ? $this->parametros->premioBaseSabado()
+-            : $this->parametros->premioBase();
+-
+-        // ── Hay ganador: se corta la secuencia (semana o sabado) ────
+-        if ($ganadoras) {
+-            $this->marcarEstado($ganadoras, 'ganadora');
+-
+-            // Fase 7: el piso garantizado se aplica en cada ciclo, sin
+-            // excepcion. Se lee el premio_base VIGENTE justo en este
+-            // momento, no el que estaba cuando se abrio el ciclo.
+-            $premios = $this->pozo->liquidar($cicloId, $sorteoId, $ganadoras, $premioBase);
+-            $repartido = array_sum($premios);
+-
+-            // Las que no ganaron quedan cerradas junto con el ciclo.
+-            $this->marcarRestantesPerdedoras($cicloId);
+-
+-            $this->ciclos->cerrar($cicloId, CicloService::ESTADO_CON_GANADOR);
+-
+-            // El pozo se repartio entero: el ciclo nuevo arranca en $0
+-            // (salvo que ya hubiera un programado con jugadas propias).
+-            $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, 0.0);
+-
+-            return [
+-                'ganadores'      => $premios,
+-                'cerro_ciclo'    => true,
+-                'estado_cierre'  => CicloService::ESTADO_CON_GANADOR,
+-                'pozo_repartido' => $repartido,
+-                'ciclo_nuevo_id' => $nuevoId,
+-                'arrastre'       => 0.0,
+-            ];
+-        }
+-
+-        // ── Sin ganador y todavia quedan sorteos: no pasa nada ──
+-        if (!$esUltimoDeLaSecuencia) {
+-            return $base;
+-        }
+-
+-        // ── Sin ganador y era el ultimo de la secuencia: cierra ──
+-        // El pozo no se pierde: pasa entero al ciclo siguiente.
+-        $this->marcarRestantesPerdedoras($cicloId);
+-
+-        $arrastre = $this->pozo->montoAcumulado($cicloId);
+-
+-        $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
+-        $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, $arrastre);
+-
+-        return [
+-            'ganadores'      => [],
+-            'cerro_ciclo'    => true,
+-            'estado_cierre'  => CicloService::ESTADO_SIN_GANADOR,
+-            'pozo_repartido' => 0.0,
+-            'ciclo_nuevo_id' => $nuevoId,
+-            'arrastre'       => $arrastre,
+-        ];
+-    }
+-
+-    /** @param int[] $jugadaIds */
+-    private function marcarEstado(array $jugadaIds, string $estado): void
+-    {
+-        if (!$jugadaIds) {
+-            return;
+-        }
+-        // Los ids salen de una consulta propia, pero igual van por placeholder.
+-        $marcas = implode(',', array_fill(0, count($jugadaIds), '?'));
+-        $stmt = $this->db->prepare("UPDATE jugadas SET estado = ? WHERE id IN ($marcas)");
+-        $stmt->execute(array_merge([$estado], $jugadaIds));
+-    }
+-
+-    private function marcarRestantesPerdedoras(int $cicloId): void
+-    {
+-        $this->db->prepare(
+-            "UPDATE jugadas SET estado = 'perdedora'
+-              WHERE ciclo_id = :ciclo AND estado = 'activa'"
+-        )->execute([':ciclo' => $cicloId]);
++        return $this->cotejo->jugadasGanadoras($sorteoId, $cicloId);
+     }
+ 
+     // ── Validaciones ────────────────────────────────────────
+@@ -750,11 +506,13 @@ class SorteoService
+ 
+     private function ultimoCicloCerradoConGanador(): ?array
+     {
+-        $fila = $this->db->query(
+-            "SELECT numero, fecha_cierre FROM ciclos
+-              WHERE estado = '" . CicloService::ESTADO_CON_GANADOR . "'
+-              ORDER BY numero DESC LIMIT 1"
+-        )->fetch();
++        $stmt = $this->db->prepare(
++            'SELECT numero, fecha_cierre FROM ciclos
++              WHERE estado = :estado
++              ORDER BY numero DESC LIMIT 1'
++        );
++        $stmt->execute([':estado' => CicloService::ESTADO_CON_GANADOR]);
++        $fila = $stmt->fetch();
+ 
+         return $fila ?: null;
+     }

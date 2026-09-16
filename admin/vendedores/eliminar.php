@@ -2,6 +2,7 @@
 /** Baja de vendedor. Solo admin. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\VendedorService;
 use Polla\Support\ValidacionException;
 
@@ -12,6 +13,10 @@ $id = (int) ($_POST['id'] ?? 0);
 
 try {
     $resultado = (new VendedorService(getPDO()))->eliminar($id);
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::VENDEDOR_ELIMINADO, 'vendedores', $id,
+        'usuario', currentUserId(), ['resultado' => $resultado]
+    );
     setFlash('success', $resultado === 'borrado' ? 'Vendedor borrado.' : 'El vendedor ya tenía referidos: se desactivó en vez de borrarse.');
 } catch (ValidacionException $e) {
     setFlash('danger', implode("\n", $e->errores()));

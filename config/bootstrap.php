@@ -49,6 +49,17 @@ if (APP_ENV === 'development') {
 
 date_default_timezone_set('America/Argentina/Buenos_Aires');
 
+// ── Headers de seguridad HTTP ───────────────────────────────
+// Se fijan antes de cualquier salida. No interfieren con nada
+// visible; son instrucciones para el navegador.
+if (!headers_sent() && PHP_SAPI !== 'cli') {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('X-XSS-Protection: 0'); // desactivado a favor de CSP
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+}
+
 // ── Ajustes de sesion, comunes a las dos ────────────────────
 // Van aca porque hay que fijarlos antes de cualquier session_start().
 ini_set('session.cookie_httponly', '1');

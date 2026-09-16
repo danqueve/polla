@@ -61,7 +61,7 @@ class ClienteRegistroService
         return $this->db->query(
             "SELECT id, nro_cliente, dni, nombre, telefono, fecha_alta
                FROM clientes
-              WHERE estado = 'pendiente'
+              WHERE estado = '" . ClienteService::ESTADO_PENDIENTE . "'
               ORDER BY fecha_alta ASC"
         )->fetchAll();
     }
@@ -69,7 +69,7 @@ class ClienteRegistroService
     public function contarPendientes(): int
     {
         return (int) $this->db->query(
-            "SELECT COUNT(*) FROM clientes WHERE estado = 'pendiente'"
+            "SELECT COUNT(*) FROM clientes WHERE estado = '" . ClienteService::ESTADO_PENDIENTE . "'"
         )->fetchColumn();
     }
 
@@ -83,7 +83,7 @@ class ClienteRegistroService
     {
         $this->buscarPendiente($id);
 
-        $this->db->prepare("UPDATE clientes SET estado = 'aprobado' WHERE id = :id")
+        $this->db->prepare("UPDATE clientes SET estado = '" . ClienteService::ESTADO_APROBADO . "' WHERE id = :id")
                   ->execute([':id' => $id]);
     }
 
@@ -100,7 +100,7 @@ class ClienteRegistroService
     {
         $this->buscarPendiente($id);
 
-        $this->db->prepare("UPDATE clientes SET estado = 'rechazado' WHERE id = :id")
+        $this->db->prepare("UPDATE clientes SET estado = '" . ClienteService::ESTADO_RECHAZADO . "' WHERE id = :id")
                   ->execute([':id' => $id]);
     }
 
@@ -114,7 +114,7 @@ class ClienteRegistroService
         if ($estado === false) {
             throw ValidacionException::de('La solicitud no existe.');
         }
-        if ($estado !== 'pendiente') {
+        if ($estado !== ClienteService::ESTADO_PENDIENTE) {
             throw ValidacionException::de('Esa solicitud ya fue resuelta.');
         }
     }

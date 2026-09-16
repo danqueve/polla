@@ -2,6 +2,7 @@
 /** Handler POST de liquidar una comision. Exclusivo del administrador. */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\LiquidacionService;
 use Polla\Support\ValidacionException;
 
@@ -24,6 +25,10 @@ if (!in_array($tipo, ['vendedor', 'supervisor'], true) || $id <= 0) {
 
 try {
     $monto = LiquidacionService::crearDesde(getPDO())->liquidar($tipo, $id, currentUserId());
+    AuditoriaService::crearDesde(getPDO())->registrar(
+        AuditoriaService::LIQUIDACION_GENERADA, $tipo, $id,
+        'usuario', currentUserId(), ['monto' => $monto]
+    );
     setFlash('success', 'Se liquidó ' . formatPesos($monto) . '.');
 } catch (ValidacionException $e) {
     setFlash('danger', implode("\n", $e->errores()));

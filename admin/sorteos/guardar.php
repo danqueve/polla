@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/../../config/app.php';
 
+use Polla\Services\AuditoriaService;
 use Polla\Services\CicloService;
 use Polla\Services\SorteoService;
 use Polla\Support\ValidacionException;
@@ -23,6 +24,10 @@ $db = getPDO();
 try {
     $resultado = SorteoService::crearDesde($db)->registrar($fecha, $numeros, currentUserId());
     flushOld();
+    AuditoriaService::crearDesde($db)->registrar(
+        AuditoriaService::SORTEO_CARGADO, 'sorteos', (int) $resultado['sorteo_id'],
+        'usuario', currentUserId(), ['fecha' => $fecha, 'ciclo_id' => $resultado['ciclo_id']]
+    );
 
     // ── Hubo ganador: la semana se corto ────────────────────
     if ($resultado['ganadores']) {

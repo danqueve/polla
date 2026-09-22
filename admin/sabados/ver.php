@@ -49,7 +49,14 @@ if ($abierto) {
     $pozoMostrado = $pozoReal;
     $pisoAplicado = 0.0;
 }
-$subsidio = max(0.0, $pisoAplicado - $pozoReal);
+// El piso se suma siempre, no cubre un faltante -- pero para un ciclo
+// YA liquidado (rama conGanador), monto_pagado puede venir de un
+// pago viejo hecho todavia bajo la regla anterior (el mayor entre
+// real y piso, no la suma). Derivar el subsidio como "lo pagado menos
+// lo real" -- en vez de asumir directamente $pisoAplicado -- hace que
+// el desglose siga sumando exacto (real + subsidio = pozoMostrado)
+// sin importar bajo que regla se liquido ese ciclo puntual.
+$subsidio = $pozoMostrado - $pozoReal;
 
 $salidos = PortalService::numerosSalidos($lista);
 $ranking = PortalService::ranking($jugadas, $salidos);
@@ -141,7 +148,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <?php if (isAdmin() && $subsidio > 0): ?>
                     <div class="g-hero__subsidy mt-2">
                         <i class="bi bi-shield-check"></i>
-                        <span><?= e(formatPesos($pozoReal)) ?> reales · Decena de Oro subsidia <?= e(formatPesos($subsidio)) ?></span>
+                        <span><?= e(formatPesos($pozoReal)) ?> reales · Decena de Oro suma <?= e(formatPesos($subsidio)) ?> de piso garantizado</span>
                     </div>
                 <?php endif; ?>
             </div>
@@ -389,7 +396,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                         </div>
                         <?php if ($subsidio > 0): ?>
                             <div class="d-flex justify-content-between small text-danger fw-semibold bg-danger-subtle p-2 rounded">
-                                <span>Subsidio cubierto:</span>
+                                <span>Aporte de la empresa:</span>
                                 <span><?= e(formatPesos($subsidio)) ?></span>
                             </div>
                         <?php endif; ?>

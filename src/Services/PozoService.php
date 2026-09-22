@@ -74,10 +74,12 @@ class PozoService
     /**
      * El pozo que corresponde MOSTRAR para un ciclo todavia abierto (o
      * cerrado sin ganador, cuyo saldo real esta por arrastrar) [Fase 7]:
-     * nunca por debajo del premio base, aunque lo acumulado realmente
-     * sea menor. No escribe nada en la base — es un calculo en caliente
-     * contra el parametro vigente, para que cambiar el premio base rija
-     * de inmediato en cualquier pantalla sin tener que tocar filas viejas.
+     * el premio base se SUMA siempre a lo acumulado realmente, no se
+     * compara contra el -- el ganador se lleva el piso completo MAS lo
+     * recaudado, no el mayor entre los dos. No escribe nada en la base
+     * — es un calculo en caliente contra el parametro vigente, para que
+     * cambiar el premio base rija de inmediato en cualquier pantalla
+     * sin tener que tocar filas viejas.
      *
      * Para un ciclo YA LIQUIDADO (cerrado con ganador), no se usa esto:
      * se muestra pozo_ciclo.monto_pagado tal cual, que ya quedo fijado
@@ -85,18 +87,20 @@ class PozoService
      */
     public static function montoAMostrar(float $montoAcumuladoReal, float $premioBase): float
     {
-        return max($montoAcumuladoReal, $premioBase);
+        return $montoAcumuladoReal + $premioBase;
     }
 
     /**
      * Reparte el pozo entre las jugadas ganadoras y deja el ciclo liquidado.
      *
-     * monto_pagado = MAX(monto acumulado real, premio base vigente en
-     * este momento) [Fase 7]: si las ventas reales no llegaron al piso
-     * garantizado, la diferencia sale de la empresa, no de mas jugadas.
-     * monto_piso_aplicado guarda el premio_base tal como estaba en este
-     * instante, se haya terminado usando o no, para poder reconstruir
-     * despues cuanto se subsidio en cada ciclo.
+     * monto_pagado = monto acumulado real + premio base vigente en este
+     * momento [Fase 7]: el piso garantizado se suma siempre, gane quien
+     * gane con lo que se haya recaudado o no -- no es una cobertura de
+     * un faltante, es un aporte fijo de la empresa en cada ciclo con
+     * ganador. monto_piso_aplicado guarda el premio_base tal como estaba
+     * en este instante, para poder reconstruir despues cuanto aporto la
+     * empresa en cada ciclo (siempre ese mismo valor completo, no un
+     * faltante variable).
      *
      * Escribe una fila en `ganadores` por jugada con su monto_premio, y marca
      * el pozo con lo pagado y la fecha. Corre dentro de la transaccion de

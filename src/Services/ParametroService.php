@@ -96,8 +96,9 @@ class ParametroService
 
     /**
      * Piso garantizado del pozo [Fase 7]. El pozo que se muestra y que
-     * efectivamente se paga es siempre MAX(premioBase(), monto real
-     * acumulado) — nunca el monto real solo.
+     * efectivamente se paga es siempre premioBase() + monto real
+     * acumulado — el ganador se lleva el piso completo, ademas de lo
+     * recaudado, no el mayor entre los dos.
      */
     public function premioBase(): float
     {
@@ -110,7 +111,10 @@ class ParametroService
         return $this->getFloat('importe_jugada_sabado');
     }
 
-    /** Piso garantizado del pozo de sabados — caja separada del semanal. */
+    /**
+     * Piso garantizado del pozo de sabados — caja separada del semanal,
+     * mismo criterio de suma que premioBase().
+     */
     public function premioBaseSabado(): float
     {
         return $this->getFloat('premio_base_sabado');

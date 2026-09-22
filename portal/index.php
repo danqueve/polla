@@ -35,9 +35,10 @@ $cicloAbierto = true;
 
 $pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId, $tipoJuego);
 
-// Fase 7: el pozo que ve el cliente nunca baja del premio base
-// garantizado, aunque lo acumulado real esta semana (o este sabado)
-// sea menor. Caja separada: cada juego tiene su propio premio base.
+// Fase 7: el pozo que ve el cliente suma siempre el premio base
+// garantizado a lo acumulado real esta semana (o este sabado) -- el
+// ganador se lleva el piso completo MAS lo recaudado, no el mayor
+// entre los dos. Caja separada: cada juego tiene su propio premio base.
 $premioBase   = $esSabado
     ? (new ParametroService($db))->premioBaseSabado()
     : (new ParametroService($db))->premioBase();

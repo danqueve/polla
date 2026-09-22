@@ -235,8 +235,8 @@ $r = $sorteos->registrar($fechaGana, array_map('num2', extractoDe($numerosGanado
 $pozoRow = $db->query("SELECT p.monto_acumulado, p.monto_piso_aplicado, p.monto_pagado
                           FROM pozo_ciclo p WHERE p.ciclo_id = " . (int) $r['ciclo_id'])->fetch();
 ok('sorteo del miercoles ' . $fechaGana . ': ' . count($r['ganadores']) . ' ganador(es)');
-ok('real acumulado ' . formatPesos($pozoRow['monto_acumulado']) . ' -> pagado ' . formatPesos($pozoRow['monto_pagado'])
-   . ' (piso vigente ' . formatPesos($pozoRow['monto_piso_aplicado']) . ')');
+ok('real acumulado ' . formatPesos($pozoRow['monto_acumulado']) . ' + piso ' . formatPesos($pozoRow['monto_piso_aplicado'])
+   . ' -> pagado ' . formatPesos($pozoRow['monto_pagado']));
 
 $lunes3 = new DateTimeImmutable('monday this week -1 week');
 fijarFechasCiclo($db, (int) $r['ciclo_nuevo_id'], $lunes3);

@@ -27,7 +27,9 @@ $arrastre = (float) ($ciclo['monto_arrastrado'] ?? 0);
 $pozoReal     = (float) ($ciclo['monto_acumulado'] ?? 0);
 $premioBase   = $parametros->premioBaseSabado();
 $pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
-$subsidio     = max(0.0, $premioBase - $pozoReal);
+// El piso se suma siempre, no cubre un faltante: el aporte de la
+// empresa es el premio base completo, no un gap variable.
+$subsidio     = $premioBase;
 
 $faltan = 5 - count($turnos);
 
@@ -92,12 +94,10 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                     <?php endif; ?>
                 </div>
 
-                <?php if ($subsidio > 0): ?>
-                    <div class="g-hero__subsidy">
-                        <i class="bi bi-shield-check"></i>
-                        <span>De los cuales <?= e(formatPesos($pozoReal)) ?> son reales · Decena de Oro subsidia <?= e(formatPesos($subsidio)) ?></span>
-                    </div>
-                <?php endif; ?>
+                <div class="g-hero__subsidy">
+                    <i class="bi bi-shield-check"></i>
+                    <span>De los cuales <?= e(formatPesos($pozoReal)) ?> son reales · Decena de Oro suma <?= e(formatPesos($subsidio)) ?> de piso garantizado</span>
+                </div>
             </div>
 
             <!-- Stats -->

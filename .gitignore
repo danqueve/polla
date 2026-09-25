@@ -8,6 +8,16 @@
 /sql/*
 !/sql/.htaccess
 
+# Lo mismo para db/: la regla de arriba cubría solo sql/, y apareció un
+# volcado de producción en db/ (c2881399_polla.sql) con 46 hashes de
+# contraseña, los clientes reales con su DNI y la tabla remember_tokens.
+# Se ignora cualquier .sql suelto de db/ y se dejan pasar los scripts de
+# instalación, que son plantillas sin datos reales. Las migraciones
+# viven en db/migrations/, que esta regla no alcanza.
+/db/*.sql
+!/db/schema.sql
+!/db/seed.sql
+
 # Windows / macOS
 Thumbs.db
 .DS_Store

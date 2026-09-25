@@ -164,7 +164,13 @@ class SorteoService
         }
     }
 
-    private function proximoTurno(int $cicloId): int
+    /**
+     * Publico porque la pantalla de carga (admin/sabados/sorteo_nuevo.php)
+     * tiene que anunciar EL MISMO turno que despues va a guardar: antes
+     * lo calculaba por su cuenta con count()+1 y, con un turno borrado
+     * del medio, decia "Turno 3 de 5" y guardaba el 4.
+     */
+    public function proximoTurno(int $cicloId): int
     {
         // MAX(turno), no COUNT(*): si se borra un turno del medio (p.ej.
         // el 2 de {1,2,3}), COUNT(*) da 2 y vuelve a proponer el 3 --
@@ -330,6 +336,16 @@ class SorteoService
                           WHERE destino.ciclo_id = :siguiente'
                     )->execute([':extra' => $extra['id'], ':siguiente' => $siguiente['id']]);
 
+                    // El pozo de $extra hay que borrarlo a mano: el
+                    // comentario de arriba daba por hecho un FK en
+                    // cascada que el esquema no tiene (solo hay FK en
+                    // clientes.alta_por y comisiones.jugada_id), asi que
+                    // cada correccion dejaba una fila de pozo_ciclo
+                    // colgada -- y con la plata ya sumada a $siguiente,
+                    // o sea contada dos veces si alguien la leyera.
+                    $this->db->prepare('DELETE FROM pozo_ciclo WHERE ciclo_id = :id')
+                        ->execute([':id' => $extra['id']]);
+
                     $this->db->prepare('DELETE FROM ciclos WHERE id = :id')
                         ->execute([':id' => $extra['id']]);
                 }
@@ -375,12 +391,7 @@ class SorteoService
             // Reemplazar los 20 numeros del sorteo.
             $this->db->prepare('DELETE FROM sorteo_numeros WHERE sorteo_id = :id')
                 ->execute([':id' => $sorteoId]);
-            $stmt = $this->db->prepare(
-                'INSERT INTO sorteo_numeros (sorteo_id, posicion, numero) VALUES (:sorteo, :pos, :numero)'
-            );
-            foreach ($numeros as $i => $numero) {
-                $stmt->execute([':sorteo' => $sorteoId, ':pos' => $i + 1, ':numero' => $numero]);
-            }
+            $this->insertarNumeros($sorteoId, $numeros);
 
             $this->db->prepare(
                 'UPDATE sorteos SET corregido_por = :u, corregido_en = NOW() WHERE id = :id'
@@ -603,14 +614,40 @@ class SorteoService
 
         $sorteoId = (int) $this->db->lastInsertId();
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO sorteo_numeros (sorteo_id, posicion, numero) VALUES (:sorteo, :pos, :numero)'
-        );
-        foreach ($numeros as $i => $numero) {
-            $stmt->execute([':sorteo' => $sorteoId, ':pos' => $i + 1, ':numero' => $numero]);
-        }
+        // Un solo INSERT multi-fila en vez de 20 de a uno: eran 20
+        // round-trips a la base, la mitad de las sentencias de todo el
+        // POST de carga de un sorteo.
+        $this->insertarNumeros($sorteoId, $numeros);
 
         return $sorteoId;
+    }
+
+    /**
+     * Guarda los 20 numeros del extracto en una sola sentencia.
+     *
+     * De a uno eran 20 round-trips a la base: 26 de las 26 sentencias
+     * del POST de carga de un turno, contra 7 asi.
+     *
+     * Cada fila lleva su propio placeholder incluso para el sorteo_id
+     * porque con EMULATE_PREPARES en false MySQL no admite repetir un
+     * nombre en varios lugares de la misma sentencia.
+     *
+     * @param int[] $numeros En el orden del extracto (1° a 20° premio).
+     */
+    private function insertarNumeros(int $sorteoId, array $numeros): void
+    {
+        $filas  = [];
+        $params = [];
+        foreach (array_values($numeros) as $i => $numero) {
+            $filas[]          = "(:sor$i, :pos$i, :num$i)";
+            $params[":sor$i"] = $sorteoId;
+            $params[":pos$i"] = $i + 1;
+            $params[":num$i"] = $numero;
+        }
+
+        $this->db->prepare(
+            'INSERT INTO sorteo_numeros (sorteo_id, posicion, numero) VALUES ' . implode(', ', $filas)
+        )->execute($params);
     }
 
     // ── Consultas ───────────────────────────────────────────

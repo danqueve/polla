@@ -18,8 +18,11 @@ $sorteos    = SorteoService::crearDesde($db);
 $ciclo    = $ciclos->obtenerCicloActivo(CicloService::TIPO_SABADO);
 $cantidad = $parametros->getInt('numeros_por_sorteo');
 
-$yaCargados = $sorteos->listarPorCiclo((int) $ciclo['id']);
-$turno      = count($yaCargados) + 1;
+// El mismo calculo que usa el guardado (MAX(turno)+1), no count()+1:
+// con un turno borrado del medio, contar daba un numero distinto al que
+// realmente se iba a guardar. De paso evita traer los turnos completos
+// con sus 20 numeros solo para contarlos.
+$turno = $sorteos->proximoTurno((int) $ciclo['id']);
 
 $fechaCiclo = new DateTimeImmutable($ciclo['fecha_inicio']);
 $hoy        = new DateTimeImmutable('today');

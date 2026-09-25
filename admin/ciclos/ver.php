@@ -297,16 +297,22 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     </div>
 
                                     <div class="text-end">
-                                        <?php if ($jugada['estado'] === 'ganadora'): ?>
+                                        <?php if ($jugada['estado'] === 'anulada'): ?>
+                                            <span class="g-badge g-badge--danger">Anulada</span>
+                                        <?php elseif ($jugada['estado'] === 'ganadora'): ?>
                                             <span class="g-badge g-badge--warning">Ganadora</span>
                                         <?php elseif ($jugada['estado'] === 'perdedora'): ?>
                                             <span class="g-badge" style="background:#e5e7eb;color:#4b5563">Perdió</span>
                                         <?php else: ?>
                                             <span class="g-badge g-badge--success">Activa</span>
                                         <?php endif; ?>
-                                        <div class="small fw-semibold text-primary mt-1">
-                                            <?= $aciertos ?> / <?= count($jugada['numeros']) ?> aciertos
-                                        </div>
+                                        <?php if ($jugada['estado'] === 'anulada'): ?>
+                                            <div class="small fw-semibold text-muted mt-1">No participa</div>
+                                        <?php else: ?>
+                                            <div class="small fw-semibold text-primary mt-1">
+                                                <?= $aciertos ?> / <?= count($jugada['numeros']) ?> aciertos
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 

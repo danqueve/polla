@@ -66,6 +66,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
             <a href="<?= APP_URL ?>/admin/jugadas/nueva.php?tipo=<?= CicloService::TIPO_SABADO ?>" class="g-btn g-btn--primary">
                 <i class="bi bi-plus-lg"></i> Cargar Jugada Sábado
             </a>
+            <a href="<?= APP_URL ?>/admin/jugadas/index.php?tipo=<?= CicloService::TIPO_SABADO ?>&amp;ciclo=<?= $cicloId ?>" class="g-btn g-btn--outline">
+                <i class="bi bi-ticket-perforated"></i> Gestionar jugadas
+            </a>
             <a href="<?= APP_URL ?>/admin/sabados/sorteo_nuevo.php" class="g-btn g-btn--outline">
                 <i class="bi bi-dice-5"></i> Cargar Turno
             </a>

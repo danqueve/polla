@@ -17,8 +17,9 @@ $parametros = new ParametroService($db);
 $ciclos     = new CicloService($db);
 $horario    = new HorarioCargaService($parametros);
 
-$tipoJuego = array_key_exists($_GET['tipo'] ?? '', CicloService::TIPOS)
-    ? $_GET['tipo']
+$tipoCrudo = $_GET['tipo'] ?? null;
+$tipoJuego = is_string($tipoCrudo) && array_key_exists($tipoCrudo, CicloService::TIPOS)
+    ? $tipoCrudo
     : CicloService::TIPO_SEMANAL;
 $esSabado  = $tipoJuego === CicloService::TIPO_SABADO;
 
@@ -97,7 +98,7 @@ $pageSectionTitle = 'Cargar Jugada';
 $bodyClass        = 'con-accion-fija';
 $pageScripts      = ['promociones.js', 'numeros.js'];
 $breadcrumb       = [
-    ['label' => 'Jugadas', 'url' => APP_URL . '/admin/jugadas/index.php'],
+    ['label' => 'Jugadas', 'url' => APP_URL . '/admin/jugadas/index.php?tipo=' . $tipoJuego],
     ['label' => 'Cargar Jugada', 'url' => '']
 ];
 
@@ -127,7 +128,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
         </div>
 
         <div>
-            <a href="<?= APP_URL ?>/admin/jugadas/index.php" class="g-btn g-btn--outline">
+            <a href="<?= APP_URL ?>/admin/jugadas/index.php?tipo=<?= e($tipoJuego) ?>" class="g-btn g-btn--outline">
                 <i class="bi bi-arrow-left"></i> Volver a Jugadas
             </a>
         </div>

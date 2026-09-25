@@ -23,6 +23,7 @@
  * (PortalService::evaluar()), igual que el cotejo real: no hace falta
  * que salgan juntos en uno solo.
  */
+$anulada   = $jugada['estado'] === 'anulada';
 $gano      = $jugada['monto_premio'] !== null;
 $acertados = $evaluacion['acertados'];
 $aciertos  = $evaluacion['aciertos'];
@@ -34,7 +35,17 @@ $marcados = $acertados;
 ?>
 <article class="tarjeta tarjeta--realce mb-3 overflow-hidden">
 
-    <?php if ($gano): ?>
+    <?php if ($anulada): ?>
+
+        <div class="estado-jugada estado-jugada--cerrada">
+            <span class="estado-jugada__icono"><i class="bi bi-x-circle"></i></span>
+            <div class="min-w-0">
+                <p class="estado-jugada__titulo">Jugada anulada</p>
+                <p class="estado-jugada__detalle">Esta jugada ya no participa del sorteo</p>
+            </div>
+        </div>
+
+    <?php elseif ($gano): ?>
 
         <div class="estado-jugada estado-jugada--gano">
             <span class="estado-jugada__icono"><i class="bi bi-trophy-fill"></i></span>
@@ -111,7 +122,7 @@ $marcados = $acertados;
             <?php endforeach; ?>
         </div>
 
-        <?php if ($totalSorteos > 0): ?>
+        <?php if (!$anulada && $totalSorteos > 0): ?>
             <hr class="my-3">
             <p class="rotulo mb-2">Cómo te fue en cada sorteo</p>
             <p class="form-text mt-0 mb-2">Tocá un sorteo para ver el extracto completo.</p>

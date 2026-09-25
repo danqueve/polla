@@ -31,10 +31,14 @@ $resumen   = $ciclos->resumen($cicloId);
 $lista     = $sorteos->listarPorCiclo($cicloId);
 $ganadores = $sorteos->ganadoresDeCiclo($cicloId);
 $jugadasSvc   = JugadaService::crearDesde($db);
+// La vista conserva su muestra acotada de jugadas para no volver pesada la
+// pantalla. El listado paginado de Gestión permite ver y operar todas.
 $jugadas      = $jugadasSvc->listarPorCiclo($cicloId);
-// El total real, no count($jugadas): listarPorCiclo() corta en 200 sin
-// avisar, asi que contar la lista mentia en un sabado grande.
 $jugadasTotal = $jugadasSvc->contarPorCiclo($cicloId);
+
+// El ranking no puede usar la muestra de 200: se calcula con todas las
+// activas para que una jugada vieja no quede fuera del resultado.
+$jugadasParaRanking = $jugadasSvc->todasDelCiclo($cicloId);
 
 $abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
 $conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
@@ -63,7 +67,7 @@ if ($abierto) {
 $subsidio = $pozoMostrado - $pozoReal;
 
 $salidos = PortalService::numerosSalidos($lista);
-$ranking = PortalService::ranking($jugadas, $salidos);
+$ranking = PortalService::ranking($jugadasParaRanking, $salidos);
 
 $pageTitle        = 'Sábado ' . (int) $ciclo['numero'] . ' · ' . APP_NAME;
 $navSeccion       = 'sabados';
@@ -108,6 +112,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
         <div class="d-flex gap-2">
             <a href="<?= APP_URL ?>/admin/sabados/ciclos.php" class="g-btn g-btn--outline">
                 <i class="bi bi-arrow-left"></i> Historial de Sábados
+            </a>
+            <a href="<?= APP_URL ?>/admin/jugadas/index.php?tipo=<?= CicloService::TIPO_SABADO ?>&amp;ciclo=<?= $cicloId ?>" class="g-btn g-btn--outline">
+                <i class="bi bi-ticket-perforated"></i> Gestionar jugadas
             </a>
             <?php if ($abierto): ?>
                 <a href="<?= APP_URL ?>/admin/sabados/sorteo_nuevo.php" class="g-btn g-btn--primary">
@@ -310,16 +317,22 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     </div>
 
                                     <div class="text-end">
-                                        <?php if ($jugada['estado'] === 'ganadora'): ?>
+                                        <?php if ($jugada['estado'] === 'anulada'): ?>
+                                            <span class="g-badge g-badge--danger">Anulada</span>
+                                        <?php elseif ($jugada['estado'] === 'ganadora'): ?>
                                             <span class="g-badge g-badge--warning">Ganadora</span>
                                         <?php elseif ($jugada['estado'] === 'perdedora'): ?>
                                             <span class="g-badge" style="background:#e5e7eb;color:#4b5563">Perdió</span>
                                         <?php else: ?>
                                             <span class="g-badge g-badge--success">Activa</span>
                                         <?php endif; ?>
-                                        <div class="small fw-semibold text-primary mt-1">
-                                            <?= $aciertos ?> / <?= count($jugada['numeros']) ?> salidos
-                                        </div>
+                                        <?php if ($jugada['estado'] === 'anulada'): ?>
+                                            <div class="small fw-semibold text-muted mt-1">No participa</div>
+                                        <?php else: ?>
+                                            <div class="small fw-semibold text-primary mt-1">
+                                                <?= $aciertos ?> / <?= count($jugada['numeros']) ?> salidos
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 

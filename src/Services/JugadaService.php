@@ -373,11 +373,6 @@ class JugadaService
     }
 
     /**
-     * Jugadas de un ciclo, con el cliente y sus numeros ya agrupados.
-     *
-     * @return array<int,array>
-     */
-    /**
      * Cuantas jugadas tiene el ciclo, sin traerlas.
      *
      * Para los titulos tipo "Jugadas de Sábado (N)": listarPorCiclo()
@@ -400,7 +395,7 @@ class JugadaService
     }
 
     /**
-     * Todas las jugadas del ciclo, sin tope.
+     * Todas las jugadas que siguen participando del ciclo, sin tope.
      *
      * Para los rankings: con el tope de 200 de listarPorCiclo() un ciclo
      * grande podia dejar afuera al que iba primero, y el ranking salia
@@ -409,20 +404,26 @@ class JugadaService
      */
     public function todasDelCiclo(int $cicloId): array
     {
-        return $this->listarPorCiclo($cicloId, '', PHP_INT_MAX);
+        [$where, $params] = $this->filtrosDeCiclo($cicloId, '', false);
+        return $this->consultarJugadasDelCiclo($where, $params, PHP_INT_MAX, 0);
     }
 
     /**
-     * WHERE y parametros compartidos por listarPorCiclo() y
-     * contarPorCiclo(), para que el total no pueda desalinearse del
-     * listado que describe.
+     * WHERE y parametros compartidos por listarPorCiclo(),
+     * contarPorCiclo() y todasDelCiclo(). El listado de gestion conserva
+     * las anuladas para trazabilidad; los rankings y vistas publicas usan
+     * todasDelCiclo() y no las dejan participar.
      *
      * @return array{0: string[], 1: array<string, string|int>}
      */
-    private function filtrosDeCiclo(int $cicloId, string $busqueda): array
+    private function filtrosDeCiclo(int $cicloId, string $busqueda, bool $incluirAnuladas = true): array
     {
         $where  = ['j.ciclo_id = :ciclo'];
         $params = [':ciclo' => $cicloId];
+
+        if (!$incluirAnuladas) {
+            $where[] = "j.estado <> 'anulada'";
+        }
 
         $busqueda = trim($busqueda);
         if ($busqueda !== '') {
@@ -438,26 +439,60 @@ class JugadaService
         return [$where, $params];
     }
 
-    public function listarPorCiclo(int $cicloId, string $busqueda = '', int $limite = 200): array
+    /**
+     * Jugadas de un ciclo, con cliente, numeros y permisos de gestion.
+     *
+     * $offset habilita paginacion sin romper los llamados existentes de
+     * tres argumentos. El listado incluye anuladas a proposito: son parte
+     * de la trazabilidad, aunque no de los totales ni de los rankings.
+     *
+     * @return array<int,array>
+     */
+    public function listarPorCiclo(
+        int $cicloId,
+        string $busqueda = '',
+        int $limite = 200,
+        int $offset = 0
+    ): array
     {
         [$where, $params] = $this->filtrosDeCiclo($cicloId, $busqueda);
+        return $this->consultarJugadasDelCiclo($where, $params, $limite, $offset);
+    }
 
-        // GROUP_CONCAT ordenado trae los 10 numeros en una sola pasada,
-        // sin una consulta extra por jugada.
-        $sql = 'SELECT j.id, j.importe, j.aporte_pozo, j.pagada, j.estado, j.fecha_carga,
-                       j.origen_carga,
+    /**
+     * Consulta comun para el listado paginado y la vista completa de
+     * rankings. $where/$params vienen de filtrosDeCiclo(), nunca de UI.
+     *
+     * @param string[] $where
+     * @param array<string,string|int> $params
+     * @return array<int,array>
+     */
+    private function consultarJugadasDelCiclo(array $where, array $params, int $limite, int $offset): array
+    {
+        $limite = max(0, $limite);
+        $offset = max(0, $offset);
+
+        // GROUP_CONCAT ordenado trae los numeros en una sola pasada, sin
+        // una consulta extra por jugada. El subquery de sorteos no
+        // multiplica las filas del GROUP BY y permite explicar el bloqueo
+        // con el total real de sorteos cargados.
+        $sql = 'SELECT j.id, j.tipo_juego, j.ciclo_id, j.importe, j.aporte_pozo,
+                       j.pagada, j.estado_pago, j.estado, j.fecha_carga, j.origen_carga,
                        c.id AS cliente_id, c.nombre AS cliente_nombre,
                        c.nro_cliente, c.dni,
+                       cl.numero AS ciclo_numero, cl.estado AS ciclo_estado,
+                       (SELECT COUNT(*) FROM sorteos s WHERE s.ciclo_id = j.ciclo_id) AS sorteos_total,
                        u.nombre AS cargado_por_nombre,
                        GROUP_CONCAT(n.numero ORDER BY n.numero ASC) AS numeros
                   FROM jugadas j
                   JOIN clientes c        ON c.id = j.cliente_id
+                  JOIN ciclos cl         ON cl.id = j.ciclo_id
                   LEFT JOIN usuarios u   ON u.id = j.cargado_por
                   LEFT JOIN jugada_numeros n ON n.jugada_id = j.id
                  WHERE ' . implode(' AND ', $where) . '
                  GROUP BY j.id
                  ORDER BY j.fecha_carga DESC, j.id DESC
-                 LIMIT ' . (int) $limite;
+                 LIMIT ' . $limite . ' OFFSET ' . $offset;
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -465,7 +500,10 @@ class JugadaService
         $filas = $stmt->fetchAll();
         foreach ($filas as &$fila) {
             $fila['numeros'] = self::explotarNumeros($fila['numeros']);
+            $fila['sorteos_total'] = (int) $fila['sorteos_total'];
+            $fila = $this->agregarPermisosGestion($fila);
         }
+        unset($fila);
 
         return $filas;
     }
@@ -474,11 +512,12 @@ class JugadaService
     {
         $stmt = $this->db->prepare(
             'SELECT j.*, c.nombre AS cliente_nombre, c.nro_cliente, c.dni,
-                    cl.numero AS ciclo_numero, cl.estado AS ciclo_estado,
+                    cl.numero AS ciclo_numero, cl.estado AS ciclo_estado, cl.tipo AS ciclo_tipo,
+                    (SELECT COUNT(*) FROM sorteos s WHERE s.ciclo_id = j.ciclo_id) AS sorteos_total,
                     u.nombre AS cargado_por_nombre
                FROM jugadas j
                JOIN clientes c      ON c.id  = j.cliente_id
-               JOIN ciclos   cl     ON cl.id = j.ciclo_id
+               LEFT JOIN ciclos cl  ON cl.id = j.ciclo_id
                LEFT JOIN usuarios u ON u.id  = j.cargado_por
               WHERE j.id = :id LIMIT 1'
         );
@@ -494,8 +533,30 @@ class JugadaService
         );
         $stmtNum->execute([':id' => $id]);
         $jugada['numeros'] = array_map('intval', $stmtNum->fetchAll(PDO::FETCH_COLUMN));
+        $jugada['sorteos_total'] = (int) $jugada['sorteos_total'];
 
-        return $jugada;
+        return $this->agregarPermisosGestion($jugada);
+    }
+
+    /**
+     * Hint de solo lectura para formularios: actualizarNumeros() y
+     * anular() vuelven a validar bajo bloqueo, por lo que este resultado
+     * nunca es la unica barrera de seguridad.
+     *
+     * @return array{puede_editar:bool,puede_anular:bool,bloqueo_jugada:?string}|null
+     */
+    public function permisosDeGestion(int $id): ?array
+    {
+        $jugada = $this->buscarPorId($id);
+        if (!$jugada) {
+            return null;
+        }
+
+        return [
+            'puede_editar'  => (bool) $jugada['puede_editar'],
+            'puede_anular'  => (bool) $jugada['puede_anular'],
+            'bloqueo_jugada' => $jugada['bloqueo_jugada'],
+        ];
     }
 
     /**
@@ -518,7 +579,7 @@ class JugadaService
         string $tipoJuego = CicloService::TIPO_SEMANAL,
         ?int $cicloId = null
     ): array {
-        $where  = ["j.estado_pago = 'confirmada'", 'j.tipo_juego = :tipo_juego'];
+        $where  = ["j.estado_pago = 'confirmada'", "j.estado <> 'anulada'", 'j.tipo_juego = :tipo_juego'];
         $params = [':tipo_juego' => $tipoJuego];
 
         if ($cicloId !== null) {
@@ -549,57 +610,247 @@ class JugadaService
     }
 
     /**
-     * Borra una jugada y le devuelve al pozo el aporte que habia sumado.
-     * Solo el admin llega aca (el handler usa requireAdmin()).
+     * Reemplaza los numeros de una jugada sin cambiar cliente, importe ni
+     * ciclo. El tipo se toma SIEMPRE de la fila almacenada: asi una
+     * jugada de sabado sigue exigiendo exactamente sus 5 numeros aunque
+     * un POST manipulado intente presentarla como semanal.
+     *
+     * @param string[] $numerosCrudos
+     * @return array Jugada actualizada, incluidos numeros y permisos.
+     * @throws ValidacionException
+     */
+    public function actualizarNumeros(int $id, array $numerosCrudos): array
+    {
+        $propia = !$this->db->inTransaction();
+        if ($propia) {
+            $this->db->beginTransaction();
+        }
+
+        try {
+            $jugada = $this->bloquearJugadaParaGestion($id);
+            $this->exigirGestionable($jugada);
+
+            $tipoJuego = (string) $jugada['tipo_juego'];
+            if (!array_key_exists($tipoJuego, CicloService::TIPOS)) {
+                throw ValidacionException::de('La jugada tiene un tipo de juego inválido y no puede editarse.');
+            }
+
+            $numeros = $this->validarNumeros($numerosCrudos, $tipoJuego);
+            $this->reemplazarNumeros((int) $jugada['id'], $numeros);
+
+            if ($propia) {
+                $this->db->commit();
+            }
+
+            $actualizada = $this->buscarPorId($id);
+            if (!$actualizada) {
+                throw ValidacionException::de('No se pudo recuperar la jugada actualizada.');
+            }
+            return $actualizada;
+        } catch (Throwable $e) {
+            if ($propia && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Anula (sin borrar) una jugada antes de que empiece su ciclo. Revierte
+     * su aporte al pozo y la comision solo si esa comision sigue pendiente;
+     * una comision ya liquidada bloquea toda la operacion.
+     *
+     * @return array Jugada anulada, con aporte_pozo_revertido y comision_revertida.
+     * @throws ValidacionException
+     */
+    public function anular(int $id): array
+    {
+        $propia = !$this->db->inTransaction();
+        if ($propia) {
+            $this->db->beginTransaction();
+        }
+
+        try {
+            $jugada = $this->bloquearJugadaParaGestion($id);
+            $this->exigirGestionable($jugada);
+
+            $aporteRevertido = 0.0;
+            if ((int) $jugada['pagada'] === 1 && $jugada['estado_pago'] === 'confirmada') {
+                $aporteRevertido = (float) $jugada['aporte_pozo'];
+                $this->pozo->descontar((int) $jugada['ciclo_id'], $aporteRevertido);
+            }
+
+            $comisionRevertida = $this->comisiones->revertirPorJugadaSiPendiente((int) $jugada['id']);
+
+            $this->db->prepare(
+                "UPDATE jugadas SET estado = 'anulada' WHERE id = :id AND estado = 'activa'"
+            )->execute([':id' => $jugada['id']]);
+
+            if ($propia) {
+                $this->db->commit();
+            }
+
+            $anulada = $this->buscarPorId($id);
+            if (!$anulada) {
+                throw ValidacionException::de('No se pudo recuperar la jugada anulada.');
+            }
+            $anulada['aporte_pozo_revertido'] = $aporteRevertido;
+            $anulada['comision_revertida']    = $comisionRevertida;
+            return $anulada;
+        } catch (Throwable $e) {
+            if ($propia && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Compatibilidad con el endpoint historico: desde ahora nunca borra
+     * fisicamente una jugada. Quien aun llame eliminar() recibe las mismas
+     * reglas estrictas y una anulacion segura.
      *
      * @throws ValidacionException
      */
     public function eliminar(int $id): void
     {
-        $jugada = $this->buscarPorId($id);
-        if (!$jugada) {
+        $this->anular($id);
+    }
+
+    // ── Gestion segura (edicion y anulacion) ──────────────────
+
+    /**
+     * Toma el candado del ciclo ANTES que el de la jugada, en el mismo
+     * orden que SorteoService. Asi no puede entrar un sorteo entre la
+     * validacion y la escritura, ni formarse un deadlock con el cotejo.
+     *
+     * @return array Fila de jugada bloqueada, con estado de ciclo y total de sorteos.
+     * @throws ValidacionException
+     */
+    private function bloquearJugadaParaGestion(int $id): array
+    {
+        $stmt = $this->db->prepare('SELECT ciclo_id FROM jugadas WHERE id = :id LIMIT 1');
+        $stmt->execute([':id' => $id]);
+        $referencia = $stmt->fetch();
+
+        if (!$referencia) {
             throw ValidacionException::de('La jugada no existe.');
         }
-        if ($jugada['estado'] === 'ganadora') {
-            throw ValidacionException::de('No se puede borrar una jugada ganadora ya liquidada.');
+
+        $cicloId = $referencia['ciclo_id'] === null ? null : (int) $referencia['ciclo_id'];
+        $ciclo   = null;
+        if ($cicloId !== null) {
+            $ciclo = $this->ciclos->bloquearPorId($cicloId);
+            if (!$ciclo) {
+                throw ValidacionException::de('La jugada apunta a un ciclo inexistente y no puede gestionarse.');
+            }
         }
 
-        // Si esta jugada genero una comision de referido y esa comision
-        // ya se pago (el modelo es de saldo corrido, no un flag por
-        // fila: ComisionService::saldoPendiente() = SUM(comisiones) -
-        // SUM(liquidaciones)), borrarla dejaria el saldo del referidor
-        // negativo la proxima vez que se calcule, porque las
-        // liquidaciones ya cobradas seguirian contando contra un total
-        // de comisiones ahora mas chico.
-        $comisionStmt = $this->db->prepare(
-            'SELECT referidor_tipo, referidor_id, monto FROM comisiones WHERE jugada_id = :id'
+        $stmt = $this->db->prepare('SELECT * FROM jugadas WHERE id = :id LIMIT 1 FOR UPDATE');
+        $stmt->execute([':id' => $id]);
+        $jugada = $stmt->fetch();
+
+        if (!$jugada) {
+            throw ValidacionException::de('La jugada ya no existe.');
+        }
+
+        $cicloActual = $jugada['ciclo_id'] === null ? null : (int) $jugada['ciclo_id'];
+        if ($cicloActual !== $cicloId) {
+            // Este caso solo puede darse si una solicitud pendiente se
+            // confirmo entre la lectura inicial y el lock. No tomamos su
+            // ciclo despues de haber bloqueado la jugada (orden inverso al
+            // de SorteoService): se reintenta y la proxima vez se bloquea
+            // correctamente ciclo -> jugada.
+            throw ValidacionException::de('La jugada cambió de ciclo mientras se intentaba gestionar. Reintentá.');
+        }
+
+        $jugada['ciclo_estado'] = $ciclo['estado'] ?? null;
+        $jugada['ciclo_tipo']   = $ciclo['tipo'] ?? null;
+        $jugada['sorteos_total'] = $cicloId === null ? 0 : $this->contarSorteosDelCiclo($cicloId);
+
+        return $jugada;
+    }
+
+    /** @throws ValidacionException */
+    private function exigirGestionable(array $jugada): void
+    {
+        $motivo = $this->motivoBloqueoGestion($jugada);
+        if ($motivo !== null) {
+            throw ValidacionException::de($motivo);
+        }
+    }
+
+    /**
+     * Motivo comun para los hints de lectura y la defensa transaccional.
+     * null significa que la jugada puede editarse o anularse.
+     */
+    private function motivoBloqueoGestion(array $jugada): ?string
+    {
+        if (($jugada['ciclo_id'] ?? null) === null) {
+            return 'La jugada todavía no está asignada a un ciclo y se gestiona desde Solicitudes.';
+        }
+        if ((int) ($jugada['pagada'] ?? 0) !== 1 || ($jugada['estado_pago'] ?? '') !== 'confirmada') {
+            return 'Solo se pueden gestionar jugadas pagadas y confirmadas.';
+        }
+
+        $estadoCiclo = (string) ($jugada['ciclo_estado'] ?? '');
+        if (!in_array($estadoCiclo, [CicloService::ESTADO_ABIERTO, CicloService::ESTADO_PROGRAMADO], true)) {
+            return 'No se puede gestionar una jugada de un ciclo cerrado.';
+        }
+        if ((int) ($jugada['sorteos_total'] ?? 0) > 0) {
+            return 'No se puede gestionar una jugada después de cargarse el primer sorteo del ciclo.';
+        }
+
+        $estado = (string) ($jugada['estado'] ?? '');
+        if ($estado === 'anulada') {
+            return 'La jugada ya fue anulada.';
+        }
+        if ($estado !== 'activa') {
+            return 'Solo se pueden gestionar jugadas activas.';
+        }
+        if (!array_key_exists((string) ($jugada['tipo_juego'] ?? ''), CicloService::TIPOS)) {
+            return 'La jugada tiene un tipo de juego inválido y no puede gestionarse.';
+        }
+
+        return null;
+    }
+
+    /** Agrega los permisos como hint de UI, sin sustituir los locks de escritura. */
+    private function agregarPermisosGestion(array $jugada): array
+    {
+        $bloqueo = $this->motivoBloqueoGestion($jugada);
+        $jugada['puede_editar']   = $bloqueo === null;
+        $jugada['puede_anular']   = $bloqueo === null;
+        $jugada['bloqueo_jugada'] = $bloqueo;
+
+        return $jugada;
+    }
+
+    private function contarSorteosDelCiclo(int $cicloId): int
+    {
+        $stmt = $this->db->prepare('SELECT COUNT(*) FROM sorteos WHERE ciclo_id = :ciclo');
+        $stmt->execute([':ciclo' => $cicloId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Reemplazo explicito de hijas: algunas instalaciones antiguas tienen
+     * jugada_numeros sin FK/cascade. No depende de esa constraint; para
+     * garantía completa de rollback la tabla debe estar en InnoDB (ver el
+     * preflight de migración incluido).
+     *
+     * @param int[] $numeros
+     */
+    private function reemplazarNumeros(int $jugadaId, array $numeros): void
+    {
+        $this->db->prepare('DELETE FROM jugada_numeros WHERE jugada_id = :id')
+            ->execute([':id' => $jugadaId]);
+
+        $stmt = $this->db->prepare(
+            'INSERT INTO jugada_numeros (jugada_id, numero) VALUES (:jugada, :numero)'
         );
-        $comisionStmt->execute([':id' => $id]);
-        $comision = $comisionStmt->fetch();
-        if ($comision) {
-            $saldoSinEsta = $this->comisiones->saldoPendiente($comision['referidor_tipo'], (int) $comision['referidor_id'])
-                - (float) $comision['monto'];
-            if ($saldoSinEsta < 0) {
-                throw ValidacionException::de(
-                    'No se puede borrar: la comisión de esta jugada ya fue liquidada al referidor.'
-                );
-            }
-        }
-
-        $this->db->beginTransaction();
-        try {
-            // Si el ciclo ya se cerro y liquido, el pozo no se toca.
-            if ($jugada['ciclo_estado'] === CicloService::ESTADO_ABIERTO && (int) $jugada['pagada'] === 1) {
-                $this->pozo->descontar((int) $jugada['ciclo_id'], (float) $jugada['aporte_pozo']);
-            }
-
-            // jugada_numeros cae sola por el ON DELETE CASCADE.
-            $this->db->prepare('DELETE FROM jugadas WHERE id = :id')->execute([':id' => $id]);
-
-            $this->db->commit();
-        } catch (Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
+        foreach ($numeros as $numero) {
+            $stmt->execute([':jugada' => $jugadaId, ':numero' => $numero]);
         }
     }
 

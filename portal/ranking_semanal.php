@@ -26,7 +26,10 @@ $cicloId = (int) $ciclo['id'];
 $lista   = SorteoService::crearDesde($db)->listarPorCiclo($cicloId);
 // Todas, sin el tope de 200: si quedaba afuera el que iba primero, el
 // ranking salia mal sin ningun sintoma visible.
-$jugadas = JugadaService::crearDesde($db)->todasDelCiclo($cicloId);
+$jugadas = array_values(array_filter(
+    JugadaService::crearDesde($db)->todasDelCiclo($cicloId),
+    static fn(array $jugada): bool => $jugada['estado'] !== 'anulada'
+));
 $salidos = PortalService::numerosSalidos($lista);
 $ranking = PortalService::ranking($jugadas, $salidos);
 

@@ -13,8 +13,9 @@ requirePost();
 $clienteId    = (int) ($_POST['cliente_id'] ?? 0);
 $gruposPost   = is_array($_POST['grupos'] ?? null) ? $_POST['grupos'] : [];
 $promocionId  = !empty($_POST['promocion_id']) ? (int) $_POST['promocion_id'] : null;
-$tipoJuego    = array_key_exists($_POST['tipo_juego'] ?? '', CicloService::TIPOS)
-    ? $_POST['tipo_juego']
+$tipoCrudo    = $_POST['tipo_juego'] ?? null;
+$tipoJuego    = is_string($tipoCrudo) && array_key_exists($tipoCrudo, CicloService::TIPOS)
+    ? $tipoCrudo
     : CicloService::TIPO_SEMANAL;
 $volver       = APP_URL . '/admin/jugadas/nueva.php?tipo=' . $tipoJuego;
 

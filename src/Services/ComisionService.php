@@ -3,6 +3,7 @@
 namespace Polla\Services;
 
 use PDO;
+use Polla\Support\ValidacionException;
 
 /**
  * Comisiones por referidos [Fase 11].
@@ -79,6 +80,52 @@ class ComisionService
             ':monto'      => $monto,
             ':porcentaje' => $porcentaje,
         ]);
+    }
+
+    /**
+     * Elimina la comisión de una jugada que se está anulando, siempre que
+     * el libro mayor todavía tenga saldo suficiente para deshacerla.
+     *
+     * Las liquidaciones no se vinculan a comisiones puntuales. Por eso la
+     * única comprobación posible con el esquema actual es que, descontando
+     * esta comisión, el saldo del referidor no quede negativo. El método se
+     * invoca dentro de la misma transacción que anula la jugada: si falla,
+     * tampoco se toca el pozo ni el estado de la jugada.
+     *
+     * @return float Monto de comisión revertido; 0 si la jugada no tenía una.
+     * @throws ValidacionException
+     */
+    public function revertirPorJugadaSiPendiente(int $jugadaId): float
+    {
+        $stmt = $this->db->prepare(
+            'SELECT referidor_tipo, referidor_id, monto
+               FROM comisiones
+              WHERE jugada_id = :jugada
+              LIMIT 1
+              FOR UPDATE'
+        );
+        $stmt->execute([':jugada' => $jugadaId]);
+        $comision = $stmt->fetch();
+
+        if (!$comision) {
+            return 0.0;
+        }
+
+        $saldoSinEsta = $this->saldoPendiente(
+            (string) $comision['referidor_tipo'],
+            (int) $comision['referidor_id']
+        ) - (float) $comision['monto'];
+
+        if ($saldoSinEsta < -0.00001) {
+            throw ValidacionException::de(
+                'No se puede anular: la comisión de esta jugada ya fue liquidada al referidor.'
+            );
+        }
+
+        $this->db->prepare('DELETE FROM comisiones WHERE jugada_id = :jugada')
+            ->execute([':jugada' => $jugadaId]);
+
+        return (float) $comision['monto'];
     }
 
     // ── Registro con referido (registro.php) ────────────────

@@ -145,7 +145,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                     <?php
                     $ajenas = array_filter(
                         JugadaService::crearDesde($db)->todasDelCiclo($cicloId),
-                        static fn($j) => (int) $j['cliente_id'] !== $clienteId
+                        static fn($j) => (int) $j['cliente_id'] !== $clienteId && $j['estado'] !== 'anulada'
                     );
                     $salidos = PortalService::numerosSalidos($sorteos);
                     ?>

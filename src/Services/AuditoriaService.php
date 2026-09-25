@@ -36,6 +36,8 @@ class AuditoriaService
 
     // Jugadas
     public const JUGADA_CARGADA        = 'jugada_cargada';
+    public const JUGADA_EDITADA        = 'jugada_editada';
+    public const JUGADA_ANULADA        = 'jugada_anulada';
     public const JUGADA_ELIMINADA      = 'jugada_eliminada';
 
     // Solicitudes

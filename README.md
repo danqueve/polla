@@ -29,16 +29,18 @@ parciales. El detalle funcional completo está en
 3. Creá la base y cargá el esquema completo + los datos base:
 
    ```sh
-   mysql -u root -p -e "CREATE DATABASE polla_quevedo CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-   mysql -u root -p polla_quevedo < db/schema.sql
-   mysql -u root -p polla_quevedo < db/seed.sql
+   mysql -u root -p -e "CREATE DATABASE c2881399_polla CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+   mysql -u root -p c2881399_polla < db/schema.sql
+   mysql -u root -p c2881399_polla < db/seed.sql
    ```
 
-   `polla_quevedo` es solo un nombre de ejemplo: ninguno de los `.sql`
-   de `db/` ni de `demo/` trae `CREATE DATABASE` ni `USE` — la base la
-   elige siempre la línea de comandos (o tu cliente de MySQL), así que
-   podés usar el nombre que prefieras mientras sea el mismo en las tres
-   líneas de arriba y en `config/db.php`.
+   `c2881399_polla` es el nombre real que usan hoy tanto el VPS de
+   producción como el entorno local — ninguno de los `.sql` de `db/`
+   ni de `demo/` trae `CREATE DATABASE` ni `USE`, así que la base la
+   elige siempre la línea de comandos (o tu cliente de MySQL). Si
+   preferís otro nombre en tu propio entorno, usá el que quieras
+   mientras sea el mismo en las tres líneas de arriba y en
+   `config/db.php`.
 
    `db/schema.sql` es el script de instalación limpia (crea todas las
    tablas desde cero); `db/migrations/` son los cambios incrementales

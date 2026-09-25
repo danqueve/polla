@@ -19,25 +19,15 @@ información real de clientes.
 
 ## Opción 1: cargar el resultado ya generado
 
-`schema.sql`, `seed.sql` y `datos_demo.sql` ya eligen su base con un
-`USE` propio (hoy `iifatgdb_decena` — no hace falta, y de hecho
-conviene NO pasar un nombre de base en la línea de comandos, porque el
-`USE` de adentro del archivo lo pisa igual):
+Ninguno de los tres archivos trae `CREATE DATABASE` ni `USE` — la base
+la elige siempre la línea de comandos, igual que en el README
+principal. Usá el nombre real de tu entorno (`c2881399_polla` en VPS y
+local hoy):
 
 ```sh
-mysql -u root -p < db/schema.sql
-mysql -u root -p < db/seed.sql
-mysql -u root -p < demo/datos_demo.sql
-```
-
-Si tu base local se llama distinto (por ejemplo `polla_quevedo`, como
-en un WAMP local que todavía no se renombró), corré cada archivo con
-el nombre reemplazado al vuelo, sin tocar el archivo versionado:
-
-```sh
-sed 's/iifatgdb_decena/polla_quevedo/g' db/schema.sql | mysql -u root -p
-sed 's/iifatgdb_decena/polla_quevedo/g' db/seed.sql | mysql -u root -p
-sed 's/iifatgdb_decena/polla_quevedo/g' demo/datos_demo.sql | mysql -u root -p
+mysql -u root -p c2881399_polla < db/schema.sql
+mysql -u root -p c2881399_polla < db/seed.sql
+mysql -u root -p c2881399_polla < demo/datos_demo.sql
 ```
 
 `demo/datos_demo.sql` no incluye la tabla `usuarios` (no se versiona

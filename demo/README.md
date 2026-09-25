@@ -17,16 +17,19 @@ información real de clientes.
     poder cargar uno en vivo durante la muestra y ver el cotejo.
 - Una promoción de paquete activa (4 jugadas por $7.000).
 
-## Opción 1: cargar el resultado ya generado
+## Cómo cargarlos
 
-Ninguno de los tres archivos trae `CREATE DATABASE` ni `USE` — la base
-la elige siempre la línea de comandos, igual que en el README
-principal. Usá el nombre real de tu entorno (`c2881399_polla` en VPS y
-local hoy):
+Las dos formas de abajo (dump ya generado, o generar uno nuevo) asumen
+una base ya instalada, con las tablas creadas y vacías. El repo no
+versiona ese script de instalación limpia (se sacó por traer datos
+reales pegados a la estructura) — pedilo a quien mantiene el proyecto,
+o reconstruí el esquema aplicando en orden lo que documenta cada
+archivo de `db/migrations/`.
+
+Con la base ya instalada, `demo/datos_demo.sql` no trae `CREATE
+DATABASE` ni `USE` — la base la elige siempre la línea de comandos:
 
 ```sh
-mysql -u root -p c2881399_polla < db/schema.sql
-mysql -u root -p c2881399_polla < db/seed.sql
 mysql -u root -p c2881399_polla < demo/datos_demo.sql
 ```
 
@@ -42,20 +45,10 @@ php -r "echo password_hash('tu-clave', PASSWORD_DEFAULT), PHP_EOL;"
 UPDATE usuarios SET password_hash = '<hash generado>' WHERE usuario = 'admin';
 ```
 
-## Opción 2: generar una tanda nueva
-
-```sh
-mysql -u root -p < db/schema.sql
-mysql -u root -p < db/seed.sql
-php demo/simulacion_demo.php
-```
-
-Arma nombres, DNIs y números de jugada distintos cada vez que corre
-(por eso no es idéntico al dump versionado), y sí deja la clave del
-admin en `demo2026` al final — conviene solo para uso local, no correr
-contra una base con datos reales.
-
-El script espera una base recién instalada (`schema.sql` + `seed.sql`,
-sin clientes ni jugadas todavía) y, a diferencia de los scripts
-`db/*.sql`, no resetea ni limpia nada al terminar: los datos quedan
-para mostrar.
+Como alternativa, `php demo/simulacion_demo.php` genera una tanda
+nueva sobre esa misma base vacía: arma nombres, DNIs y números de
+jugada distintos cada vez (por eso no es idéntico al dump versionado),
+y sí deja la clave del admin en `demo2026` al final — conviene solo
+para uso local, no correr contra una base con datos reales. A
+diferencia de `demo/datos_demo.sql`, no resetea ni limpia nada al
+terminar: los datos quedan para mostrar.

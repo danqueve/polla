@@ -7,16 +7,16 @@
  * paquete aplicada, y clientes autorregistrados pendientes de
  * aprobar.
  *
- * Pensado para correr una sola vez sobre una base recien instalada
- * (schema.sql + seed.sql), con clientes/ciclos/jugadas vacios. A
- * diferencia de los scripts db/*.sql, este no resetea nada al
- * terminar: los datos quedan para mostrar en vivo.
+ * Pensado para correr una sola vez sobre una base ya instalada, con
+ * clientes/ciclos/jugadas vacios. A diferencia de demo/datos_demo.sql,
+ * este no resetea nada al terminar: los datos quedan para mostrar en
+ * vivo.
  *
  * Uso: php demo/simulacion_demo.php
  *
  * Si preferis cargar el resultado ya generado en vez de correr esto
  * de nuevo (que arma nombres/numeros distintos cada vez), aplica
- * schema.sql + seed.sql + demo/datos_demo.sql en ese orden.
+ * demo/datos_demo.sql sobre esa misma base vacia. Ver demo/README.md.
  */
 require_once __DIR__ . '/../config/app.php';
 

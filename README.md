@@ -24,43 +24,19 @@ parciales. El detalle funcional completo está en
 
 1. Cloná el repo dentro de tu `www` (por ejemplo `c:\wamp64\www\polla`).
 2. Copiá `config/db.example.php` a `config/db.php` y completá las
-   credenciales de tu MySQL local. `config/db.php` está en
+   credenciales de tu MySQL local, apuntando a la base
+   `c2881399_polla` (el nombre real que usan hoy tanto el VPS de
+   producción como el entorno local). `config/db.php` está en
    `.gitignore`, así que no se pisa con los `git pull`.
-3. Creá la base y cargá el esquema completo + los datos base:
 
-   ```sh
-   mysql -u root -p -e "CREATE DATABASE c2881399_polla CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-   mysql -u root -p c2881399_polla < db/schema.sql
-   mysql -u root -p c2881399_polla < db/seed.sql
-   ```
+   El repo no versiona un script de instalación limpia (`db/schema.sql`
+   y `db/seed.sql` se sacaron por traer datos reales pegados a la
+   estructura): para levantar una base desde cero, pedí un volcado sin
+   datos de clientes a quien mantiene el proyecto, o reconstruí el
+   esquema aplicando en orden lo que documenta cada archivo de
+   `db/migrations/`.
 
-   `c2881399_polla` es el nombre real que usan hoy tanto el VPS de
-   producción como el entorno local — ninguno de los `.sql` de `db/`
-   ni de `demo/` trae `CREATE DATABASE` ni `USE`, así que la base la
-   elige siempre la línea de comandos (o tu cliente de MySQL). Si
-   preferís otro nombre en tu propio entorno, usá el que quieras
-   mientras sea el mismo en las tres líneas de arriba y en
-   `config/db.php`.
-
-   `db/schema.sql` es el script de instalación limpia (crea todas las
-   tablas desde cero); `db/migrations/` son los cambios incrementales
-   ya aplicados en orden, útiles solo si estás actualizando una base
-   que ya tenía datos en vez de instalar de cero.
-
-4. El usuario `admin` queda sembrado por `db/seed.sql`, pero su
-   contraseña no viaja en el repo. Generale una clave nueva:
-
-   ```sh
-   php -r "echo password_hash('tu-clave-nueva', PASSWORD_DEFAULT), PHP_EOL;"
-   ```
-
-   y actualizá el hash en la base:
-
-   ```sql
-   UPDATE usuarios SET password_hash = '<hash generado>' WHERE usuario = 'admin';
-   ```
-
-5. Entrá a `http://localhost/polla/` — redirige al login del panel
+3. Entrá a `http://localhost/polla/` — redirige al login del panel
    (`auth/login.php`). El portal del cliente vive aparte, en
    `http://localhost/polla/portal/login.php` (usuario y clave = DNI).
 
@@ -79,8 +55,8 @@ config/       Bootstrap compartido, conexión a PDO, sesión de staff
               por cookie propia.
 includes/     Parciales de vista (cabecera, navegación, flash, etc).
 assets/       CSS y JS propios, sin build step.
-db/           schema.sql (instalación limpia), seed.sql (datos base)
-              y migrations/ (cambios incrementales ya aplicados).
+db/           migrations/ (cambios incrementales ya aplicados, en
+              orden). Sin script de instalación limpia versionado.
 doc/          Material para imprimir/compartir (instructivo del
               jugador en PDF).
 ```
@@ -115,8 +91,7 @@ para el detalle funcional y las notas de implementación de cada fase.
   con `->errores()` devolviendo los mensajes para mostrar al usuario —
   nunca se filtra un mensaje crudo de SQL a una pantalla.
 - **Migraciones**: cada cambio de esquema vive en
-  `db/migrations/<fecha>_<descripción>.sql` y se refleja también en
-  `db/schema.sql` (instalación limpia) y `db/seed.sql` cuando aplica.
+  `db/migrations/<fecha>_<descripción>.sql`, en orden.
 - **Clave del cliente**: siempre igual al DNI, sin excepción y sin
   pantalla de cambio — se regenera sola si un admin le edita el DNI.
   La clave del staff (admin/supervisor) es independiente y sí se

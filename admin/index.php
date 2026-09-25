@@ -25,7 +25,10 @@ $solicitudesPendientes = $solicitudes->contarPendientes();
 $ciclo   = $ciclos->obtenerCicloActivo();
 $cicloId = (int) $ciclo['id'];
 $resumen = $ciclos->resumen($cicloId);
-$ultimas = $jugadas->ultimas(5);
+// Acotado a la semana en juego, mismo criterio que el tablero de
+// sabados: sin el ciclo traia las ultimas de toda la historia, que ya
+// no compiten en el sorteo que viene.
+$ultimas = $jugadas->ultimas(5, CicloService::TIPO_SEMANAL, $cicloId);
 
 $extractos = $sorteos->listarPorCiclo($cicloId);
 $arrastre  = (float) ($ciclo['monto_arrastrado'] ?? 0);

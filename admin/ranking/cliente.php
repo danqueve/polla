@@ -31,7 +31,7 @@ $lista   = $sorteos->listarPorCiclo($cicloId);
 $salidos = PortalService::numerosSalidos($lista);
 
 $jugadas = array_values(array_filter(
-    JugadaService::crearDesde($db)->listarPorCiclo($cicloId, '', 5000),
+    JugadaService::crearDesde($db)->todasDelCiclo($cicloId),
     static fn($j) => (int) $j['cliente_id'] === $clienteId && $j['estado'] !== 'anulada'
 ));
 

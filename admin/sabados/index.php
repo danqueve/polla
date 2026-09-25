@@ -19,7 +19,9 @@ $sorteos    = SorteoService::crearDesde($db);
 $ciclo   = $ciclos->obtenerCicloActivo(CicloService::TIPO_SABADO);
 $cicloId = (int) $ciclo['id'];
 $resumen = $ciclos->resumen($cicloId);
-$ultimas = $jugadas->ultimas(5, CicloService::TIPO_SABADO);
+// Acotado al sabado en juego: sin el ciclo, "ultimas jugadas" traia las
+// de sabados anteriores, que ya no compiten en el sorteo que viene.
+$ultimas = $jugadas->ultimas(5, CicloService::TIPO_SABADO, $cicloId);
 
 $turnos   = $sorteos->listarPorCiclo($cicloId);
 $arrastre = (float) ($ciclo['monto_arrastrado'] ?? 0);

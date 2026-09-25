@@ -39,7 +39,11 @@ $cicloId   = (int) $ciclo['id'];
 $resumen   = $ciclos->resumen($cicloId);
 $lista     = $sorteos->listarPorCiclo($cicloId);
 $ganadores = $sorteos->ganadoresDeCiclo($cicloId);
-$jugadas   = JugadaService::crearDesde($db)->listarPorCiclo($cicloId);
+$jugadasSvc   = JugadaService::crearDesde($db);
+$jugadas      = $jugadasSvc->listarPorCiclo($cicloId);
+// El total real, no count($jugadas): listarPorCiclo() corta en 200 sin
+// avisar, asi que contar la lista mentia en una semana grande.
+$jugadasTotal = $jugadasSvc->contarPorCiclo($cicloId);
 
 $abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
 $conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
@@ -246,7 +250,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <div class="g-card__header">
                     <h2 class="g-card__title">
                         <i class="bi bi-ticket-perforated"></i>
-                        Jugadas del Ciclo (<?= count($jugadas) ?>)
+                        Jugadas del Ciclo (<?= $jugadasTotal ?>)
                     </h2>
                     <span class="small text-muted">
                         <span class="bolilla bolilla--acertada bolilla--chica d-inline-block" style="width:16px;height:16px;font-size:10px;line-height:16px"></span>
@@ -255,6 +259,16 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 </div>
 
                 <div class="g-card__body">
+                    <?php if (count($jugadas) < $jugadasTotal): ?>
+                        <div class="g-alert-banner g-alert-banner--warning m-3 p-3 small">
+                            <i class="bi bi-info-circle-fill"></i>
+                            <div>
+                                Se muestran las <?= count($jugadas) ?> jugadas más recientes
+                                de <?= $jugadasTotal ?>. Para verlas todas, usá
+                                <a href="<?= APP_URL ?>/admin/reportes/jugadas.php">Reportes</a>.
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!$jugadas): ?>
                         <div class="p-5 text-center text-secondary">
                             <i class="bi bi-ticket-perforated fs-1 d-block mb-3 text-muted"></i>

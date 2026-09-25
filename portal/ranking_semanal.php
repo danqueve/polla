@@ -24,7 +24,9 @@ $ciclo   = (new CicloService($db))->obtenerCicloActivo(CicloService::TIPO_SEMANA
 $cicloId = (int) $ciclo['id'];
 
 $lista   = SorteoService::crearDesde($db)->listarPorCiclo($cicloId);
-$jugadas = JugadaService::crearDesde($db)->listarPorCiclo($cicloId);
+// Todas, sin el tope de 200: si quedaba afuera el que iba primero, el
+// ranking salia mal sin ningun sintoma visible.
+$jugadas = JugadaService::crearDesde($db)->todasDelCiclo($cicloId);
 $salidos = PortalService::numerosSalidos($lista);
 $ranking = PortalService::ranking($jugadas, $salidos);
 

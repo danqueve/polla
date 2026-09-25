@@ -377,7 +377,49 @@ class JugadaService
      *
      * @return array<int,array>
      */
-    public function listarPorCiclo(int $cicloId, string $busqueda = '', int $limite = 200): array
+    /**
+     * Cuantas jugadas tiene el ciclo, sin traerlas.
+     *
+     * Para los titulos tipo "Jugadas de Sábado (N)": listarPorCiclo()
+     * corta en 200 sin avisar, asi que contar su salida mentia en
+     * cuanto un ciclo pasaba ese tope.
+     */
+    public function contarPorCiclo(int $cicloId, string $busqueda = ''): int
+    {
+        [$where, $params] = $this->filtrosDeCiclo($cicloId, $busqueda);
+
+        $stmt = $this->db->prepare(
+            'SELECT COUNT(*)
+               FROM jugadas j
+               JOIN clientes c ON c.id = j.cliente_id
+              WHERE ' . implode(' AND ', $where)
+        );
+        $stmt->execute($params);
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Todas las jugadas del ciclo, sin tope.
+     *
+     * Para los rankings: con el tope de 200 de listarPorCiclo() un ciclo
+     * grande podia dejar afuera al que iba primero, y el ranking salia
+     * mal sin ningun sintoma. Un ciclo son las jugadas de una semana (o
+     * de un sabado), no un historico, asi que traerlas todas es acotado.
+     */
+    public function todasDelCiclo(int $cicloId): array
+    {
+        return $this->listarPorCiclo($cicloId, '', PHP_INT_MAX);
+    }
+
+    /**
+     * WHERE y parametros compartidos por listarPorCiclo() y
+     * contarPorCiclo(), para que el total no pueda desalinearse del
+     * listado que describe.
+     *
+     * @return array{0: string[], 1: array<string, string|int>}
+     */
+    private function filtrosDeCiclo(int $cicloId, string $busqueda): array
     {
         $where  = ['j.ciclo_id = :ciclo'];
         $params = [':ciclo' => $cicloId];
@@ -392,6 +434,13 @@ class JugadaService
             $params[':q2'] = $patron;
             $params[':q3'] = $patron;
         }
+
+        return [$where, $params];
+    }
+
+    public function listarPorCiclo(int $cicloId, string $busqueda = '', int $limite = 200): array
+    {
+        [$where, $params] = $this->filtrosDeCiclo($cicloId, $busqueda);
 
         // GROUP_CONCAT ordenado trae los 10 numeros en una sola pasada,
         // sin una consulta extra por jugada.
@@ -456,9 +505,27 @@ class JugadaService
      * que un cliente acaba de armar desde el portal (todavia sin pagar,
      * sin ciclo asignado) apareceria aca con sus 10 numeros a la vista,
      * indistinguible de una jugada real ya cobrada.
+     *
+     * $cicloId acota al ciclo en juego, y es lo que normalmente se
+     * quiere: sin el, el tablero mostraba "ultimas jugadas" de toda la
+     * historia de ese tipo de juego -- en un sabado recien abierto, las
+     * del sabado ANTERIOR, que ya no compiten. Ademas el filtro por
+     * ciclo entra por idx_jugadas_ciclo_estado en vez de agrupar y
+     * ordenar toda la tabla en una temporal para devolver 5 filas.
      */
-    public function ultimas(int $limite = 5, string $tipoJuego = CicloService::TIPO_SEMANAL): array
-    {
+    public function ultimas(
+        int $limite = 5,
+        string $tipoJuego = CicloService::TIPO_SEMANAL,
+        ?int $cicloId = null
+    ): array {
+        $where  = ["j.estado_pago = 'confirmada'", 'j.tipo_juego = :tipo_juego'];
+        $params = [':tipo_juego' => $tipoJuego];
+
+        if ($cicloId !== null) {
+            $where[]           = 'j.ciclo_id = :ciclo';
+            $params[':ciclo']  = $cicloId;
+        }
+
         $stmt = $this->db->prepare(
             "SELECT j.id, j.importe, j.fecha_carga,
                     c.nombre AS cliente_nombre, c.nro_cliente,
@@ -466,12 +533,12 @@ class JugadaService
                FROM jugadas j
                JOIN clientes c ON c.id = j.cliente_id
                LEFT JOIN jugada_numeros n ON n.jugada_id = j.id
-              WHERE j.estado_pago = 'confirmada' AND j.tipo_juego = :tipo_juego
+              WHERE " . implode(' AND ', $where) . "
               GROUP BY j.id
               ORDER BY j.id DESC
               LIMIT " . (int) $limite
         );
-        $stmt->execute([':tipo_juego' => $tipoJuego]);
+        $stmt->execute($params);
 
         $filas = $stmt->fetchAll();
         foreach ($filas as &$fila) {

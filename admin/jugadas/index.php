@@ -20,9 +20,13 @@ if (!$ciclo) {
     exit;
 }
 
-$busqueda = trim($_GET['q'] ?? '');
-$jugadas  = JugadaService::crearDesde($db)->listarPorCiclo((int) $ciclo['id'], $busqueda);
-$resumen  = $ciclos->resumen((int) $ciclo['id']);
+$busqueda     = trim($_GET['q'] ?? '');
+$jugadasSvc   = JugadaService::crearDesde($db);
+$jugadas      = $jugadasSvc->listarPorCiclo((int) $ciclo['id'], $busqueda);
+// El total real, no count($jugadas): listarPorCiclo() corta en 200 sin
+// avisar, asi que el titulo mentia en un ciclo con muchas jugadas.
+$jugadasTotal = $jugadasSvc->contarPorCiclo((int) $ciclo['id'], $busqueda);
+$resumen      = $ciclos->resumen((int) $ciclo['id']);
 
 $pageTitle        = 'Jugadas · ' . APP_NAME;
 $navSeccion       = 'jugadas';
@@ -109,11 +113,21 @@ require __DIR__ . '/../../includes/admin_topbar.php';
         <div class="g-card__header">
             <h2 class="g-card__title">
                 <i class="bi bi-ticket-perforated"></i>
-                Listado de Jugadas (<?= count($jugadas) ?>)
+                Listado de Jugadas (<?= $jugadasTotal ?>)
             </h2>
         </div>
 
         <div class="g-card__body">
+            <?php if (count($jugadas) < $jugadasTotal): ?>
+                <div class="g-alert-banner g-alert-banner--warning m-3 p-3 small">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <div>
+                        Se muestran las <?= count($jugadas) ?> jugadas más recientes
+                        de <?= $jugadasTotal ?>. Para verlas todas, usá
+                        <a href="<?= APP_URL ?>/admin/reportes/jugadas.php">Reportes</a>.
+                    </div>
+                </div>
+            <?php endif; ?>
             <?php if (!$jugadas): ?>
                 <div class="p-5 text-center text-secondary">
                     <i class="bi bi-ticket-perforated fs-1 d-block mb-3 text-muted"></i>

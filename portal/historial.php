@@ -144,7 +144,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
                 <?php if ($c['estado'] !== CicloService::ESTADO_PROGRAMADO): ?>
                     <?php
                     $ajenas = array_filter(
-                        JugadaService::crearDesde($db)->listarPorCiclo($cicloId),
+                        JugadaService::crearDesde($db)->todasDelCiclo($cicloId),
                         static fn($j) => (int) $j['cliente_id'] !== $clienteId
                     );
                     $salidos = PortalService::numerosSalidos($sorteos);

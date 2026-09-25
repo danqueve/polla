@@ -39,12 +39,12 @@ $abierto  = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
 $listaCiclos = $ciclos->listar(20, $tipo);
 $lista       = $sorteos->listarPorCiclo($cicloId);
 
-// Limite explicito: el default de listarPorCiclo() es 200 y un ciclo
-// con mas jugadas que eso truncaria el ranking en silencio. Y se
-// descartan las anuladas antes de rankear -- listarPorCiclo() no lo
-// hace, y una jugada anulada no deberia competir.
+// todasDelCiclo(), no listarPorCiclo(): el tope de 200 del default
+// truncaria el ranking en silencio. Y se descartan las anuladas antes
+// de rankear -- no lo hace el servicio, y una jugada anulada no
+// deberia competir.
 $jugadas = array_values(array_filter(
-    JugadaService::crearDesde($db)->listarPorCiclo($cicloId, '', 5000),
+    JugadaService::crearDesde($db)->todasDelCiclo($cicloId),
     static fn($j) => $j['estado'] !== 'anulada'
 ));
 

@@ -1,9 +1,8 @@
 <?php
 /** Cierre comun: bundle de Bootstrap + scripts propios de la pantalla. */
 ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-            crossorigin="anonymous"></script>
+    <?php $_btsJs = @filemtime(BASE_PATH . '/assets/vendor/bootstrap/bootstrap.bundle.min.js') ?: APP_VERSION; ?>
+    <script src="<?= APP_URL ?>/assets/vendor/bootstrap/bootstrap.bundle.min.js?v=<?= $_btsJs ?>"></script>
     <?php foreach (($pageScripts ?? []) as $_src): ?>
         <?php
         // Mismo criterio que includes/head.php con app.css: filemtime()

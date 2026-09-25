@@ -25,24 +25,19 @@
     <link rel="icon" href="<?= APP_URL ?>/assets/icons/icon-192.png">
     <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/icons/icon-512.png">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-          crossorigin="anonymous">
-
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
     <?php
-    $_appCssVersion = @filemtime(BASE_PATH . '/assets/css/app.css') ?: APP_VERSION;
-    $_adminCssVersion = @filemtime(BASE_PATH . '/assets/css/admin.css') ?: APP_VERSION;
+    // Todo local, sin CDNs ni Google Fonts -- ver la nota extensa en
+    // includes/head.php: el primer paint dejaba de depender de dos
+    // dominios externos mas las descargas de fuentes que encadenaban,
+    // y ahora el service worker puede precachearlo todo.
+    $_v = static fn(string $rel): string
+        => (string) (@filemtime(BASE_PATH . '/' . $rel) ?: APP_VERSION);
     ?>
-    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= $_appCssVersion ?>">
-    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/admin.css?v=<?= $_adminCssVersion ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/bootstrap/bootstrap.min.css?v=<?= $_v('assets/vendor/bootstrap/bootstrap.min.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/bootstrap-icons/bootstrap-icons.min.css?v=<?= $_v('assets/vendor/bootstrap-icons/bootstrap-icons.min.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/fuentes-admin.css?v=<?= $_v('assets/vendor/fuentes-admin.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= $_v('assets/css/app.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/admin.css?v=<?= $_v('assets/css/admin.css') ?>">
 </head>
 <body class="admin-gentelella <?= e($bodyClass ?? '') ?>">
 <div class="g-sidebar-overlay" id="gSidebarOverlay"></div>

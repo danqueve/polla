@@ -25,24 +25,27 @@
     <link rel="icon" href="<?= APP_URL ?>/assets/icons/icon-192.png">
     <link rel="apple-touch-icon" href="<?= APP_URL ?>/assets/icons/icon-512.png">
 
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-          crossorigin="anonymous">
-
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
     <?php
-    // filemtime() en vez de APP_VERSION: un cache-buster que se actualiza
-    // solo con cada cambio real del archivo. APP_VERSION es una constante
-    // manual -- si nadie se acuerda de subirla en un cambio de CSS (como
-    // paso recien: quedo en 1.1.0 desde hace muchos commits), el
-    // navegador sigue sirviendo la version vieja de cache indefinidamente.
-    $_appCssVersion = @filemtime(BASE_PATH . '/assets/css/app.css') ?: APP_VERSION;
+    // Todo el front-end se sirve desde este mismo dominio, a proposito:
+    // antes Bootstrap, los iconos y las fuentes venian de jsdelivr y de
+    // Google Fonts, y encima las fuentes se pedian con un @import
+    // adentro de app.css (serialmente bloqueante: habia que bajar y
+    // parsear app.css antes de que el navegador supiera que las
+    // necesitaba). Con una conexion de celular mala eso se veia como
+    // "la pagina tarda en mostrar los datos": el texto estaba, pero los
+    // iconos eran cuadraditos vacios y la tipografia saltaba. Ademas
+    // asi el service worker puede precachearlo y la PWA funciona
+    // offline de verdad.
+    //
+    // filemtime() como cache-buster: se actualiza solo con cada cambio
+    // real del archivo, a diferencia de APP_VERSION, que es una
+    // constante manual que nadie se acuerda de subir.
+    $_v = static fn(string $rel): string
+        => (string) (@filemtime(BASE_PATH . '/' . $rel) ?: APP_VERSION);
     ?>
-    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= $_appCssVersion ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/bootstrap/bootstrap.min.css?v=<?= $_v('assets/vendor/bootstrap/bootstrap.min.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/bootstrap-icons/bootstrap-icons.min.css?v=<?= $_v('assets/vendor/bootstrap-icons/bootstrap-icons.min.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/fuentes-portal.css?v=<?= $_v('assets/vendor/fuentes-portal.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= $_v('assets/css/app.css') ?>">
 </head>
 <body class="<?= e($bodyClass ?? '') ?>">

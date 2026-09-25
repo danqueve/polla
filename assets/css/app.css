@@ -11,7 +11,11 @@
    y ninguna tabla obliga a hacer scroll horizontal.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Sora:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+/* Las fuentes se cargan como <link> local desde includes/head.php
+   (assets/vendor/fuentes-portal.css), no con un @import aca: un
+   @import dentro de un CSS es serialmente bloqueante -- el navegador
+   tiene que bajar y parsear este archivo entero antes de descubrir que
+   necesita las fuentes, y recien ahi pedirlas. */
 
 :root {
     /* Tipografías */

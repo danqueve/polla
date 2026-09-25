@@ -15,9 +15,8 @@
         <?php require __DIR__ . '/bottom_nav.php'; ?>
     <?php endif; ?>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-            crossorigin="anonymous"></script>
+    <?php $_btsJs = @filemtime(BASE_PATH . '/assets/vendor/bootstrap/bootstrap.bundle.min.js') ?: APP_VERSION; ?>
+    <script src="<?= APP_URL ?>/assets/vendor/bootstrap/bootstrap.bundle.min.js?v=<?= $_btsJs ?>"></script>
 
     <script>
     (function () {

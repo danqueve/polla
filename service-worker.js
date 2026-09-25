@@ -16,7 +16,7 @@
    pisar su cache vieja.
    ============================================================ */
 
-const CACHE_NAME = 'decena-static-v2';
+const CACHE_NAME = 'decena-static-v3';
 
 /**
  * Sin barra inicial a proposito: el sitio vive en la raiz en
@@ -30,6 +30,16 @@ const CACHE_NAME = 'decena-static-v2';
 const ARCHIVOS_PRECACHE = [
     'assets/css/app.css',
     'assets/css/admin.css',
+    // Bootstrap, iconos y fuentes ahora se sirven desde este dominio
+    // (antes venian de jsdelivr y Google Fonts). Precachearlos es lo
+    // que hace que la app funcione offline de verdad: app.css y
+    // admin.css solos no sirven de nada sin Bootstrap debajo.
+    'assets/vendor/bootstrap/bootstrap.min.css',
+    'assets/vendor/bootstrap/bootstrap.bundle.min.js',
+    'assets/vendor/bootstrap-icons/bootstrap-icons.min.css',
+    'assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
+    'assets/vendor/fuentes-portal.css',
+    'assets/vendor/fuentes-admin.css',
     'assets/js/copiar.js',
     'assets/js/mostrar_clave.js',
     'assets/js/numeros.js',

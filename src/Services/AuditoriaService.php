@@ -64,6 +64,10 @@ class AuditoriaService
     // Configuracion
     public const CONFIG_ACTUALIZADA    = 'config_actualizada';
 
+    // Feriados
+    public const FERIADO_CREADO        = 'feriado_creado';
+    public const FERIADO_ELIMINADO     = 'feriado_eliminado';
+
     private PDO $db;
 
     public function __construct(PDO $db)

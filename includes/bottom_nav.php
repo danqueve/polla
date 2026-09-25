@@ -105,6 +105,10 @@
                     <i class="bi bi-sliders" aria-hidden="true"></i>
                     <span>Configuración</span>
                 </a>
+                <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/feriados/index.php">
+                    <i class="bi bi-calendar-x" aria-hidden="true"></i>
+                    <span>Feriados</span>
+                </a>
             <?php endif; ?>
         </div>
 

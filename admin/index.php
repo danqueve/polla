@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../config/app.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\FeriadoService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PozoService;
@@ -40,14 +41,22 @@ $pozoMostrado = PozoService::montoAMostrar($pozoReal, $premioBase);
 // empresa es el premio base completo, no un gap variable.
 $subsidio     = $premioBase;
 
-// Dias habiles del ciclo ya pasados que todavia no tienen extracto
+// Dias habiles del ciclo ya pasados que todavia no tienen extracto ni
+// estan marcados feriado -- sin el descuento de feriados, un dia sin
+// sorteo por asueto provincial quedaba contado ahi para siempre,
+// reclamando un extracto que nunca va a llegar.
 $sinCargar = 0;
 $fechasHechas = array_column($extractos, 'fecha');
+$feriadosDelCiclo = FeriadoService::crearDesde($db)->feriadosEntre(
+    new DateTimeImmutable($ciclo['fecha_inicio']),
+    new DateTimeImmutable($ciclo['fecha_fin'])
+);
 $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
 $fin = new DateTimeImmutable($ciclo['fecha_fin']);
 $hoy = new DateTimeImmutable('today');
 while ($dia <= $fin) {
-    if ($dia <= $hoy && !in_array($dia->format('Y-m-d'), $fechasHechas, true)) {
+    $fechaDia = $dia->format('Y-m-d');
+    if ($dia <= $hoy && !in_array($fechaDia, $fechasHechas, true) && !in_array($fechaDia, $feriadosDelCiclo, true)) {
         $sinCargar++;
     }
     $dia = $dia->modify('+1 day');

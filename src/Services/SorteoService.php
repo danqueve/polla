@@ -31,19 +31,22 @@ class SorteoService
     private PozoService $pozo;
     private ParametroService $parametros;
     private CotejoService $cotejo;
+    private FeriadoService $feriados;
 
     public function __construct(
         PDO $db,
         CicloService $ciclos,
         PozoService $pozo,
         ParametroService $parametros,
-        ?CotejoService $cotejo = null
+        ?CotejoService $cotejo = null,
+        ?FeriadoService $feriados = null
     ) {
         $this->db         = $db;
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
         $this->parametros = $parametros;
         $this->cotejo     = $cotejo ?? new CotejoService($db, $ciclos, $pozo, $parametros);
+        $this->feriados   = $feriados ?? new FeriadoService($db);
     }
 
     public static function crearDesde(PDO $db): self
@@ -144,7 +147,14 @@ class SorteoService
                 throw ValidacionException::de('Ya se cargaron los 5 sorteos de este sábado.');
             }
 
-            $fecha    = new DateTimeImmutable($ciclo['fecha_inicio']);
+            $fecha = new DateTimeImmutable($ciclo['fecha_inicio']);
+            if ($this->feriados->esFeriado($fecha)) {
+                throw ValidacionException::de(
+                    'Este sábado (' . $fecha->format('d/m/Y') . ') está marcado como feriado: no se puede '
+                  . 'cargar un turno. Si en realidad hubo sorteo, primero quitá el feriado en Feriados.'
+                );
+            }
+
             $sorteoId = $this->insertarSorteo((int) $ciclo['id'], $fecha, $turno, $numeros, $cargadoPor);
 
             // Replay completo por simetria con registrar() -- ver recotejarCiclo().
@@ -466,6 +476,13 @@ class SorteoService
         $hoy = new DateTimeImmutable('today');
         if ($fecha > $hoy) {
             throw ValidacionException::de('No se puede cargar un sorteo que todavia no ocurrio.');
+        }
+
+        if ($this->feriados->esFeriado($fecha)) {
+            throw ValidacionException::de(
+                'El ' . $fecha->format('d/m/Y') . ' está marcado como feriado: no se puede cargar un sorteo '
+              . 'ese día. Si en realidad hubo sorteo, primero quitá el feriado en Feriados.'
+            );
         }
 
         return $fecha;

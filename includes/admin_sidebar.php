@@ -110,6 +110,11 @@ $_solCount = $solicitudesPendientes ?? 0;
                     <i class="bi bi-sliders"></i>
                     <span>Configuración</span>
                 </a>
+                <a href="<?= APP_URL ?>/admin/feriados/index.php"
+                   class="g-sidebar__link <?= ($navSeccion ?? '') === 'feriados' ? 'active' : '' ?>">
+                    <i class="bi bi-calendar-x"></i>
+                    <span>Feriados</span>
+                </a>
             <?php else: ?>
                 <a href="<?= APP_URL ?>/admin/referidos/mios.php"
                    class="g-sidebar__link <?= ($navSeccion ?? '') === 'referidos' ? 'active' : '' ?>">

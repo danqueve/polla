@@ -22,17 +22,20 @@ class CotejoService
     private CicloService $ciclos;
     private PozoService $pozo;
     private ParametroService $parametros;
+    private FeriadoService $feriados;
 
     public function __construct(
         PDO $db,
         CicloService $ciclos,
         PozoService $pozo,
-        ParametroService $parametros
+        ParametroService $parametros,
+        ?FeriadoService $feriados = null
     ) {
         $this->db         = $db;
         $this->ciclos     = $ciclos;
         $this->pozo       = $pozo;
         $this->parametros = $parametros;
+        $this->feriados   = $feriados ?? new FeriadoService($db);
     }
 
     public static function crearDesde(PDO $db): self
@@ -64,6 +67,17 @@ class CotejoService
             'ganadores' => [], 'cerro_ciclo' => false, 'estado_cierre' => null,
             'pozo_repartido' => 0.0, 'ciclo_nuevo_id' => null, 'arrastre' => 0.0,
         ];
+
+        if (!$sorteos) {
+            // Sin ningun sorteo real, esto solo puede pasar completo si
+            // TODOS los dias del ciclo son feriado (el sabado entero, o
+            // -mas raro- la semana entera). Sin sorteos no hay forma de
+            // que haya ganador, asi que el unico desenlace posible es
+            // "sin ganador" -- y el foreach de abajo nunca lo dispararia
+            // porque no tiene ningun sorteo sobre el que iterar.
+            return $completa ? $this->cerrarSinGanador((int) $ciclo['id'], $tipo) : $resultado;
+        }
+
         foreach ($sorteos as $i => $sorteo) {
             $esUltimo = $completa && $i === count($sorteos) - 1;
             $resultado = $this->cotejarYCerrar((int) $sorteo['id'], $ciclo, $esUltimo, $tipo);
@@ -116,7 +130,7 @@ class CotejoService
             $this->marcarRestantesPerdedoras($cicloId);
             $this->ciclos->cerrar($cicloId, CicloService::ESTADO_CON_GANADOR);
 
-            $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, 0.0);
+            $nuevoId = $this->promoverSaltandoFeriados($tipo, 0.0);
 
             return [
                 'ganadores'      => $premios,
@@ -134,21 +148,7 @@ class CotejoService
         }
 
         // ── Sin ganador y era el ultimo de la secuencia: cierra ──
-        $this->marcarRestantesPerdedoras($cicloId);
-
-        $arrastre = $this->pozo->montoAcumulado($cicloId);
-
-        $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
-        $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, $arrastre);
-
-        return [
-            'ganadores'      => [],
-            'cerro_ciclo'    => true,
-            'estado_cierre'  => CicloService::ESTADO_SIN_GANADOR,
-            'pozo_repartido' => 0.0,
-            'ciclo_nuevo_id' => $nuevoId,
-            'arrastre'       => $arrastre,
-        ];
+        return $this->cerrarSinGanador($cicloId, $tipo);
     }
 
     // ── Jugadas ganadoras ───────────────────────────────────
@@ -220,14 +220,22 @@ class CotejoService
     private function secuenciaCompleta(array $ciclo, string $tipo, array $sorteosCargados): bool
     {
         if ($tipo === CicloService::TIPO_SABADO) {
-            return count($sorteosCargados) === 5;
+            if (count($sorteosCargados) === 5) {
+                return true;
+            }
+            // El sabado entero cae en un feriado provincial: no hay
+            // turnos que esperar.
+            return $this->feriados->esFeriado(new DateTimeImmutable($ciclo['fecha_inicio']));
         }
 
         $fechasCargadas = array_column($sorteosCargados, 'fecha');
-        $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
-        $fin = new DateTimeImmutable($ciclo['fecha_fin']);
+        $dia      = new DateTimeImmutable($ciclo['fecha_inicio']);
+        $fin      = new DateTimeImmutable($ciclo['fecha_fin']);
+        $feriados = $this->feriados->feriadosEntre($dia, $fin);
+
         while ($dia <= $fin) {
-            if (!in_array($dia->format('Y-m-d'), $fechasCargadas, true)) {
+            $fechaDia = $dia->format('Y-m-d');
+            if (!in_array($fechaDia, $fechasCargadas, true) && !in_array($fechaDia, $feriados, true)) {
                 return false;
             }
             $dia = $dia->modify('+1 day');
@@ -253,5 +261,66 @@ class CotejoService
             "UPDATE jugadas SET estado = 'perdedora'
               WHERE ciclo_id = :ciclo AND estado = 'activa'"
         )->execute([':ciclo' => $cicloId]);
+    }
+
+    /**
+     * Cierra el ciclo "sin ganador": todas sus jugadas activas pasan a
+     * perdedoras, el pozo real (sin piso) arrastra al siguiente, y se
+     * promueve o abre el proximo ciclo del mismo tipo.
+     *
+     * Comun a dos caminos: el ultimo sorteo real de una secuencia
+     * completa (cotejarYCerrar) y una secuencia que quedo completa sin
+     * ningun sorteo real, solo por feriados (recotejarCiclo).
+     *
+     * @return array{ganadores:array<int,float>, cerro_ciclo:bool, estado_cierre:?string,
+     *               pozo_repartido:float, ciclo_nuevo_id:?int, arrastre:float}
+     */
+    private function cerrarSinGanador(int $cicloId, string $tipo): array
+    {
+        $this->marcarRestantesPerdedoras($cicloId);
+
+        $arrastre = $this->pozo->montoAcumulado($cicloId);
+
+        $this->ciclos->cerrar($cicloId, CicloService::ESTADO_SIN_GANADOR);
+        $nuevoId = $this->promoverSaltandoFeriados($tipo, $arrastre);
+
+        return [
+            'ganadores'      => [],
+            'cerro_ciclo'    => true,
+            'estado_cierre'  => CicloService::ESTADO_SIN_GANADOR,
+            'pozo_repartido' => 0.0,
+            'ciclo_nuevo_id' => $nuevoId,
+            'arrastre'       => $arrastre,
+        ];
+    }
+
+    /**
+     * Promueve/abre el proximo ciclo y, si ese ciclo nuevo ya nace
+     * completo solo por feriados (un feriado marcado con anticipacion,
+     * antes de que el ciclo llegara a abrirse -- el caso tipico es un
+     * sabado entero por un feriado ya conocido de antemano), lo cierra
+     * en cadena en vez de dejarlo "abierto" esperando sorteos que nunca
+     * van a llegar y que ademas ya sabemos que no van a llegar.
+     *
+     * Sin esto, marcar ese feriado con tiempo no serviria de nada: el
+     * chequeo de admin/feriados/guardar.php solo mira los ciclos que ya
+     * estan abiertos en el momento de marcarlo, y una vez que este
+     * metodo lo abre no queda ningun evento que lo vuelva a revisar.
+     *
+     * La recursion es la misma idea aplicada de nuevo sobre el ciclo
+     * que termina abriendo esta llamada, para el caso (raro) de varios
+     * feriados consecutivos: termina sola en el primer ciclo que no
+     * este completo de antemano.
+     */
+    private function promoverSaltandoFeriados(string $tipo, float $saldoInicial): int
+    {
+        $nuevoId = $this->ciclos->promoverOAbrirSiguiente($tipo, $saldoInicial);
+        $nuevo   = $this->ciclos->buscarPorId($nuevoId);
+
+        if ($nuevo && $this->secuenciaCompleta($nuevo, $tipo, [])) {
+            return $this->cerrarSinGanador($nuevoId, $tipo)['ciclo_nuevo_id'] ?? $nuevoId;
+        }
+
+        return $nuevoId;
     }
 }

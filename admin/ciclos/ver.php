@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\FeriadoService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PortalService;
@@ -49,18 +50,25 @@ $abierto      = $ciclo['estado'] === CicloService::ESTADO_ABIERTO;
 $conGanador   = $ciclo['estado'] === CicloService::ESTADO_CON_GANADOR;
 $esProgramado = $ciclo['estado'] === CicloService::ESTADO_PROGRAMADO;
 
-// Dias habiles del ciclo ya pasados que todavia no tienen extracto --
-// mientras falte alguno, el ciclo no cierra (recotejarCiclo() no lo
-// trata como completo), asi que conviene que se vea, no que quede en
-// silencio hasta que alguien note que la semana no termina de cerrar.
+// Dias habiles del ciclo ya pasados que todavia no tienen extracto ni
+// estan marcados feriado -- mientras falte alguno, el ciclo no cierra
+// (recotejarCiclo() no lo trata como completo), asi que conviene que
+// se vea, no que quede en silencio hasta que alguien note que la
+// semana no termina de cerrar. Descontando feriados: sin eso, un dia
+// sin sorteo por asueto provincial quedaba contado aca para siempre.
 $sinCargar = 0;
 if ($abierto) {
     $fechasHechas = array_column($lista, 'fecha');
+    $feriadosDelCiclo = FeriadoService::crearDesde($db)->feriadosEntre(
+        new DateTimeImmutable($ciclo['fecha_inicio']),
+        new DateTimeImmutable($ciclo['fecha_fin'])
+    );
     $dia = new DateTimeImmutable($ciclo['fecha_inicio']);
     $fin = new DateTimeImmutable($ciclo['fecha_fin']);
     $hoy = new DateTimeImmutable('today');
     while ($dia <= $fin) {
-        if ($dia <= $hoy && !in_array($dia->format('Y-m-d'), $fechasHechas, true)) {
+        $fechaDia = $dia->format('Y-m-d');
+        if ($dia <= $hoy && !in_array($fechaDia, $fechasHechas, true) && !in_array($fechaDia, $feriadosDelCiclo, true)) {
             $sinCargar++;
         }
         $dia = $dia->modify('+1 day');

@@ -11,9 +11,9 @@
  * en español espera: con coma abre todo en una sola columna y sin BOM
  * rompe los acentos.
  *
- * jugadas/ganadores son exclusivos del admin (jugadas.php y
- * ganadores.php, las pantallas que exportan, tambien lo son).
- * numeros es de admin y supervisor por igual -mismo criterio que
+ * jugadas/ganadores/clientes son exclusivos del admin (jugadas.php,
+ * ganadores.php y clientes.php, las pantallas que exportan, tambien lo
+ * son). numeros es de admin y supervisor por igual -mismo criterio que
  * admin/reportes/numeros.php-, asi que el guard depende de $que.
  */
 require_once __DIR__ . '/../../config/app.php';
@@ -22,7 +22,7 @@ use Polla\Services\ReporteService;
 use Polla\Support\AlcanceReporte;
 use Polla\Support\FiltroReporte;
 
-$que = in_array($_GET['que'] ?? '', ['jugadas', 'ganadores', 'numeros'], true)
+$que = in_array($_GET['que'] ?? '', ['jugadas', 'ganadores', 'numeros', 'clientes'], true)
      ? $_GET['que'] : 'jugadas';
 
 if ($que === 'numeros') {
@@ -113,6 +113,21 @@ if ($que === 'jugadas') {
             implode(' ', array_map('num2', $g['numeros'])),
             number_format((float) $g['monto_premio'], 2, ',', ''),
             $g['cargado_por'] ?? '',
+        ]);
+    }
+
+} elseif ($que === 'clientes') {
+
+    $fila(['Ciclo', 'Tipo', 'N cliente', 'Cliente', 'Cantidad de jugadas', 'Importe total']);
+
+    foreach ($reporte->jugadasPorCliente($filtro) as $f) {
+        $fila([
+            $f['ciclo_numero'],
+            \Polla\Services\CicloService::TIPOS[$f['ciclo_tipo']] ?? $f['ciclo_tipo'],
+            $f['nro_cliente'],
+            $f['cliente'],
+            $f['cantidad'],
+            number_format((float) $f['importe'], 2, ',', ''),
         ]);
     }
 

@@ -248,6 +248,38 @@ class ReporteService
         return $filas;
     }
 
+    // ── Jugadas por cliente ─────────────────────────────────
+
+    /**
+     * Una fila por cliente dentro de cada ciclo, con cuantas jugadas cargo
+     * y cuanto sumaron. Mismas condiciones y alcance que jugadas(): si un
+     * supervisor no ve una jugada en el detalle, tampoco cuenta aca.
+     *
+     * @return array<int,array>
+     */
+    public function jugadasPorCliente(FiltroReporte $filtro, int $limite = 5000): array
+    {
+        [$where, $params] = $this->condicionesJugadas($filtro);
+
+        $sql = "SELECT cl.id AS ciclo_id, cl.numero AS ciclo_numero, cl.tipo AS ciclo_tipo,
+                       cl.fecha_inicio, cl.fecha_fin,
+                       c.id AS cliente_id, c.nro_cliente, c.nombre AS cliente,
+                       COUNT(j.id)                  AS cantidad,
+                       COALESCE(SUM(j.importe), 0)  AS importe
+                  FROM jugadas j
+                  JOIN clientes c  ON c.id  = j.cliente_id
+                  JOIN ciclos   cl ON cl.id = j.ciclo_id
+                 WHERE " . implode(' AND ', $where) . "
+                 GROUP BY cl.id, c.id
+                 ORDER BY cl.numero DESC, cantidad DESC, c.nombre ASC
+                 LIMIT " . (int) $limite;
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll();
+    }
+
     // ── Ganadores ───────────────────────────────────────────
 
     /**

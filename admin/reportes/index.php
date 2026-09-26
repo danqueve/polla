@@ -77,6 +77,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <a href="<?= APP_URL ?>/admin/reportes/jugadas.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-ticket-perforated"></i> Detalle Jugadas
                 </a>
+                <a href="<?= APP_URL ?>/admin/reportes/clientes.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
+                    <i class="bi bi-people"></i> Jugadas por Cliente
+                </a>
                 <a href="<?= APP_URL ?>/admin/reportes/ganadores.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-trophy"></i> Ganadores
                 </a>

@@ -53,6 +53,10 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <i class="bi bi-arrow-left"></i> Volver a Reportes
             </a>
             <?php if ($filas): ?>
+                <a href="<?= APP_URL ?>/admin/reportes/clientes_imprimir.php?<?= e($filtro->comoQueryString()) ?>"
+                   class="g-btn g-btn--outline" target="_blank" rel="noopener">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
+                </a>
                 <a href="<?= APP_URL ?>/admin/reportes/exportar.php?<?= e($filtro->comoQueryString(['que' => 'clientes'])) ?>"
                    class="g-btn g-btn--primary">
                     <i class="bi bi-download me-1"></i> Exportar CSV

@@ -80,6 +80,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <a href="<?= APP_URL ?>/admin/reportes/clientes.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-people"></i> Jugadas por Cliente
                 </a>
+                <a href="<?= APP_URL ?>/admin/reportes/detalle_por_cliente.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
+                    <i class="bi bi-journal-text"></i> Detalle por Cliente
+                </a>
                 <a href="<?= APP_URL ?>/admin/reportes/ganadores.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-trophy"></i> Ganadores
                 </a>

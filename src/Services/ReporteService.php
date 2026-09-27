@@ -248,6 +248,55 @@ class ReporteService
         return $filas;
     }
 
+    /**
+     * Agrupa la salida de jugadas() (una fila plana por jugada, la mas
+     * reciente primero) en un bloque por cliente -- para los reportes
+     * de "control" donde interesa ver TODAS las jugadas de cada uno
+     * juntas, en vez de una lista donde quedan mezcladas con las de
+     * todos los demas clientes.
+     *
+     * Alfabetico por nombre de cliente (asi se encuentra a uno en un
+     * documento impreso), y dentro de cada cliente en orden
+     * cronologico ascendente -- se lee como el resumen de una cuenta,
+     * no como "lo ultimo que paso" (que es el criterio de jugadas() sola).
+     *
+     * @param array<int,array> $filas Salida de jugadas().
+     * @return array<int,array{nro_cliente:string,dni:string,cliente:string,
+     *               jugadas:array,cantidad:int,importe:float}>
+     */
+    public function agruparPorCliente(array $filas): array
+    {
+        $grupos = [];
+        foreach ($filas as $fila) {
+            // nro_cliente, no cliente_id: jugadas() no trae el id interno
+            // (no hace falta para nada mas), y nro_cliente ya es el
+            // identificador unico que se muestra en toda la app.
+            $clave = $fila['nro_cliente'];
+            if (!isset($grupos[$clave])) {
+                $grupos[$clave] = [
+                    'nro_cliente' => $fila['nro_cliente'],
+                    'dni'         => $fila['dni'],
+                    'cliente'     => $fila['cliente'],
+                    'jugadas'     => [],
+                    'cantidad'    => 0,
+                    'importe'     => 0.0,
+                ];
+            }
+            $grupos[$clave]['jugadas'][] = $fila;
+            $grupos[$clave]['cantidad']++;
+            $grupos[$clave]['importe']  += (float) $fila['importe'];
+        }
+
+        foreach ($grupos as &$g) {
+            usort($g['jugadas'], static fn($a, $b) => $a['fecha_carga'] <=> $b['fecha_carga']);
+        }
+        unset($g);
+
+        uasort($grupos, static fn($a, $b) => strcasecmp($a['cliente'], $b['cliente']));
+
+        return array_values($grupos);
+    }
+
     // ── Jugadas por cliente ─────────────────────────────────
 
     /**

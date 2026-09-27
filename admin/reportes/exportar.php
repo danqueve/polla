@@ -11,10 +11,11 @@
  * en español espera: con coma abre todo en una sola columna y sin BOM
  * rompe los acentos.
  *
- * jugadas/ganadores/clientes son exclusivos del admin (jugadas.php,
- * ganadores.php y clientes.php, las pantallas que exportan, tambien lo
- * son). numeros es de admin y supervisor por igual -mismo criterio que
- * admin/reportes/numeros.php-, asi que el guard depende de $que.
+ * jugadas/ganadores/clientes/detalle_cliente son exclusivos del admin
+ * (jugadas.php, ganadores.php, clientes.php y detalle_por_cliente.php,
+ * las pantallas que exportan, tambien lo son). numeros es de admin y
+ * supervisor por igual -mismo criterio que admin/reportes/numeros.php-,
+ * asi que el guard depende de $que.
  */
 require_once __DIR__ . '/../../config/app.php';
 
@@ -22,7 +23,7 @@ use Polla\Services\ReporteService;
 use Polla\Support\AlcanceReporte;
 use Polla\Support\FiltroReporte;
 
-$que = in_array($_GET['que'] ?? '', ['jugadas', 'ganadores', 'numeros', 'clientes'], true)
+$que = in_array($_GET['que'] ?? '', ['jugadas', 'ganadores', 'numeros', 'clientes', 'detalle_cliente'], true)
      ? $_GET['que'] : 'jugadas';
 
 if ($que === 'numeros') {
@@ -129,6 +130,34 @@ if ($que === 'jugadas') {
             $f['cantidad'],
             number_format((float) $f['importe'], 2, ',', ''),
         ]);
+    }
+
+} elseif ($que === 'detalle_cliente') {
+
+    // Un bloque por cliente (encabezado propio + fila en blanco antes
+    // del siguiente), no una tabla plana: es el mismo agrupamiento que
+    // ve la pantalla y el PDF, para poder repasar a cada cliente de
+    // corrido en vez de tener que filtrar/ordenar a mano en la planilla.
+    foreach ($reporte->agruparPorCliente($reporte->jugadas($filtro, 5000)) as $g) {
+        $fila([
+            'Cliente', $g['cliente'], 'N°', $g['nro_cliente'], 'DNI', $g['dni'],
+            $g['cantidad'] . ($g['cantidad'] === 1 ? ' jugada' : ' jugadas'),
+            number_format($g['importe'], 2, ',', ''),
+        ]);
+        $fila(['Fecha de carga', 'Ciclo', 'Numeros', 'Importe', 'Estado', 'Premio']);
+
+        foreach ($g['jugadas'] as $j) {
+            $fila([
+                formatFechaHora($j['fecha_carga']),
+                $j['ciclo'],
+                implode(' ', array_map('num2', $j['numeros'])),
+                number_format((float) $j['importe'], 2, ',', ''),
+                $j['estado'],
+                $j['monto_premio'] !== null ? number_format((float) $j['monto_premio'], 2, ',', '') : '',
+            ]);
+        }
+
+        $fila([]);
     }
 
 } else {

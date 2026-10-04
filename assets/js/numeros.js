@@ -15,6 +15,10 @@
    el botón se habilita recién cuando TODAS las raíces activas están
    completas.
 
+   Además, cualquier elemento con data-usar-numeros="5,12,18,..."
+   (favoritas y últimas jugadas) vuelca esa lista en las casillas sin
+   tipear: ver el bloque "Usar estos números" más abajo.
+
    Todo lo que hace es comodidad y feedback inmediato: la validación
    de verdad la hacen JugadaService y SorteoService en el servidor,
    así que nada depende de que el JS haya corrido.
@@ -23,7 +27,13 @@
 (function () {
     'use strict';
 
-    const form = document.querySelector('form');
+    // El formulario que CONTIENE las casillas, no el primer <form> de la
+    // pagina: en pantallas con otros formularios antes (por ejemplo los
+    // de renombrar y borrar en "Mis favoritas") el primero no es el de
+    // las casillas. En los sorteos data-numeros esta en el <form> mismo,
+    // y closest() lo devuelve a el: ahi no cambia nada.
+    const primeraRaiz = document.querySelector('[data-numeros]');
+    const form = primeraRaiz ? primeraRaiz.closest('form') : null;
     if (!form) return;
 
     /**
@@ -163,9 +173,22 @@
             });
         }
 
+        /**
+         * Completa las casillas con una lista (p. ej. una favorita) y
+         * repinta. Solo escribe los valores: contador, boton de confirmar
+         * y total a pagar los recalcula repintar() por el mismo camino
+         * que cuando se tipea.
+         */
+        function llenar(valores) {
+            casillas.forEach((casilla, i) => {
+                casilla.value = i < valores.length ? dosCifras(valores[i]) : '';
+            });
+            repintar();
+        }
+
         repintar();
 
-        return { raiz, estado };
+        return { raiz, estado, casillas, llenar };
     }
 
     function activarTodas(contenedor) {
@@ -230,22 +253,33 @@
         document.dispatchEvent(new CustomEvent('grupos:cambio', { detail: { cantidad: bloques.length } }));
     }
 
+    /**
+     * Suma un bloque de jugada vacío al final y lo deja activo. Devuelve
+     * el grupo nuevo (o null si el bloque no tiene casillas). Lo usan
+     * "Agregar otra jugada" y los botones "Usar" cuando no queda ningún
+     * bloque vacío donde volcar los números.
+     */
+    function agregarGrupo() {
+        const indice = bloquesActuales().length;
+        const nodo = plantilla.content.firstElementChild.cloneNode(true);
+        nodo.querySelectorAll('[name]').forEach((campo) => {
+            campo.name = campo.name.replace(/__INDICE__/g, String(indice));
+        });
+        contenedorGrupos.appendChild(nodo);
+
+        const nuevoGrupo = activar(nodo);
+        if (nuevoGrupo) grupos.push(nuevoGrupo);
+
+        renumerar();
+        revisarTodo();
+
+        return nuevoGrupo;
+    }
+
     if (contenedorGrupos && plantilla && btnAgregar) {
         btnAgregar.addEventListener('click', function () {
-            const indice = bloquesActuales().length;
-            const nodo = plantilla.content.firstElementChild.cloneNode(true);
-            nodo.querySelectorAll('[name]').forEach((campo) => {
-                campo.name = campo.name.replace(/__INDICE__/g, String(indice));
-            });
-            contenedorGrupos.appendChild(nodo);
-
-            const nuevoGrupo = activar(nodo);
-            if (nuevoGrupo) grupos.push(nuevoGrupo);
-
-            renumerar();
-            revisarTodo();
-
-            const primerInput = nodo.querySelector('.casilla__input');
+            const nuevoGrupo = agregarGrupo();
+            const primerInput = nuevoGrupo && nuevoGrupo.casillas[0];
             if (primerInput) primerInput.focus();
         });
 
@@ -262,6 +296,43 @@
             revisarTodo();
         });
     }
+
+    // ── "Usar estos números": favoritas y últimas jugadas. ───────────
+    //
+    // Cualquier elemento con data-usar-numeros="5,12,18,..." (un botón
+    // del portal o del panel del staff) vuelca esa lista en las
+    // casillas sin tipear. Va al primer bloque que esté totalmente
+    // vacío; si todos tienen algo, suma un bloque nuevo: así se pueden
+    // combinar varias favoritas en una sola solicitud, con un solo
+    // código de pago. No confirma nada: queda todo precargado para
+    // revisar, cambiar números o sumar jugadas antes de confirmar.
+    document.addEventListener('click', function (ev) {
+        const btnUsar = ev.target.closest ? ev.target.closest('[data-usar-numeros]') : null;
+        if (!btnUsar || !contenedorGrupos || !grupos.length) return;
+        ev.preventDefault();
+
+        const numeros = (btnUsar.dataset.usarNumeros || '')
+            .split(',')
+            .map((n) => n.trim())
+            .filter((n) => /^\d{1,2}$/.test(n))
+            .map((n) => parseInt(n, 10));
+
+        // El servidor solo dibuja el botón cuando la cantidad coincide; esto
+        // cubre un data-* a mano o una configuración que cambió en el medio.
+        if (numeros.length !== grupos[0].estado.total) return;
+
+        let destino = grupos.find((g) => g.casillas.every((c) => c.value.trim() === ''));
+        if (!destino && plantilla && btnAgregar) destino = agregarGrupo();
+        if (!destino) return;
+
+        destino.llenar(numeros);
+
+        // Sin foco en ninguna casilla: en el celular no se abre el teclado.
+        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+
+        const reducido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        destino.raiz.scrollIntoView({ behavior: reducido ? 'auto' : 'smooth', block: 'center' });
+    });
 
     // Evita el doble envío por doble toque en el celular
     form.addEventListener('submit', function () {

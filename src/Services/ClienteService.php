@@ -311,6 +311,11 @@ class ClienteService
             return 'desactivado';
         }
 
+        // Sin jugadas ni vendedor, pero puede tener favoritas escritas a
+        // mano en "Mis favoritas". jugadas_favoritas no tiene FK (igual
+        // que el resto del esquema), asi que se borran aca para no dejar
+        // filas colgando de un cliente que ya no existe.
+        $this->db->prepare('DELETE FROM jugadas_favoritas WHERE cliente_id = :id')->execute([':id' => $id]);
         $this->db->prepare('DELETE FROM clientes WHERE id = :id')->execute([':id' => $id]);
         return 'borrado';
     }

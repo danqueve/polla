@@ -6,7 +6,9 @@ require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
 use Polla\Services\ClienteService;
+use Polla\Services\FavoritaService;
 use Polla\Services\HorarioCargaService;
+use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PromocionService;
 
@@ -46,7 +48,63 @@ $gruposPrevios = old('grupos', [['numeros' => array_fill(0, $cantidad, '')]]);
 if (!$gruposPrevios) {
     $gruposPrevios = [['numeros' => array_fill(0, $cantidad, '')]];
 }
-$clientePrevio = (int) old('cliente_id', 0);
+// ?cliente= llega al elegir uno en el desplegable (ver cambiarCliente()
+// abajo): la pagina se recarga para mostrar SUS favoritas y ultimas
+// jugadas. Lo que volvio de un error de validacion (old) tiene prioridad.
+$clientePrevio = (int) old('cliente_id', (int) ($_GET['cliente'] ?? 0));
+
+// Atajo "repetir": favoritas y combinaciones distintas que ya jugo el
+// cliente elegido. Solo se arma si el id esta en la lista de activos que
+// ya se le muestra al staff -- un ?cliente= cualquiera no trae nada.
+$panelCliente = null;
+foreach ($clientes as $_c) {
+    if ($clientePrevio > 0 && (int) $_c['id'] === $clientePrevio) {
+        $panelCliente = $_c;
+        break;
+    }
+}
+
+$favoritasCliente = [];
+$ultimasCliente   = [];
+if ($panelCliente) {
+    $favoritasCliente = FavoritaService::crearDesde($db)->listar($clientePrevio, $tipoJuego);
+    $yaFavoritas      = array_column($favoritasCliente, null, 'canonica');
+    // Las que ya son favoritas salen arriba: no se repiten en "ultimas".
+    $ultimasCliente   = array_values(array_filter(
+        JugadaService::crearDesde($db)->ultimasCombinaciones($clientePrevio, $tipoJuego, 8),
+        static fn(array $c): bool => !isset($yaFavoritas[$c['canonica']])
+    ));
+}
+
+/** Una combinacion del atajo: sus bolillas y el boton "Usar" que la vuelca en las casillas. */
+$dibujarCombinacion = static function (array $numeros, string $canonica, ?string $titulo, ?string $meta) use ($cantidad): void {
+    ?>
+    <div class="g-list-item">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="min-w-0">
+                <?php if ($titulo !== null): ?>
+                    <div class="g-list-item__title"><?= e($titulo) ?></div>
+                <?php endif; ?>
+                <div class="bolillas mt-1">
+                    <?php foreach ($numeros as $n): ?>
+                        <span class="bolilla bolilla--chica" style="width:24px;height:24px;font-size:.65rem;line-height:24px"><?= e(num2($n)) ?></span>
+                    <?php endforeach; ?>
+                </div>
+                <?php if ($meta !== null): ?>
+                    <div class="g-list-item__meta mt-1"><?= e($meta) ?></div>
+                <?php endif; ?>
+            </div>
+            <?php if (count($numeros) === $cantidad): ?>
+                <button type="button" class="g-btn g-btn--outline g-btn--sm" data-usar-numeros="<?= e($canonica) ?>">
+                    <i class="bi bi-arrow-repeat"></i> Usar
+                </button>
+            <?php else: ?>
+                <span class="small text-muted">Tenía <?= count($numeros) ?> números</span>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+};
 
 /** Dibuja un bloque de "una jugada": sus casillas, limpiar y aviso. */
 $dibujarGrupo = static function ($indice, array $numeros) use ($cantidad): void {
@@ -206,7 +264,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                         <div class="g-card__body">
                             <label class="form-label fw-semibold small text-muted" for="cliente_id">Cliente</label>
                             <select class="form-select form-select-lg" id="cliente_id" name="cliente_id"
-                                    data-requerido required autofocus>
+                                    data-requerido required autofocus
+                                    data-anterior="<?= $clientePrevio > 0 ? $clientePrevio : '' ?>"
+                                    onchange="cambiarCliente(this)">
                                 <option value="">Elegí un cliente...</option>
                                 <?php foreach ($clientes as $cliente): ?>
                                     <option value="<?= (int) $cliente['id'] ?>"
@@ -223,6 +283,48 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                             </div>
                         </div>
                     </div>
+
+                    <?php if ($panelCliente): ?>
+                        <!-- Atajo: lo que ya jugo este cliente, para no tipearlo de nuevo -->
+                        <div class="g-card g-list-card mb-4 g-animate g-animate-delay-1" id="panel-repetir">
+                            <div class="g-card__header">
+                                <h3 class="g-card__title">
+                                    <i class="bi bi-arrow-repeat me-1"></i>
+                                    Favoritas y últimas jugadas de <?= e($panelCliente['nombre']) ?>
+                                </h3>
+                            </div>
+                            <div class="g-card__body">
+                                <?php if (!$favoritasCliente && !$ultimasCliente): ?>
+                                    <p class="text-muted small mb-0 p-3">
+                                        Este cliente todavía no jugó <?= $esSabado ? 'sábados' : 'semanas' ?>
+                                        ni tiene favoritas guardadas.
+                                    </p>
+                                <?php else: ?>
+                                    <?php if ($favoritasCliente): ?>
+                                        <div class="fw-semibold small text-muted px-3 pt-3">
+                                            <i class="bi bi-star-fill text-warning me-1"></i> Favoritas
+                                        </div>
+                                        <?php foreach ($favoritasCliente as $fav): ?>
+                                            <?php $dibujarCombinacion($fav['numeros'], $fav['canonica'], $fav['nombre'], null); ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+
+                                    <?php if ($ultimasCliente): ?>
+                                        <div class="fw-semibold small text-muted px-3 pt-3">Últimas jugadas distintas</div>
+                                        <?php foreach ($ultimasCliente as $comb): ?>
+                                            <?php $dibujarCombinacion(
+                                                $comb['numeros'],
+                                                $comb['canonica'],
+                                                null,
+                                                ($comb['veces'] === 1 ? 'La jugó 1 vez' : 'La jugó ' . $comb['veces'] . ' veces')
+                                                    . ' · última el ' . formatFecha($comb['ultima'])
+                                            ); ?>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- Paso 2: Las jugadas y números -->
                     <div class="g-card mb-4 g-animate g-animate-delay-2">
@@ -340,6 +442,31 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 </button>
             </div>
         </div>
+
+        <script>
+        // Al elegir otro cliente se recarga con ?cliente=: el atajo
+        // "Favoritas y ultimas jugadas" tiene que ser SIEMPRE el del cliente
+        // elegido, o se podrian cargar a uno los numeros de otro. Si ya hay
+        // numeros tipeados se pide confirmacion, porque recargar los pierde.
+        function cambiarCliente(select) {
+            var hayNumeros = Array.prototype.some.call(
+                document.querySelectorAll('#form-jugada .casilla__input'),
+                function (casilla) { return casilla.value.trim() !== ''; }
+            );
+            if (hayNumeros && !window.confirm('Si cambiás de cliente se borran los números que ya cargaste. ¿Seguir?')) {
+                select.value = select.getAttribute('data-anterior') || '';
+                return;
+            }
+            var url = new URL(window.location.href);
+            url.searchParams.set('tipo', <?= json_encode($tipoJuego) ?>);
+            if (select.value) {
+                url.searchParams.set('cliente', select.value);
+            } else {
+                url.searchParams.delete('cliente');
+            }
+            window.location.href = url.toString();
+        }
+        </script>
 
     <?php endif; ?>
 

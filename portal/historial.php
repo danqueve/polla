@@ -6,7 +6,9 @@
 require_once __DIR__ . '/../config/portal.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\FavoritaService;
 use Polla\Services\JugadaService;
+use Polla\Services\ParametroService;
 use Polla\Services\PortalService;
 
 requireCliente();
@@ -40,6 +42,14 @@ if (!$esSabado) {
         array_unshift($ciclos, $activo);
     }
 }
+
+// Para los botones "Volver a jugar" / "Guardar como favorita" de cada
+// tarjeta (includes/portal_jugada.php): se calculan UNA vez aca, no por
+// jugada ni por ciclo.
+$parametrosJuego = new ParametroService($db);
+$cantidadHoy     = $esSabado ? $parametrosJuego->numerosPorJugadaSabado() : $parametrosJuego->numerosPorJugada();
+$favoritasCanon  = FavoritaService::crearDesde($db)->canonicasDelCliente($clienteId, $tipoJuego);
+$volverA         = 'historial';
 
 $pageTitle  = 'Historial · ' . APP_NAME;
 $navSeccion = 'historial';

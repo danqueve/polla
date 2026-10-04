@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../config/portal.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\FavoritaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PortalService;
 use Polla\Services\PozoService;
@@ -43,6 +44,14 @@ $premioBase   = $esSabado
     ? (new ParametroService($db))->premioBaseSabado()
     : (new ParametroService($db))->premioBase();
 $pozoMostrado = PozoService::montoAMostrar((float) ($ciclo['monto_acumulado'] ?? 0), $premioBase);
+
+// Para los botones "Volver a jugar" / "Guardar como favorita" de cada
+// tarjeta (includes/portal_jugada.php): se calculan UNA vez aca, no por
+// jugada.
+$parametros     = new ParametroService($db);
+$cantidadHoy    = $esSabado ? $parametros->numerosPorJugadaSabado() : $parametros->numerosPorJugada();
+$favoritasCanon = FavoritaService::crearDesde($db)->canonicasDelCliente($clienteId, $tipoJuego);
+$volverA        = 'index';
 
 $pageTitle  = 'Mis jugadas · ' . APP_NAME;
 $navSeccion = 'mis-jugadas';

@@ -16,7 +16,7 @@
    pisar su cache vieja.
    ============================================================ */
 
-const CACHE_NAME = 'decena-static-v3';
+const CACHE_NAME = 'decena-static-v4';
 
 /**
  * Sin barra inicial a proposito: el sitio vive en la raiz en

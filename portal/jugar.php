@@ -17,7 +17,9 @@
 require_once __DIR__ . '/../config/portal.php';
 
 use Polla\Services\CicloService;
+use Polla\Services\FavoritaService;
 use Polla\Services\HorarioCargaService;
+use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PromocionService;
 use Polla\Services\SolicitudService;
@@ -68,8 +70,57 @@ if (!$gruposPrevios) {
     $gruposPrevios = [['numeros' => array_fill(0, $cantidad, '')]];
 }
 
+// ── Volver a jugar lo mismo ──────────────────────────────────
+// "Volver a jugar" (?repetir=<jugada>) y "Jugar" en una favorita
+// (?favorita=<id>) llegan aca con las casillas ya completas. Solo se
+// PRECARGA: no se crea nada, el cliente revisa, puede cambiar numeros o
+// sumar jugadas, y confirma por el camino de siempre (mismas
+// validaciones, promociones y pago).
+//
+// Lo que volvio de un error de validacion (old) tiene prioridad: es lo
+// que el cliente estaba tipeando. Y solo se carga lo que es SUYO, de
+// ESTE juego y con la cantidad de numeros de hoy -- un id ajeno, de
+// otro juego o de cuando se jugaban otros numeros deja el formulario
+// vacio con un aviso, igual que un id que no existe.
+$favoritasSvc = FavoritaService::crearDesde($db);
+$favoritas    = $favoritasSvc->listar($clienteId, $tipoJuego);
+
+$origenPrecarga = null;   // 'jugada' | 'favorita'
+$nombrePrecarga = null;
+$avisoPrecarga  = null;
+
+if (!old('grupos') && (isset($_GET['repetir']) || isset($_GET['favorita']))) {
+    if (isset($_GET['repetir'])) {
+        $origen         = JugadaService::crearDesde($db)->numerosDeJugadaDelCliente($clienteId, (int) $_GET['repetir']);
+        $origenPrecarga = 'jugada';
+    } else {
+        $origen         = $favoritasSvc->buscar($clienteId, (int) $_GET['favorita']);
+        $origenPrecarga = 'favorita';
+        $nombrePrecarga = $origen['nombre'] ?? null;
+    }
+
+    if (!$origen) {
+        $avisoPrecarga = 'No encontramos esa ' . ($origenPrecarga === 'jugada' ? 'jugada' : 'favorita')
+            . ' entre las tuyas. Armá la jugada de cero.';
+    } elseif ($origen['tipo_juego'] !== $tipoJuego) {
+        $avisoPrecarga = 'Esos números son de otro juego. Elegí la pestaña correcta o armá la jugada de cero.';
+    } elseif (count($origen['numeros']) !== $cantidad) {
+        $avisoPrecarga = 'Esos números eran ' . count($origen['numeros']) . ' y hoy se juegan ' . $cantidad
+            . ' por jugada, así que no se pueden cargar tal cual. Armá la jugada de cero.';
+    } else {
+        $gruposPrevios = [['numeros' => array_map(
+            static fn(int $n): string => str_pad((string) $n, 2, '0', STR_PAD_LEFT),
+            $origen['numeros']
+        )]];
+    }
+
+    if ($avisoPrecarga !== null) {
+        $origenPrecarga = null;
+    }
+}
+
 /** Dibuja un bloque de "una jugada": sus 10 casillas, limpiar y aviso. */
-$dibujarGrupo = static function ($indice, array $numeros) use ($cantidad): void {
+$dibujarGrupo = static function ($indice, array $numeros, bool $favorita = false) use ($cantidad): void {
     ?>
     <div class="tarjeta p-3 mt-2" data-numeros="jugada" data-repetidos="no">
         <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
@@ -105,6 +156,16 @@ $dibujarGrupo = static function ($indice, array $numeros) use ($cantidad): void 
                 </div>
             <?php endfor; ?>
         </div>
+
+        <?php /* Sin id/for a proposito: numeros.js clona este bloque y solo
+                 renombra los atributos name, asi que un id se repetiria.
+                 El <label> envuelve al input y se asocia solo. */ ?>
+        <label class="d-flex align-items-center gap-2 mt-3 mb-0 small">
+            <input class="form-check-input mt-0" type="checkbox"
+                   name="grupos[<?= e((string) $indice) ?>][favorita]" value="1"
+                   <?= $favorita ? 'checked' : '' ?>>
+            <span><i class="bi bi-star" aria-hidden="true"></i> Guardar también como favorita</span>
+        </label>
 
         <div class="alert alert-danger mt-3 mb-0 py-2 js-aviso" role="alert" aria-live="polite" hidden></div>
     </div>
@@ -173,6 +234,57 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
     <?php else: ?>
 
+    <?php if ($avisoPrecarga !== null): ?>
+        <div class="alert alert-warning d-flex align-items-start gap-2 mt-3" role="alert">
+            <i class="bi bi-exclamation-triangle-fill flex-shrink-0" style="margin-top:.15rem"></i>
+            <div><?= e($avisoPrecarga) ?></div>
+        </div>
+    <?php elseif ($origenPrecarga !== null): ?>
+        <div class="alert alert-success d-flex align-items-start gap-2 mt-3" role="status">
+            <i class="bi bi-arrow-repeat flex-shrink-0" style="margin-top:.15rem"></i>
+            <div>
+                <?php if ($origenPrecarga === 'favorita'): ?>
+                    Cargamos tu favorita<?= $nombrePrecarga !== null ? ' «' . e($nombrePrecarga) . '»' : '' ?>.
+                <?php else: ?>
+                    Cargamos los números de tu jugada anterior.
+                <?php endif; ?>
+                Revisalos: podés cambiar lo que quieras o sumar más jugadas, y <strong>todavía no se
+                generó ningún código</strong> hasta que toques el botón de abajo.
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($favoritas): ?>
+        <section class="tarjeta p-3 mt-3" id="panel-favoritas">
+            <div class="d-flex align-items-baseline justify-content-between gap-2 mb-2">
+                <span class="rotulo"><i class="bi bi-star-fill" aria-hidden="true"></i> Tus favoritas</span>
+                <a href="<?= APP_URL ?>/portal/favoritas.php?tipo=<?= e($tipoJuego) ?>" class="small">Administrar</a>
+            </div>
+            <?php foreach ($favoritas as $fav): ?>
+                <div class="fila d-flex align-items-center justify-content-between gap-2">
+                    <div class="min-w-0">
+                        <?php if ($fav['nombre'] !== null): ?>
+                            <p class="fila__titulo mb-1"><?= e($fav['nombre']) ?></p>
+                        <?php endif; ?>
+                        <div class="bolillas">
+                            <?php foreach ($fav['numeros'] as $n): ?>
+                                <span class="bolilla bolilla--chica" style="width:26px;height:26px;font-size:.75rem"><?= e(num2($n)) ?></span>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php if (count($fav['numeros']) === $cantidad): ?>
+                        <button type="button" class="btn btn-sm btn-outline-success flex-shrink-0"
+                                data-usar-numeros="<?= e($fav['canonica']) ?>">
+                            Usar
+                        </button>
+                    <?php else: ?>
+                        <span class="fila__meta flex-shrink-0">Tenía <?= count($fav['numeros']) ?> números</span>
+                    <?php endif; ?>
+                </div>
+            <?php endforeach; ?>
+        </section>
+    <?php endif; ?>
+
     <form method="post" id="form-jugada"
           action="<?= APP_URL ?>/portal/guardar_solicitud.php" novalidate>
         <?= csrfField() ?>
@@ -187,7 +299,7 @@ require __DIR__ . '/../includes/portal_cabecera.php';
 
         <div id="grupos-jugada">
             <?php foreach ($gruposPrevios as $idx => $grupo): ?>
-                <?php $dibujarGrupo($idx, $grupo['numeros'] ?? []); ?>
+                <?php $dibujarGrupo($idx, $grupo['numeros'] ?? [], !empty($grupo['favorita'])); ?>
             <?php endforeach; ?>
         </div>
 

@@ -19,6 +19,14 @@
  *                 indice, asi que no hace falta cruzar por fecha para
  *                 mostrar el extracto completo de cada fila.
  *
+ * Opcionales (los define la pagina UNA vez para todas las tarjetas):
+ *   $cantidadHoy     int -- cuantos numeros se juegan hoy en este juego;
+ *                    "Volver a jugar" solo se ofrece si coincide.
+ *   $favoritasCanon  array -- set de combinaciones ya favoritas, indexado
+ *                    por FavoritaService::canonica().
+ *   $volverA         'index' | 'historial' -- a donde vuelve el POST de
+ *                    "Guardar como favorita".
+ *
  * Los numeros se marcan acumulados entre todos los sorteos del ciclo
  * (PortalService::evaluar()), igual que el cotejo real: no hace falta
  * que salgan juntos en uno solo.
@@ -121,6 +129,39 @@ $marcados = $acertados;
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php
+        // Volver a jugar lo mismo / guardarla como favorita. Solo si hoy se
+        // juega con la misma cantidad de numeros que esta jugada: si la
+        // configuracion cambio (p. ej. el sabado paso de 5 a 6), no se puede
+        // precargar tal cual. $cantidadHoy, $favoritasCanon y $volverA los
+        // define la pagina que incluye esto, una sola vez para todas las
+        // tarjetas; sin ellos, se asume que coincide y que nada es favorita.
+        $_tipoCard    = $esSabado ? \Polla\Services\CicloService::TIPO_SABADO : \Polla\Services\CicloService::TIPO_SEMANAL;
+        $_puedeRepetir = ($cantidadHoy ?? $total) === $total;
+        $_esFavorita  = isset(($favoritasCanon ?? [])[\Polla\Services\FavoritaService::canonica($jugada['numeros'])]);
+        ?>
+        <?php if ($_puedeRepetir): ?>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                <a class="btn btn-sm btn-outline-success"
+                   href="<?= APP_URL ?>/portal/jugar.php?tipo=<?= e($_tipoCard) ?>&amp;repetir=<?= (int) $jugada['id'] ?>">
+                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Volver a jugar
+                </a>
+                <?php if ($_esFavorita): ?>
+                    <span class="etiqueta etiqueta--oro"><i class="bi bi-star-fill" aria-hidden="true"></i> En favoritas</span>
+                <?php else: ?>
+                    <form method="post" action="<?= APP_URL ?>/portal/favorita_guardar.php" class="d-inline">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="jugada_id" value="<?= (int) $jugada['id'] ?>">
+                        <input type="hidden" name="tipo_juego" value="<?= e($_tipoCard) ?>">
+                        <input type="hidden" name="volver" value="<?= e($volverA ?? 'index') ?>">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-star" aria-hidden="true"></i> Guardar como favorita
+                        </button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
 
         <?php if (!$anulada && $totalSorteos > 0): ?>
             <hr class="my-3">

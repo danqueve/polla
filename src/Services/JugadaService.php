@@ -610,6 +610,89 @@ class JugadaService
     }
 
     /**
+     * Tipo de juego y numeros de UNA jugada, solo si es del cliente.
+     *
+     * La pertenencia se controla en el propio WHERE (j.cliente_id), no
+     * despues en PHP: es lo que usan "Volver a jugar" y "Guardar como
+     * favorita" a partir de un id que viene del navegador, y con el
+     * filtro en la consulta un id ajeno devuelve null, igual que uno que
+     * no existe. Las anuladas se aceptan: los numeros siguen siendo del
+     * cliente y volver a jugarlos no toca la jugada anulada.
+     *
+     * @return array{tipo_juego:string, numeros:int[]}|null
+     */
+    public function numerosDeJugadaDelCliente(int $clienteId, int $jugadaId): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT j.tipo_juego,
+                    GROUP_CONCAT(n.numero ORDER BY n.numero ASC) AS numeros
+               FROM jugadas j
+               LEFT JOIN jugada_numeros n ON n.jugada_id = j.id
+              WHERE j.id = :id AND j.cliente_id = :cliente
+              GROUP BY j.id'
+        );
+        $stmt->execute([':id' => $jugadaId, ':cliente' => $clienteId]);
+
+        $fila = $stmt->fetch();
+        if (!$fila) {
+            return null;
+        }
+
+        $numeros = self::explotarNumeros($fila['numeros']);
+
+        return $numeros
+            ? ['tipo_juego' => $fila['tipo_juego'], 'numeros' => $numeros]
+            : null;
+    }
+
+    /**
+     * Las combinaciones distintas que jugo el cliente, de la mas
+     * reciente a la mas vieja: si jugo los mismos 10 numeros tres
+     * semanas seguidas, aparece una sola vez (con veces = 3).
+     *
+     * Agrupa por la lista ordenada de numeros, que es la misma forma
+     * canonica de FavoritaService::canonica(); asi se puede comparar
+     * directo contra las favoritas guardadas. Solo jugadas confirmadas
+     * y no anuladas: una combinacion que nunca llego a jugarse no es
+     * "lo que jugo".
+     *
+     * @return array<int,array{numeros:int[], canonica:string, ultima:string, veces:int}>
+     */
+    public function ultimasCombinaciones(int $clienteId, string $tipoJuego, int $limite = 8): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT nums, MAX(fecha_carga) AS ultima, COUNT(*) AS veces
+               FROM (
+                    SELECT j.id, j.fecha_carga,
+                           GROUP_CONCAT(n.numero ORDER BY n.numero ASC) AS nums
+                      FROM jugadas j
+                      JOIN jugada_numeros n ON n.jugada_id = j.id
+                     WHERE j.cliente_id  = :cliente
+                       AND j.tipo_juego  = :tipo
+                       AND j.estado_pago = 'confirmada'
+                       AND j.estado     <> 'anulada'
+                     GROUP BY j.id
+               ) x
+              GROUP BY nums
+              ORDER BY ultima DESC
+              LIMIT " . (int) $limite
+        );
+        $stmt->execute([':cliente' => $clienteId, ':tipo' => $tipoJuego]);
+
+        $combinaciones = [];
+        foreach ($stmt->fetchAll() as $fila) {
+            $combinaciones[] = [
+                'numeros'  => self::explotarNumeros($fila['nums']),
+                'canonica' => $fila['nums'],
+                'ultima'   => $fila['ultima'],
+                'veces'    => (int) $fila['veces'],
+            ];
+        }
+
+        return $combinaciones;
+    }
+
+    /**
      * Reemplaza los numeros de una jugada sin cambiar cliente, importe ni
      * ciclo. El tipo se toma SIEMPRE de la fila almacenada: asi una
      * jugada de sabado sigue exigiendo exactamente sus 5 numeros aunque

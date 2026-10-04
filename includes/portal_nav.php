@@ -1,7 +1,8 @@
 <?php
 /**
- * Navegacion del portal. Tres destinos: la usa gente que entra sobre
- * todo a ver como le fue, y ahora tambien a armar una jugada nueva.
+ * Navegacion del portal. Cuatro destinos: la usa gente que entra sobre
+ * todo a ver como le fue, a armar una jugada nueva, y a volver a jugar
+ * una combinacion guardada (Favoritas).
  */
 ?>
 <nav class="navbar-abajo portal-nav" aria-label="Navegacion del portal">
@@ -12,6 +13,10 @@
     <a class="navbar-abajo__item<?= navActivo('jugar') ?>" href="<?= APP_URL ?>/portal/jugar.php">
         <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
         <span>Jugar</span>
+    </a>
+    <a class="navbar-abajo__item<?= navActivo('favoritas') ?>" href="<?= APP_URL ?>/portal/favoritas.php">
+        <i class="bi bi-star" aria-hidden="true"></i>
+        <span>Favoritas</span>
     </a>
     <a class="navbar-abajo__item<?= navActivo('historial') ?>" href="<?= APP_URL ?>/portal/historial.php">
         <i class="bi bi-clock-history" aria-hidden="true"></i>

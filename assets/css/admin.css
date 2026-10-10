@@ -2,75 +2,78 @@
    Decena de Oro — Admin Panel · Estilo Gentelella
    
    Capa de diseño que transforma el admin en un dashboard tipo
-   Gentelella v4: sidebar oscuro, topbar blanca, cards con sombra,
-   tipografía Inter, paleta azul/gris.
+   Gentelella v4: sidebar oscuro, topbar blanca, cards con sombra.
+   La paleta y las tipografías ya NO son las azules/Inter de la
+   plantilla: los --g-* son alias de los tokens de marca de app.css
+   (verde, oro, papel, tinta; Sora/Bricolage/Space Grotesk), para que
+   el panel de staff y el portal del cliente se vean como una sola
+   app -- la misma bolilla, el mismo botón, el mismo pozo.
 
    Convive con Bootstrap 5 — no reemplaza app.css sino que le agrega
    el layout de escritorio con sidebar. En mobile (<768px) se
    mantiene la bottom_nav original.
    ============================================================ */
 
-/* Inter ya se carga como <link> en includes/admin_head.php (paralelo,
-   no bloqueante) -- un @import duplicado acá adentro es serialmente
-   bloqueante: el navegador tiene que bajar y parsear admin.css entero
-   antes de descubrirlo y recien ahi empezar a pedir la fuente. */
+/* Las fuentes se cargan como <link> en includes/admin_head.php
+   (assets/vendor/fuentes-portal.css, las mismas del portal) -- un
+   @import acá adentro sería serialmente bloqueante. */
 
 /* ── Design Tokens ────────────────────────────────────────── */
 
 :root {
-    /* Tipografía Gentelella */
-    --g-ff: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    /* Tipografía: la misma del portal */
+    --g-ff: var(--ff-texto);
 
-    /* Sidebar */
+    /* Sidebar: tinta verdosa en vez del azul pizarra de la plantilla */
     --g-sidebar-w: 260px;
     --g-sidebar-w-collapsed: 72px;
-    --g-sidebar-bg: #1a2332;
+    --g-sidebar-bg: var(--tinta);
     --g-sidebar-bg-hover: rgba(255, 255, 255, .06);
-    --g-sidebar-bg-active: rgba(99, 148, 255, .12);
-    --g-sidebar-text: rgba(255, 255, 255, .58);
-    --g-sidebar-text-hover: rgba(255, 255, 255, .88);
-    --g-sidebar-text-active: #7eb3ff;
-    --g-sidebar-icon: rgba(255, 255, 255, .42);
-    --g-sidebar-icon-active: #7eb3ff;
+    --g-sidebar-bg-active: rgba(242, 211, 130, .12);
+    --g-sidebar-text: rgba(255, 255, 255, .62);
+    --g-sidebar-text-hover: rgba(255, 255, 255, .9);
+    --g-sidebar-text-active: var(--oro-sobre-oscuro);
+    --g-sidebar-icon: rgba(255, 255, 255, .5);
+    --g-sidebar-icon-active: var(--oro-sobre-oscuro);
     --g-sidebar-divider: rgba(255, 255, 255, .08);
-    --g-sidebar-header: rgba(255, 255, 255, .32);
+    --g-sidebar-header: rgba(255, 255, 255, .45);
 
     /* Topbar */
     --g-topbar-h: 64px;
-    --g-topbar-bg: #ffffff;
-    --g-topbar-border: #e5e7eb;
-    --g-topbar-text: #374151;
-    --g-topbar-text-muted: #6b7280;
+    --g-topbar-bg: var(--superficie);
+    --g-topbar-border: var(--borde);
+    --g-topbar-text: var(--tinta);
+    --g-topbar-text-muted: var(--tinta-suave);
 
     /* Contenido */
-    --g-content-bg: #f3f4f6;
-    --g-content-text: #111827;
-    --g-content-text-muted: #6b7280;
-    --g-content-text-light: #9ca3af;
+    --g-content-bg: var(--papel);
+    --g-content-text: var(--tinta);
+    --g-content-text-muted: var(--tinta-suave);
+    --g-content-text-light: var(--tinta-tenue);
 
     /* Cards */
-    --g-card-bg: #ffffff;
-    --g-card-border: #e5e7eb;
-    --g-card-radius: 12px;
-    --g-card-shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-    --g-card-shadow-hover: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+    --g-card-bg: var(--superficie);
+    --g-card-border: var(--borde);
+    --g-card-radius: var(--radio);
+    --g-card-shadow: var(--sombra-sutil);
+    --g-card-shadow-hover: var(--sombra-card);
 
-    /* Acentos */
-    --g-primary: #3b82f6;
-    --g-primary-dark: #2563eb;
-    --g-primary-light: #dbeafe;
-    --g-primary-subtle: #eff6ff;
-    --g-success: #10b981;
-    --g-success-light: #d1fae5;
-    --g-warning: #f59e0b;
-    --g-warning-light: #fef3c7;
-    --g-danger: #ef4444;
-    --g-danger-light: #fee2e2;
-    --g-info: #6366f1;
-    --g-info-light: #e0e7ff;
+    /* Acentos: los de la marca */
+    --g-primary: var(--verde);
+    --g-primary-dark: var(--verde-oscuro);
+    --g-primary-light: var(--verde-claro);
+    --g-primary-subtle: var(--verde-claro);
+    --g-success: var(--verde);
+    --g-success-light: var(--verde-claro);
+    --g-warning: var(--oro);
+    --g-warning-light: var(--oro-claro);
+    --g-danger: var(--rojo);
+    --g-danger-light: var(--rojo-claro);
+    --g-info: var(--info-texto);
+    --g-info-light: var(--info-claro);
 
     /* Radios y transiciones */
-    --g-radius-sm: 8px;
+    --g-radius-sm: var(--radio-sm);
     --g-radius: 12px;
     --g-radius-lg: 16px;
     --g-transition: .2s cubic-bezier(.4, 0, .2, 1);
@@ -103,7 +106,7 @@ body.admin-gentelella {
 body.admin-gentelella h1,
 body.admin-gentelella h2,
 body.admin-gentelella h3,
-body.admin-gentelella h4 { font-family: var(--g-ff); }
+body.admin-gentelella h4 { font-family: var(--ff-display); }
 
 /* Bootstrap trae su propio --bs-primary/--bs-success (usados por
    text-primary, bg-primary, btn-primary, etc. en 14 archivos del
@@ -111,12 +114,12 @@ body.admin-gentelella h4 { font-family: var(--g-ff); }
    Bootstrap y el verde #198754 de Bootstrap convivian al lado del
    #3b82f6 y el #10b981 propios de Gentelella en la misma pantalla
    (el "Total a Cobrar" de jugadas/nueva.php, por ejemplo). Se
-   redefinen para que coincidan con la paleta del admin nuevo. */
+   redefinen al verde de la marca. */
 body.admin-gentelella {
-    --bs-primary:      #3b82f6;
-    --bs-primary-rgb:  59, 130, 246;
-    --bs-success:      #10b981;
-    --bs-success-rgb:  16, 185, 129;
+    --bs-primary:      #14663f;
+    --bs-primary-rgb:  20, 102, 63;
+    --bs-success:      #14663f;
+    --bs-success-rgb:  20, 102, 63;
 }
 
 /* Bootstrap 5.3 no tiene fw-extrabold (ni ningun CSS del proyecto la
@@ -179,14 +182,13 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
     width: 38px;
     height: 38px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--g-primary), #60a5fa);
+    background: var(--verde);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--oro-sobre-oscuro);
     font-size: 1.125rem;
     flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, .35);
 }
 
 .g-sidebar__brand-text {
@@ -196,14 +198,15 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
 
 .g-sidebar__brand-name {
     color: #fff;
-    font-weight: 700;
+    font-family: var(--ff-display);
+    font-weight: 800;
     font-size: 1rem;
     line-height: 1.2;
-    letter-spacing: -.01em;
+    letter-spacing: -.02em;
 }
 
 .g-sidebar__brand-sub {
-    color: rgba(255,255,255,.45);
+    color: rgba(255,255,255,.6);
     font-size: .6875rem;
     font-weight: 500;
     letter-spacing: .04em;
@@ -288,8 +291,9 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
 }
 
 .g-sidebar__badge--warning {
-    background: var(--g-warning);
-    color: #1a1a1a;
+    /* Sobre el sidebar oscuro: el oro calibrado para fondos oscuros */
+    background: var(--oro-sobre-oscuro);
+    color: var(--tinta);
 }
 
 /* Footer sidebar */
@@ -319,7 +323,7 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--g-primary), #818cf8);
+    background: var(--verde);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -345,7 +349,7 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
 
 .g-sidebar__user-role {
     font-size: .6875rem;
-    color: rgba(255,255,255,.42);
+    color: rgba(255,255,255,.55);
 }
 
 
@@ -493,7 +497,7 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--g-primary), #818cf8);
+    background: var(--verde);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -654,7 +658,7 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
 
 /* Stat con acento (recaudado) */
 .g-stat--accent {
-    background: linear-gradient(135deg, var(--g-primary), #2563eb);
+    background: var(--verde-oscuro);
     border-color: transparent;
 }
 
@@ -670,69 +674,60 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
 /* ── Hero card (pozo acumulado) ──────────────────────────── */
 
 .g-hero {
-    background: linear-gradient(135deg, #1e3a5f, #1a2332);
+    background: var(--verde-oscuro);
     border-radius: var(--g-card-radius);
     padding: 1.75rem;
     color: #fff;
     position: relative;
     overflow: hidden;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 16px rgba(26, 35, 50, .3);
+    box-shadow: 0 4px 16px rgba(13, 74, 45, .25);
 }
 
 .g-hero::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle at 85% 20%, rgba(59,130,246,.15) 0%, transparent 60%),
-                radial-gradient(circle at 15% 80%, rgba(99,102,241,.1) 0%, transparent 50%);
+    /* La misma trama diagonal que .pozo y el login del portal */
+    background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, .05) 0 1px,
+        transparent 1px 11px
+    );
     pointer-events: none;
 }
 
-.g-hero::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 50%;
-    height: 200%;
-    background: linear-gradient(135deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-    transform: rotate(25deg);
-    pointer-events: none;
-}
+.g-hero::after { content: none; }
 
 .g-hero__label {
     font-size: .6875rem;
     font-weight: 700;
     letter-spacing: .12em;
     text-transform: uppercase;
-    color: rgba(255,255,255,.6);
+    color: rgba(255,255,255,.75);
     margin-bottom: .5rem;
     position: relative;
 }
 
 .g-hero__amount {
-    font-family: var(--g-ff);
-    font-weight: 800;
+    font-family: var(--ff-cifra);
+    font-weight: 700;
     font-size: clamp(2.25rem, 8vw, 3rem);
     line-height: 1;
-    background: linear-gradient(135deg, #60a5fa, #a78bfa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--oro-sobre-oscuro);
     font-variant-numeric: tabular-nums;
     position: relative;
 }
 
 .g-hero__detail {
     font-size: .8125rem;
-    color: rgba(255,255,255,.5);
+    color: rgba(255,255,255,.72);
     margin-top: .75rem;
     position: relative;
 }
 
 .g-hero__detail i {
-    color: rgba(255,255,255,.35);
+    color: rgba(255,255,255,.5);
 }
 
 .g-hero__subsidy {
@@ -745,12 +740,12 @@ body.admin-gentelella.con-accion-fija { padding-bottom: 7.5rem; }
     background: rgba(255,255,255,.08);
     backdrop-filter: blur(8px);
     font-size: .75rem;
-    color: rgba(255,255,255,.65);
+    color: rgba(255,255,255,.8);
     position: relative;
 }
 
 .g-hero__subsidy i {
-    color: #60a5fa;
+    color: var(--oro-sobre-oscuro);
     font-size: .875rem;
 }
 
@@ -777,14 +772,14 @@ a.g-alert-banner:hover {
 
 .g-alert-banner--warning {
     background: var(--g-warning-light);
-    color: #92400e;
-    border: 1px solid #fcd34d;
+    color: var(--oro-texto);
+    border: 1px solid var(--oro-borde);
 }
 
 .g-alert-banner--info {
     background: var(--g-primary-subtle);
-    color: #1d4ed8;
-    border: 1px solid #93c5fd;
+    color: var(--info-texto);
+    border: 1px solid #cddbe6;
 }
 
 .g-alert-banner i {
@@ -824,7 +819,7 @@ button.g-btn--primary {
     background: var(--g-primary) !important;
     color: #ffffff !important;
     border-color: var(--g-primary) !important;
-    box-shadow: 0 1px 3px rgba(59, 130, 246, .3);
+    box-shadow: 0 1px 3px rgba(20, 102, 63, .3);
 }
 
 .g-btn--primary:hover,
@@ -832,7 +827,7 @@ a.g-btn--primary:hover,
 button.g-btn--primary:hover {
     background: var(--g-primary-dark) !important;
     border-color: var(--g-primary-dark) !important;
-    box-shadow: 0 4px 12px rgba(59, 130, 246, .3);
+    box-shadow: 0 4px 12px rgba(20, 102, 63, .3);
     transform: translateY(-1px);
     color: #ffffff !important;
 }
@@ -911,7 +906,7 @@ button.g-btn--outline:hover {
 .g-list-item {
     display: block;
     padding: 1rem 1.25rem;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--gris-claro);
     text-decoration: none;
     color: inherit;
     transition: background var(--g-transition);
@@ -922,7 +917,7 @@ button.g-btn--outline:hover {
 }
 
 .g-list-item:hover {
-    background: #f9fafb;
+    background: var(--papel);
 }
 
 .g-list-item__title {
@@ -953,18 +948,18 @@ button.g-btn--outline:hover {
     text-transform: uppercase;
 }
 
-.g-badge--success { background: var(--g-success-light); color: #065f46; }
-.g-badge--warning { background: var(--g-warning-light); color: #92400e; }
-.g-badge--danger  { background: var(--g-danger-light);  color: #991b1b; }
-.g-badge--info    { background: var(--g-info-light);    color: #3730a3; }
-.g-badge--blue    { background: var(--g-primary-light); color: #1d4ed8; }
+.g-badge--success { background: var(--g-success-light); color: var(--verde-oscuro); }
+.g-badge--warning { background: var(--g-warning-light); color: var(--oro-texto); }
+.g-badge--danger  { background: var(--g-danger-light);  color: var(--rojo); }
+.g-badge--info    { background: var(--g-info-light);    color: var(--info-texto); }
+.g-badge--blue    { background: var(--g-primary-light); color: var(--verde-oscuro); }
 
 
 /* ── Bolillas (reutilizo la semántica pero con tema azul) ── */
 
 body.admin-gentelella .bolilla {
     background: var(--g-primary-light);
-    border-color: #bfdbfe;
+    border-color: var(--verde-borde);
     color: var(--g-primary-dark);
 }
 
@@ -981,7 +976,7 @@ body.admin-gentelella .bolilla--acertada {
 
 body.admin-gentelella .casilla__input:focus {
     border-color: var(--g-primary);
-    box-shadow: 0 0 0 .2rem rgba(59, 130, 246, .15);
+    box-shadow: 0 0 0 .2rem rgba(20, 102, 63, .15);
 }
 
 body.admin-gentelella .casilla__input.cargada {
@@ -1014,8 +1009,8 @@ body.admin-gentelella .filtros {
 
 body.admin-gentelella .alert-info {
     background: var(--g-info-light);
-    border-color: #c7d2fe;
-    color: #3730a3;
+    border-color: #cddbe6;
+    color: var(--info-texto);
 }
 
 
@@ -1024,7 +1019,7 @@ body.admin-gentelella .alert-info {
 body.admin-gentelella .form-control:focus,
 body.admin-gentelella .form-select:focus {
     border-color: var(--g-primary);
-    box-shadow: 0 0 0 .2rem rgba(59, 130, 246, .15);
+    box-shadow: 0 0 0 .2rem rgba(20, 102, 63, .15);
 }
 
 body.admin-gentelella .form-check-input:checked {
@@ -1034,7 +1029,7 @@ body.admin-gentelella .form-check-input:checked {
 
 body.admin-gentelella .form-check-input:focus {
     border-color: var(--g-primary);
-    box-shadow: 0 0 0 .2rem rgba(59, 130, 246, .15);
+    box-shadow: 0 0 0 .2rem rgba(20, 102, 63, .15);
 }
 
 
@@ -1063,12 +1058,16 @@ body.admin-gentelella .btn-outline-secondary:hover {
     color: var(--g-primary);
 }
 
-body.admin-gentelella a {
+/* :where() deja la especificidad en la de un "a" pelado: con
+   "body.admin-gentelella a" (0,1,2) le ganaba a .g-sidebar__link
+   (0,1,0) y todo el menu lateral salia en el color de link sobre el
+   fondo oscuro en vez de su gris claro. */
+:where(body.admin-gentelella) a {
     color: var(--g-primary);
     text-decoration: none;
 }
 
-body.admin-gentelella a:hover {
+:where(body.admin-gentelella) a:hover {
     color: var(--g-primary-dark);
 }
 
@@ -1077,20 +1076,20 @@ body.admin-gentelella a:hover {
 
 body.admin-gentelella .alert-warning {
     background: var(--g-warning-light);
-    border-color: #fcd34d;
-    color: #92400e;
+    border-color: var(--oro-borde);
+    color: var(--oro-texto);
 }
 
 body.admin-gentelella .alert-success {
     background: var(--g-success-light);
-    border-color: #6ee7b7;
-    color: #065f46;
+    border-color: #c6ded1;
+    color: var(--verde-oscuro);
 }
 
 body.admin-gentelella .alert-danger {
     background: var(--g-danger-light);
-    border-color: #fca5a5;
-    color: #991b1b;
+    border-color: #eec9c7;
+    color: var(--rojo);
 }
 
 

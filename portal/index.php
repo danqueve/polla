@@ -34,7 +34,9 @@ $sorteos      = $portal->sorteosDelCiclo($cicloId);
 $totalSorteos = count($sorteos);
 $cicloAbierto = true;
 
-$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId, $tipoJuego);
+$solicitudesSvc = SolicitudService::crearDesde($db);
+$pendiente      = $solicitudesSvc->pendientePara($clienteId, $tipoJuego);
+$rechazadas     = $solicitudesSvc->rechazadasSinAtender($clienteId, $tipoJuego);
 
 // Fase 7: el pozo que ve el cliente suma siempre el premio base
 // garantizado a lo acumulado real esta semana (o este sabado) -- el
@@ -89,6 +91,8 @@ require __DIR__ . '/../includes/portal_cabecera.php';
        class="btn btn-outline-secondary w-100 mb-4">
         <i class="bi bi-bar-chart-line"></i> Ver ranking <?= $esSabado ? 'del sábado' : 'de la semana' ?>
     </a>
+
+    <?php require __DIR__ . '/../includes/portal_aviso_rechazadas.php'; ?>
 
     <?php if ($pendiente): ?>
         <a href="<?= APP_URL ?>/portal/solicitud.php?id=<?= (int) $pendiente['id'] ?>"

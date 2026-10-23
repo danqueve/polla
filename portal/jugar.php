@@ -61,7 +61,9 @@ if (!$esSabado) {
     }
 }
 
-$pendiente = SolicitudService::crearDesde($db)->pendientePara($clienteId, $tipoJuego);
+$solicitudesSvc = SolicitudService::crearDesde($db);
+$pendiente      = $solicitudesSvc->pendientePara($clienteId, $tipoJuego);
+$rechazadas     = $solicitudesSvc->rechazadasSinAtender($clienteId, $tipoJuego);
 
 // Repoblar tras un error de validacion del servidor. Un grupo vacio por
 // defecto: lo normal es armar una sola jugada.
@@ -71,10 +73,11 @@ if (!$gruposPrevios) {
 }
 
 // ── Volver a jugar lo mismo ──────────────────────────────────
-// "Volver a jugar" (?repetir=<jugada>) y "Jugar" en una favorita
-// (?favorita=<id>) llegan aca con las casillas ya completas. Solo se
-// PRECARGA: no se crea nada, el cliente revisa, puede cambiar numeros o
-// sumar jugadas, y confirma por el camino de siempre (mismas
+// "Volver a jugar" (?repetir=<jugada>), "Jugar" en una favorita
+// (?favorita=<id>) y "Volver a cargarlas" en una solicitud rechazada
+// (?reintentar=<solicitud>) llegan aca con las casillas ya completas.
+// Solo se PRECARGA: no se crea nada, el cliente revisa, puede cambiar
+// numeros o sumar jugadas, y confirma por el camino de siempre (mismas
 // validaciones, promociones y pago).
 //
 // Lo que volvio de un error de validacion (old) tiene prioridad: es lo
@@ -85,33 +88,62 @@ if (!$gruposPrevios) {
 $favoritasSvc = FavoritaService::crearDesde($db);
 $favoritas    = $favoritasSvc->listar($clienteId, $tipoJuego);
 
-$origenPrecarga = null;   // 'jugada' | 'favorita'
-$nombrePrecarga = null;
+$origenPrecarga = null;   // 'jugada' | 'favorita' | 'rechazada'
+$nombrePrecarga = null;   // nombre de la favorita, o codigo de la solicitud rechazada
 $avisoPrecarga  = null;
 
-if (!old('grupos') && (isset($_GET['repetir']) || isset($_GET['favorita']))) {
+$pidioPrecarga = isset($_GET['repetir']) || isset($_GET['favorita']) || isset($_GET['reintentar']);
+if (!old('grupos') && $pidioPrecarga) {
+    // Todos los origenes se normalizan a: tipo de juego + una lista de
+    // numeros por jugada (una sola, salvo una solicitud con varias).
+    $origen = null;
     if (isset($_GET['repetir'])) {
-        $origen         = JugadaService::crearDesde($db)->numerosDeJugadaDelCliente($clienteId, (int) $_GET['repetir']);
         $origenPrecarga = 'jugada';
-    } else {
-        $origen         = $favoritasSvc->buscar($clienteId, (int) $_GET['favorita']);
+        $jugada = JugadaService::crearDesde($db)->numerosDeJugadaDelCliente($clienteId, (int) $_GET['repetir']);
+        if ($jugada) {
+            $origen = ['tipo_juego' => $jugada['tipo_juego'], 'listas' => [$jugada['numeros']]];
+        }
+    } elseif (isset($_GET['favorita'])) {
         $origenPrecarga = 'favorita';
-        $nombrePrecarga = $origen['nombre'] ?? null;
+        $favorita = $favoritasSvc->buscar($clienteId, (int) $_GET['favorita']);
+        if ($favorita) {
+            $origen         = ['tipo_juego' => $favorita['tipo_juego'], 'listas' => [$favorita['numeros']]];
+            $nombrePrecarga = $favorita['nombre'];
+        }
+    } else {
+        // Solo una solicitud propia y RECHAZADA: las pendientes o
+        // confirmadas ya estan en juego (o por pagar), cargarlas de nuevo
+        // seria jugarlas dos veces.
+        $origenPrecarga = 'rechazada';
+        $solicitud = SolicitudService::crearDesde($db)->buscarPorId((int) $_GET['reintentar']);
+        if ($solicitud && (int) $solicitud['cliente_id'] === $clienteId
+            && $solicitud['estado'] === SolicitudService::ESTADO_RECHAZADA && $solicitud['jugadas']) {
+            $origen         = ['tipo_juego' => $solicitud['tipo_juego'], 'listas' => array_column($solicitud['jugadas'], 'numeros')];
+            $nombrePrecarga = $solicitud['numero_registro'];
+        }
     }
 
+    $cantidades = $origen ? array_unique(array_map('count', $origen['listas'])) : [];
+
     if (!$origen) {
-        $avisoPrecarga = 'No encontramos esa ' . ($origenPrecarga === 'jugada' ? 'jugada' : 'favorita')
-            . ' entre las tuyas. Armá la jugada de cero.';
+        $avisoPrecarga = [
+            'jugada'    => 'No encontramos esa jugada entre las tuyas. Armá la jugada de cero.',
+            'favorita'  => 'No encontramos esa favorita entre las tuyas. Armá la jugada de cero.',
+            'rechazada' => 'No encontramos esa solicitud rechazada entre las tuyas. Armá la jugada de cero.',
+        ][$origenPrecarga];
     } elseif ($origen['tipo_juego'] !== $tipoJuego) {
         $avisoPrecarga = 'Esos números son de otro juego. Elegí la pestaña correcta o armá la jugada de cero.';
-    } elseif (count($origen['numeros']) !== $cantidad) {
-        $avisoPrecarga = 'Esos números eran ' . count($origen['numeros']) . ' y hoy se juegan ' . $cantidad
-            . ' por jugada, así que no se pueden cargar tal cual. Armá la jugada de cero.';
+    } elseif ($cantidades !== [$cantidad]) {
+        $avisoPrecarga = 'Esos números eran ' . implode(' y ', $cantidades) . ' por jugada y hoy se juegan ' . $cantidad
+            . ', así que no se pueden cargar tal cual. Armá la jugada de cero.';
     } else {
-        $gruposPrevios = [['numeros' => array_map(
-            static fn(int $n): string => str_pad((string) $n, 2, '0', STR_PAD_LEFT),
-            $origen['numeros']
-        )]];
+        $gruposPrevios = array_map(
+            static fn(array $numeros): array => ['numeros' => array_map(
+                static fn(int $n): string => str_pad((string) $n, 2, '0', STR_PAD_LEFT),
+                $numeros
+            )],
+            $origen['listas']
+        );
     }
 
     if ($avisoPrecarga !== null) {
@@ -213,6 +245,14 @@ require __DIR__ . '/../includes/portal_cabecera.php';
         </li>
     </ul>
 
+    <?php
+    // El aviso de una rechazada no tiene sentido si ya se estan
+    // precargando justamente sus jugadas para volver a cargarlas.
+    if ($origenPrecarga !== 'rechazada') {
+        require __DIR__ . '/../includes/portal_aviso_rechazadas.php';
+    }
+    ?>
+
     <?php if ($pendiente): ?>
         <div class="alert alert-info d-flex align-items-start gap-2 mt-3" role="note">
             <i class="bi bi-info-circle-fill flex-shrink-0" style="margin-top:.15rem"></i>
@@ -245,6 +285,9 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             <div>
                 <?php if ($origenPrecarga === 'favorita'): ?>
                     Cargamos tu favorita<?= $nombrePrecarga !== null ? ' «' . e($nombrePrecarga) . '»' : '' ?>.
+                <?php elseif ($origenPrecarga === 'rechazada'): ?>
+                    Cargamos <?= count($gruposPrevios) === 1 ? 'la jugada' : 'las ' . count($gruposPrevios) . ' jugadas' ?>
+                    de la solicitud <span class="cifra"><?= e($nombrePrecarga) ?></span>, que no se había procesado.
                 <?php else: ?>
                     Cargamos los números de tu jugada anterior.
                 <?php endif; ?>

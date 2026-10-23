@@ -45,13 +45,22 @@
 
         <div class="menu-mas__grupo">
             <div class="menu-mas__rotulo">Jugadas</div>
+            <?php $_pendientesMas = pendientesPanel(); ?>
             <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/clientes/index.php">
                 <i class="bi bi-people" aria-hidden="true"></i>
                 <span>Clientes</span>
+                <?php if ($_pendientesMas['altas'] > 0): ?>
+                    <span class="g-sidebar__badge g-sidebar__badge--warning"
+                          title="Altas para aprobar"><?= $_pendientesMas['altas'] ?></span>
+                <?php endif; ?>
             </a>
             <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/solicitudes/index.php">
                 <i class="bi bi-qr-code-scan" aria-hidden="true"></i>
                 <span>Solicitudes de pago</span>
+                <?php if ($_pendientesMas['pagos'] > 0): ?>
+                    <span class="g-sidebar__badge g-sidebar__badge--warning"
+                          title="Pagos para confirmar"><?= $_pendientesMas['pagos'] ?></span>
+                <?php endif; ?>
             </a>
             <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/ciclos/index.php">
                 <i class="bi bi-calendar-week" aria-hidden="true"></i>

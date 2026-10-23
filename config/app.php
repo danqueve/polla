@@ -52,6 +52,9 @@ function isAdmin(): bool
 function requireLogin(): void
 {
     if (!isLoggedIn()) {
+        // Si es un formulario que se envio con la sesion ya vencida, se
+        // guarda lo tipeado para devolverlo despues de entrar de nuevo.
+        guardarFormularioSinSesion();
         header('Location: ' . APP_URL . '/auth/login.php');
         exit;
     }
@@ -66,4 +69,39 @@ function requireAdmin(): void
         header('Location: ' . APP_URL . '/admin/index.php');
         exit;
     }
+}
+
+
+// ============================================================
+// Avisos del panel
+// ============================================================
+
+/**
+ * Lo que esta esperando que el staff lo atienda: pagos de clientes sin
+ * confirmar y autorregistros sin aprobar. Lo leen la campanita de la
+ * topbar, los contadores del menu lateral y la hoja "Mas" del celular.
+ *
+ * Antes cada pantalla tenia que calcularlo y dejarlo en una variable
+ * ($solicitudesPendientes), y solo el Tablero lo hacia: en las otras
+ * 39 pantallas la campanita nunca se encendia aunque hubiera pagos
+ * esperando. Ahora lo calcula el propio menu, una vez por pedido.
+ *
+ * Admin y supervisor pueden confirmar pagos y aprobar altas, asi que
+ * los dos ven los mismos numeros.
+ *
+ * @return array{pagos:int, altas:int}
+ */
+function pendientesPanel(): array
+{
+    static $pendientes = null;
+
+    if ($pendientes === null) {
+        $db = getPDO();
+        $pendientes = [
+            'pagos' => \Polla\Services\SolicitudService::crearDesde($db)->contarPendientes(),
+            'altas' => \Polla\Services\ClienteRegistroService::crearDesde($db)->contarPendientes(),
+        ];
+    }
+
+    return $pendientes;
 }

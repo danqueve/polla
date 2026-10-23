@@ -369,6 +369,13 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                             Aún no se registró ningún turno.
                         </div>
                     <?php else: ?>
+                        <?php
+                        // Borrar se ofrece solo en el ultimo turno y con el
+                        // sabado abierto: es la misma regla que aplica
+                        // SorteoService::eliminar() (un hueco en el medio no se
+                        // podria volver a cargar). Los demas se corrigen con Editar.
+                        $ultimoTurno = max(array_map(static fn($s) => (int) $s['turno'], $lista));
+                        ?>
                         <div class="d-flex flex-column gap-3">
                             <?php foreach ($lista as $sorteo): ?>
                                 <div class="p-2 rounded border" style="background:#f9fafb">
@@ -383,6 +390,19 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                                    class="g-btn g-btn--outline g-btn--sm py-0 px-2" title="Editar turno">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
+                                                <?php if ($abierto && (int) $sorteo['turno'] === $ultimoTurno): ?>
+                                                    <form method="post" action="<?= APP_URL ?>/admin/sabados/sorteo_eliminar.php" class="d-inline"
+                                                          onsubmit="return confirm('¿Borrar el turno <?= (int) $sorteo['turno'] ?>? Se borran sus 20 números y lo podés volver a cargar.')">
+                                                        <?= csrfField() ?>
+                                                        <input type="hidden" name="id" value="<?= (int) $sorteo['id'] ?>">
+                                                        <input type="hidden" name="volver_a" value="<?= $cicloId ?>">
+                                                        <button type="submit" class="g-btn g-btn--outline g-btn--sm py-0 px-2 text-danger border-0"
+                                                                title="Borrar el turno <?= (int) $sorteo['turno'] ?> (el último cargado)"
+                                                                aria-label="Borrar el turno <?= (int) $sorteo['turno'] ?>">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                <?php endif; ?>
                                             </div>
                                         <?php endif; ?>
                                     </div>

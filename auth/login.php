@@ -41,6 +41,22 @@ if (isLoggedIn()) {
     exit;
 }
 
+// Los avisos que traiga el visitante se juntan de LAS TRES sesiones, no
+// solo de la ultima que se abre abajo: quien llega rebotado del portal
+// ("Cerraste tu sesion", "Tu acceso fue dado de baja", "Tu solicitud de
+// alta fue rechazada") tiene su aviso en POLLA_CLIENTE, y antes solo se
+// leia POLLA_VENDEDOR -- el aviso no aparecia aca y ademas quedaba
+// guardado, asi que salia en "Mis jugadas" la proxima vez que el cliente
+// entraba (un "Cerraste tu sesion" justo despues de iniciarla).
+//
+// Cada getFlash() va DESPUES del chequeo de "ya esta logueado" de su
+// mundo: si el visitante sigue con sesion, el aviso le corresponde a la
+// pantalla a la que se lo redirige, no a esta.
+$flashes = [];
+if ($_f = getFlash()) {
+    $flashes[] = $_f;
+}
+
 // Todavia no sabemos si el visitante es cliente. La sesion del panel
 // quedo vacia (no hay nadie logueado): la soltamos y probamos la del
 // portal antes de mostrar el formulario. cambiarASesion() ya deja la
@@ -53,6 +69,9 @@ if (clienteLogueado() || intentarRecordarme()) {
     header('Location: ' . APP_URL . '/portal/index.php');
     exit;
 }
+if ($_f = getFlash()) {
+    $flashes[] = $_f;
+}
 
 // Tampoco es cliente: probamos el tercer mundo, el del vendedor
 // [Fase 11], mismo patron que el del portal.
@@ -63,10 +82,10 @@ if (vendedorLogueado()) {
     exit;
 }
 
-// Si el visitante viene rebotado de requireCliente()/requireVendedor()
-// (baja o rechazo), el flash vive en esta misma sesion -- la que haya
-// quedado activa despues del ultimo cambiarASesion() de arriba.
-$flash = getFlash();
+if ($_f = getFlash()) {
+    $flashes[] = $_f;
+}
+unset($_f);
 
 // La sesion activa a esta altura es la ultima que se probo (vendedor):
 // ahi se genera y valida el CSRF de este formulario, sea cual sea el
@@ -110,7 +129,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $throttle->limpiar($identificador, $ip);
                 $audit->loginOk('usuario', (int) $fila['id'], $identificador);
 
-                header('Location: ' . APP_URL . '/admin/index.php');
+                // Si venia de un formulario que se le vencio, vuelve ahi con
+                // lo tipeado (ver guardarFormularioSinSesion()).
+                header('Location: ' . destinoTrasLogin(APP_URL . '/admin/index.php'));
                 exit;
             } catch (CuentaInactivaException $e) {
                 // Matcheo real contra usuarios pero la cuenta esta
@@ -131,7 +152,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $throttle->limpiar($identificador, $ip);
                     $audit->loginOk('cliente', (int) $cliente['id'], $identificador);
 
-                    header('Location: ' . APP_URL . '/portal/index.php');
+                    header('Location: ' . destinoTrasLogin(APP_URL . '/portal/index.php'));
                     exit;
                 } catch (CuentaInactivaException $eCliente) {
                     $errores = $eCliente->errores();
@@ -180,10 +201,12 @@ require __DIR__ . '/../includes/head.php';
 
         <div class="login__panel">
 
-            <?php if ($flash): ?>
-                <div class="alert alert-<?= e($flash['type']) ?>" role="alert">
-                    <?= nl2br(e($flash['msg'])) ?>
-                </div>
+            <?php if ($flashes): ?>
+                <?php foreach ($flashes as $flash): ?>
+                    <div class="alert alert-<?= e($flash['type']) ?>" role="alert">
+                        <?= nl2br(e($flash['msg'])) ?>
+                    </div>
+                <?php endforeach; ?>
             <?php elseif (($_GET['ya_registrado'] ?? '') === '1'): ?>
                 <div class="alert alert-info" role="alert">
                     Ese DNI ya está registrado. Ingresá con tu DNI como usuario

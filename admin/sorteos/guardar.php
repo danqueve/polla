@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\AuditoriaService;
 use Polla\Services\CicloService;
+use Polla\Services\ParametroService;
 use Polla\Services\SorteoService;
 use Polla\Support\ValidacionException;
 
@@ -20,6 +21,7 @@ $fecha   = trim($_POST['fecha'] ?? '');
 $numeros = is_array($_POST['numeros'] ?? null) ? $_POST['numeros'] : [];
 
 $db = getPDO();
+$numerosPorJugada = (new ParametroService($db))->numerosPorJugada();
 
 try {
     $resultado = SorteoService::crearDesde($db)->registrar($fecha, $numeros, currentUserId());
@@ -39,11 +41,13 @@ try {
             $detalle[] = $ganador['cliente_nombre'] . ': ' . formatPesos($ganador['monto_premio']);
         }
 
+        // Sin "arranca en $0": con la carga anticipada, la semana que viene
+        // normalmente ya tiene jugadas (y plata) cuando sale un ganador.
         setFlash('success',
-            ($cantidad === 1 ? 'Hay un ganador!' : "Hay $cantidad ganadores!") . "\n"
+            ($cantidad === 1 ? '¡Hay un ganador!' : "¡Hay $cantidad ganadores!") . "\n"
             . implode(' · ', $detalle) . "\n"
-            . 'Se repartio ' . formatPesos($resultado['pozo_repartido'])
-            . ' y el ciclo quedo cerrado. Ya esta abierto el de la semana que viene, en $0.'
+            . 'Se repartió ' . formatPesos($resultado['pozo_repartido'])
+            . ' y el ciclo quedó cerrado. Ya está abierto el de la semana que viene.'
         );
 
         header('Location: ' . APP_URL . '/admin/ciclos/ver.php?id=' . $resultado['ciclo_id']);
@@ -53,16 +57,19 @@ try {
     // ── Sin ganador y era viernes: cierra y arrastra el pozo ─
     if ($resultado['estado_cierre'] === CicloService::ESTADO_SIN_GANADOR) {
         setFlash('info',
-            'Sorteo cargado. Nadie acerto los 10 en toda la semana, asi que el ciclo se cerro sin ganador.' . "\n"
+            'Sorteo cargado. Nadie completó sus ' . $numerosPorJugada . ' números en toda la semana, así que el ciclo se cerró sin ganador.' . "\n"
             . 'El pozo de ' . formatPesos($resultado['arrastre'])
-            . ' pasa entero al ciclo nuevo, que ya esta abierto.'
+            . ' pasa entero al ciclo nuevo, que ya está abierto.'
         );
         header('Location: ' . APP_URL . '/admin/ciclos/ver.php?id=' . $resultado['ciclo_id']);
         exit;
     }
 
     // ── Sin ganador y todavia quedan sorteos ────────────────
-    setFlash('success', 'Sorteo cargado. Ningun acierto de 10 esta vez: el ciclo sigue abierto.');
+    // El cotejo es acumulado (Fase 13): no se trata de "acertar los N en
+    // este sorteo", sino de que nadie haya completado todavia sus numeros
+    // sumando los sorteos de la semana.
+    setFlash('success', 'Sorteo cargado. Nadie completó todavía sus ' . $numerosPorJugada . ' números: el ciclo sigue abierto.');
     header('Location: ' . APP_URL . '/admin/sorteos/index.php');
     exit;
 

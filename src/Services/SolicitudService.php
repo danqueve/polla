@@ -345,6 +345,47 @@ class SolicitudService
     }
 
     /**
+     * Solicitudes RECHAZADAS de las que el cliente todavia tiene que
+     * enterarse, para el aviso en el portal.
+     *
+     * Antes no habia ningun aviso: el cartel "Tenés una solicitud sin
+     * pagar" desaparecia sin explicacion y las jugadas rechazadas no se
+     * ven en ningun lado (nunca tuvieron ciclo).
+     *
+     * Sin columna de "visto": el aviso se muestra mientras la rechazada
+     * sea la solicitud MAS NUEVA del cliente en ese juego -- en cuanto
+     * arma otra (que es lo que hace al enterarse), deja de mostrarse sola.
+     * Se compara por id, no por fecha de resolucion: si el cliente ya
+     * habia armado otra antes de que se rechazara esta (un duplicado), el
+     * aviso no aparece. Y vence a los $dias, por si no vuelve a jugar.
+     *
+     * @return array<int,array{id:int, numero_registro:string, cantidad_jugadas:int,
+     *               monto_total:string, fecha_creacion:string, fecha_resolucion:string}>
+     */
+    public function rechazadasSinAtender(int $clienteId, string $tipoJuego, int $dias = 7): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT s.id, s.numero_registro, s.cantidad_jugadas, s.monto_total,
+                    s.fecha_creacion, s.fecha_resolucion
+               FROM solicitudes s
+              WHERE s.cliente_id = :cliente
+                AND s.tipo_juego = :tipo_juego
+                AND s.estado     = 'rechazada'
+                AND s.fecha_resolucion >= DATE_SUB(NOW(), INTERVAL " . max(1, $dias) . " DAY)
+                AND NOT EXISTS (
+                    SELECT 1 FROM solicitudes n
+                     WHERE n.cliente_id = s.cliente_id
+                       AND n.tipo_juego = s.tipo_juego
+                       AND n.id > s.id
+                )
+              ORDER BY s.id DESC"
+        );
+        $stmt->execute([':cliente' => $clienteId, ':tipo_juego' => $tipoJuego]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Cola de solicitudes pendientes, de la mas vieja a la mas nueva
      * (asi no se pierde la primera al final de una lista larga). Para
      * cuando el staff no tiene el codigo a mano.

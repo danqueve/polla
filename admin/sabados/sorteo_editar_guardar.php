@@ -43,7 +43,7 @@ try {
 
         setFlash('success',
             $prefijoReabierto
-            . ($cantidad === 1 ? 'Hay un ganador!' : "Hay $cantidad ganadores!") . "\n"
+            . ($cantidad === 1 ? '¡Hay un ganador!' : "¡Hay $cantidad ganadores!") . "\n"
             . implode(' · ', $detalle) . "\n"
             . 'Se repartió ' . formatPesos($resultado['pozo_repartido'])
             . ' y el sábado quedó cerrado.'
@@ -57,7 +57,7 @@ try {
     if ($resultado['estado_cierre'] === CicloService::ESTADO_SIN_GANADOR) {
         setFlash('info',
             $prefijoReabierto
-            . 'Números corregidos. Nadie acertó esta vez tampoco, así que el sábado se cerró sin ganador.' . "\n"
+            . 'Números corregidos. Con los números nuevos nadie completó su jugada, así que el sábado se cerró sin ganador.' . "\n"
             . 'El pozo de ' . formatPesos($resultado['arrastre']) . ' pasa al sábado siguiente.'
         );
         header('Location: ' . APP_URL . '/admin/sabados/ver.php?id=' . $resultado['ciclo_id']);

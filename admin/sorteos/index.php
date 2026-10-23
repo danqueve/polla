@@ -142,7 +142,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     <?php if ($abierto): ?>
                                         <form method="post" action="<?= APP_URL ?>/admin/sorteos/eliminar.php"
                                               class="d-inline"
-                                              onsubmit="return confirm('¿Borrar el sorteo del <?= e($sorteo['fecha']) ?>?')">
+                                              onsubmit="return confirm('¿Borrar el sorteo del <?= e(formatFechaDia($sorteo['fecha'])) ?>?')">
                                             <?= csrfField() ?>
                                             <input type="hidden" name="id" value="<?= (int) $sorteo['id'] ?>">
                                             <input type="hidden" name="volver_a" value="<?= (int) $ciclo['id'] ?>">

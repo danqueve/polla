@@ -46,7 +46,7 @@ try {
 
         setFlash('success',
             $prefijoReabierto
-            . ($cantidad === 1 ? 'Hay un ganador!' : "Hay $cantidad ganadores!") . "\n"
+            . ($cantidad === 1 ? '¡Hay un ganador!' : "¡Hay $cantidad ganadores!") . "\n"
             . implode(' · ', $detalle) . "\n"
             . 'Se repartió ' . formatPesos($resultado['pozo_repartido'])
             . ' y el ciclo quedó cerrado.'
@@ -60,7 +60,9 @@ try {
     if ($resultado['estado_cierre'] === CicloService::ESTADO_SIN_GANADOR) {
         setFlash('info',
             $prefijoReabierto
-            . 'Números corregidos. Nadie acertó esta vez tampoco, así que el ciclo se cerró sin ganador.' . "\n"
+            // Sin "tampoco": la correccion puede haber sacado a un ganador
+            // que antes si estaba, y entonces "tampoco" era falso.
+            . 'Números corregidos. Con los números nuevos nadie completó su jugada, así que el ciclo se cerró sin ganador.' . "\n"
             . 'El pozo de ' . formatPesos($resultado['arrastre']) . ' pasa al ciclo siguiente.'
         );
         header('Location: ' . APP_URL . '/admin/ciclos/ver.php?id=' . $resultado['ciclo_id']);

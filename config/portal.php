@@ -87,6 +87,11 @@ function intentarRecordarme(): bool
 function requireCliente(bool $permitirPendiente = false): void
 {
     if (!clienteLogueado() && !intentarRecordarme()) {
+        // Formulario enviado con la sesion vencida y sin "recordarme"
+        // vigente: se guarda lo tipeado para devolverlo tras entrar.
+        // (Con "recordarme", la sesion se reabre sola y el caso lo
+        // resuelve requirePost().)
+        guardarFormularioSinSesion();
         header('Location: ' . APP_URL . '/portal/login.php');
         exit;
     }

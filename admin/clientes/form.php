@@ -183,7 +183,7 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                 Si el cliente ya posee jugadas cargadas históricas, el sistema lo desactivará en vez de borrarlo para preservar la integridad del pozo.
                             </p>
                             <form method="post" action="<?= APP_URL ?>/admin/clientes/eliminar.php"
-                                  onsubmit="return confirm('¿Confirmas borrar a <?= e(addslashes($cliente['nombre'])) ?>?')">
+                                  onsubmit="return confirm('¿Borrar a <?= e(addslashes($cliente['nombre'])) ?>? Si ya tiene jugadas, se da de baja en vez de borrarse.')">
                                 <?= csrfField() ?>
                                 <input type="hidden" name="id" value="<?= (int) $cliente['id'] ?>">
                                 <button type="submit" class="g-btn g-btn--outline text-danger border-danger g-btn--sm">

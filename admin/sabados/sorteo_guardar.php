@@ -10,6 +10,7 @@ require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\AuditoriaService;
 use Polla\Services\CicloService;
+use Polla\Services\ParametroService;
 use Polla\Services\SorteoService;
 use Polla\Support\ValidacionException;
 
@@ -19,6 +20,9 @@ requirePost();
 $numeros = is_array($_POST['numeros'] ?? null) ? $_POST['numeros'] : [];
 
 $db = getPDO();
+// El sabado se juega con su propia cantidad (5 hoy), no con los 10 del
+// semanal: los avisos de abajo decian "10" por un copiado del semanal.
+$numerosPorJugada = (new ParametroService($db))->numerosPorJugadaSabado();
 
 try {
     $resultado = SorteoService::crearDesde($db)->registrarTurnoSabado($numeros, currentUserId());
@@ -39,10 +43,10 @@ try {
         }
 
         setFlash('success',
-            ($cantidad === 1 ? 'Hay un ganador!' : "Hay $cantidad ganadores!") . "\n"
+            ($cantidad === 1 ? '¡Hay un ganador!' : "¡Hay $cantidad ganadores!") . "\n"
             . implode(' · ', $detalle) . "\n"
             . 'Se repartió ' . formatPesos($resultado['pozo_repartido'])
-            . ' y el sábado quedó cerrado. Ya está abierto el del sábado que viene, en $0.'
+            . ' y el sábado quedó cerrado. Ya está abierto el del sábado que viene.'
         );
 
         header('Location: ' . APP_URL . '/admin/sabados/ver.php?id=' . $resultado['ciclo_id']);
@@ -52,7 +56,7 @@ try {
     // ── Sin ganador y era el turno 5: cierra y arrastra el pozo ─
     if ($resultado['estado_cierre'] === CicloService::ESTADO_SIN_GANADOR) {
         setFlash('info',
-            'Turno cargado. Nadie acertó los 10 en los 5 turnos, así que el sábado se cerró sin ganador.' . "\n"
+            'Turno cargado. Nadie completó sus ' . $numerosPorJugada . ' números en los 5 turnos, así que el sábado se cerró sin ganador.' . "\n"
             . 'El pozo de ' . formatPesos($resultado['arrastre'])
             . ' pasa entero al sábado que viene, que ya está abierto.'
         );
@@ -61,7 +65,7 @@ try {
     }
 
     // ── Sin ganador y todavia quedan turnos ─────────────────
-    setFlash('success', 'Turno cargado. Ningún acierto de 10 esta vez: el sábado sigue abierto.');
+    setFlash('success', 'Turno cargado. Nadie completó todavía sus ' . $numerosPorJugada . ' números: el sábado sigue abierto.');
     header('Location: ' . APP_URL . '/admin/sabados/index.php');
     exit;
 

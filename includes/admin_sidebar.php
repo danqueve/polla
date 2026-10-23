@@ -7,7 +7,9 @@
 $_u = currentUser();
 $_iniciales = mb_strtoupper(mb_substr(trim($_u['nombre']) !== '' ? $_u['nombre'] : $_u['usuario'], 0, 1));
 $_rolNombre = \Polla\Services\UsuarioService::ROLES[$_u['rol']] ?? $_u['rol'];
-$_solCount = $solicitudesPendientes ?? 0;
+$_pendientes = pendientesPanel();
+$_solCount   = $_pendientes['pagos'];
+$_altasCount = $_pendientes['altas'];
 ?>
 <aside class="g-sidebar" id="gSidebar">
     <!-- Brand -->
@@ -45,6 +47,10 @@ $_solCount = $solicitudesPendientes ?? 0;
                class="g-sidebar__link <?= ($navSeccion ?? '') === 'clientes' ? 'active' : '' ?>">
                 <i class="bi bi-person-lines-fill"></i>
                 <span>Clientes</span>
+                <?php if ($_altasCount > 0): ?>
+                    <span class="g-sidebar__badge g-sidebar__badge--warning"
+                          title="<?= $_altasCount ?> <?= $_altasCount === 1 ? 'alta' : 'altas' ?> para aprobar"><?= $_altasCount ?></span>
+                <?php endif; ?>
             </a>
         </div>
 
@@ -56,7 +62,8 @@ $_solCount = $solicitudesPendientes ?? 0;
                 <i class="bi bi-qr-code-scan"></i>
                 <span>Solicitudes</span>
                 <?php if ($_solCount > 0): ?>
-                    <span class="g-sidebar__badge g-sidebar__badge--warning"><?= $_solCount ?></span>
+                    <span class="g-sidebar__badge g-sidebar__badge--warning"
+                          title="<?= $_solCount ?> <?= $_solCount === 1 ? 'pago' : 'pagos' ?> para confirmar"><?= $_solCount ?></span>
                 <?php endif; ?>
             </a>
             <a href="<?= APP_URL ?>/admin/reportes/index.php"

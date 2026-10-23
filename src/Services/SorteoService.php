@@ -701,7 +701,8 @@ class SorteoService
     public function buscarPorId(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT s.*, u.nombre AS cargado_por_nombre, c.numero AS ciclo_numero, c.estado AS ciclo_estado
+            'SELECT s.*, u.nombre AS cargado_por_nombre, c.numero AS ciclo_numero, c.estado AS ciclo_estado,
+                    c.tipo AS ciclo_tipo
                FROM sorteos s
                LEFT JOIN usuarios u ON u.id = s.cargado_por
                JOIN ciclos c        ON c.id = s.ciclo_id
@@ -760,6 +761,12 @@ class SorteoService
      * una vez liquidado el pozo, deshacer el cotejo dejaria premios pagados
      * sin sorteo que los respalde.
      *
+     * En sabados, solo el ULTIMO turno cargado: proximoTurno() es
+     * MAX(turno)+1, asi que borrar uno del medio (el 2 de 1-2-3) dejaba un
+     * hueco imposible de volver a cargar -- el proximo seria el 4 -- y con
+     * 1-3-4-5 pedia el turno 6, que se rechaza: ese sabado no podia cerrar
+     * nunca. Un turno del medio mal cargado se arregla con Editar.
+     *
      * @throws ValidacionException
      */
     public function eliminar(int $id): void
@@ -774,8 +781,30 @@ class SorteoService
             );
         }
 
-        // sorteo_numeros cae sola por el ON DELETE CASCADE.
+        if ($sorteo['ciclo_tipo'] === CicloService::TIPO_SABADO) {
+            $ultimo = $this->proximoTurno((int) $sorteo['ciclo_id']) - 1;
+            if ((int) $sorteo['turno'] !== $ultimo) {
+                throw ValidacionException::de(
+                    'Solo se puede borrar el último turno cargado (el ' . $ultimo . '). '
+                  . 'Para corregir el turno ' . (int) $sorteo['turno'] . ', usá Editar.'
+                );
+            }
+        }
+
+        // Los numeros se borran a mano: sorteo_numeros es MyISAM, no tiene
+        // FK ni ON DELETE CASCADE (el comentario que habia aca lo daba por
+        // hecho y cada borrado dejaba 20 numeros sueltos). Hoy no los lee
+        // ninguna consulta, pero si un id de sorteo se llegara a reusar --
+        // por ejemplo al pasar la tabla a InnoDB -- se pegarian a un sorteo
+        // nuevo y el cotejo veria 40 numeros en vez de 20.
+        //
+        // Sin transaccion a proposito: MyISAM no las soporta, asi que no
+        // protegeria nada. Lo que importa es el ORDEN: primero el sorteo.
+        // Si falla el segundo DELETE quedan numeros sueltos (lo de antes,
+        // inofensivo); al reves podia quedar un sorteo SIN numeros, que el
+        // cotejo tomaria como un extracto vacio.
         $this->db->prepare('DELETE FROM sorteos WHERE id = :id')->execute([':id' => $id]);
+        $this->db->prepare('DELETE FROM sorteo_numeros WHERE sorteo_id = :id')->execute([':id' => $id]);
     }
 
     /** "3,17,42" -> [3, 17, 42] */

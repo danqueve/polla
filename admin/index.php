@@ -9,7 +9,6 @@ use Polla\Services\FeriadoService;
 use Polla\Services\JugadaService;
 use Polla\Services\ParametroService;
 use Polla\Services\PozoService;
-use Polla\Services\SolicitudService;
 use Polla\Services\SorteoService;
 
 requireLogin();
@@ -19,9 +18,12 @@ $ciclos      = new CicloService($db);
 $parametros  = new ParametroService($db);
 $jugadas     = JugadaService::crearDesde($db);
 $sorteos     = SorteoService::crearDesde($db);
-$solicitudes = SolicitudService::crearDesde($db);
 
-$solicitudesPendientes = $solicitudes->contarPendientes();
+// El mismo conteo que usan la campanita y el menu (pendientesPanel(),
+// config/app.php): una sola consulta por pedido para los tres.
+$pendientes            = pendientesPanel();
+$solicitudesPendientes = $pendientes['pagos'];
+$altasPendientes       = $pendientes['altas'];
 
 $ciclo   = $ciclos->obtenerCicloActivo();
 $cicloId = (int) $ciclo['id'];
@@ -108,6 +110,19 @@ require __DIR__ . '/../includes/admin_topbar.php';
             <div>
                 <strong><?= $solicitudesPendientes ?></strong>
                 <?= $solicitudesPendientes === 1 ? 'solicitud de pago pendiente de aprobación.' : 'solicitudes de pago pendientes de aprobación.' ?>
+            </div>
+            <i class="bi bi-chevron-right g-alert-banner__arrow"></i>
+        </a>
+    <?php endif; ?>
+
+    <?php if ($altasPendientes > 0): ?>
+        <a href="<?= APP_URL ?>/admin/clientes/solicitudes.php" class="g-alert-banner g-alert-banner--warning g-animate g-animate-delay-1">
+            <i class="bi bi-person-plus"></i>
+            <div>
+                <strong><?= $altasPendientes ?></strong>
+                <?= $altasPendientes === 1
+                    ? 'cliente nuevo se registró y espera que lo aprueben para poder jugar.'
+                    : 'clientes nuevos se registraron y esperan que los aprueben para poder jugar.' ?>
             </div>
             <i class="bi bi-chevron-right g-alert-banner__arrow"></i>
         </a>

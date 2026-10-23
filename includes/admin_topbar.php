@@ -8,7 +8,24 @@
 $_u = currentUser();
 $_iniciales = mb_strtoupper(mb_substr(trim($_u['nombre']) !== '' ? $_u['nombre'] : $_u['usuario'], 0, 1));
 $_rolNombre = \Polla\Services\UsuarioService::ROLES[$_u['rol']] ?? $_u['rol'];
-$_solCount = $solicitudesPendientes ?? 0;
+// Lo mismo que lee el menu lateral (pendientesPanel(), una sola consulta
+// por pedido). La campanita se enciende con cualquiera de los dos
+// pendientes y lleva a lo que haya: primero los pagos (frenan la carga
+// de las jugadas del cliente), despues las altas.
+$_pendientes = pendientesPanel();
+$_solCount   = $_pendientes['pagos'];
+$_altasCount = $_pendientes['altas'];
+$_avisos     = [];
+if ($_solCount > 0) {
+    $_avisos[] = $_solCount . ($_solCount === 1 ? ' pago para confirmar' : ' pagos para confirmar');
+}
+if ($_altasCount > 0) {
+    $_avisos[] = $_altasCount . ($_altasCount === 1 ? ' alta de cliente para aprobar' : ' altas de clientes para aprobar');
+}
+$_destinoCampana = $_solCount === 0 && $_altasCount > 0
+    ? APP_URL . '/admin/clientes/solicitudes.php'
+    : APP_URL . '/admin/solicitudes/index.php';
+$_textoCampana = $_avisos ? implode(' y ', $_avisos) : 'No hay nada pendiente';
 ?>
 <header class="g-topbar">
     <!-- Botón hamburguesa (móvil) -->
@@ -44,13 +61,14 @@ $_solCount = $solicitudesPendientes ?? 0;
             <span>Nueva Jugada</span>
         </a>
 
-        <!-- Notificaciones de Solicitudes -->
-        <a href="<?= APP_URL ?>/admin/solicitudes/index.php"
+        <!-- Avisos: pagos para confirmar y altas para aprobar -->
+        <a href="<?= e($_destinoCampana) ?>"
            class="g-topbar__btn"
-           title="<?= $_solCount > 0 ? $_solCount . ' solicitudes pendientes' : 'Solicitudes de pago' ?>">
-            <i class="bi bi-bell"></i>
-            <?php if ($_solCount > 0): ?>
-                <span class="g-topbar__dot"></span>
+           title="<?= e($_textoCampana) ?>"
+           aria-label="Avisos: <?= e($_textoCampana) ?>">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <?php if ($_avisos): ?>
+                <span class="g-topbar__dot" aria-hidden="true"></span>
             <?php endif; ?>
         </a>
 

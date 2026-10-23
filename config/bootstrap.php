@@ -119,6 +119,16 @@ function cambiarASesion(string $nombre): void
  * Corta la ejecucion si la peticion no es POST con CSRF valido.
  * Sirve igual al panel y al portal: opera sobre la sesion que este
  * abierta, sea cual sea.
+ *
+ * Con el CSRF invalido no se guarda nada, igual que siempre. Lo que
+ * cambio es la respuesta: antes era una pagina en blanco con "La sesion
+ * expiro" (403) y se perdia todo lo tipeado. El caso real es un
+ * formulario que quedo abierto hasta que vencio la sesion -- tipico del
+ * cliente con la app del celular: "recordarme" le abre una sesion nueva
+ * sin que se entere, y el formulario trae la clave CSRF de la vieja.
+ * Ahora vuelve a la pantalla de donde vino, con lo tipeado ya cargado
+ * (las pantallas lo repueblan con old(), como tras cualquier error) y un
+ * aviso: se confirma de nuevo y listo.
  */
 function requirePost(): void
 {
@@ -127,9 +137,131 @@ function requirePost(): void
         exit('Metodo no permitido.');
     }
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
-        http_response_code(403);
-        exit('La sesion expiro. Volve a entrar y reintenta.');
+        $origen = paginaDeOrigen();
+        // Solo se repuebla si el POST salio de una pantalla de esta misma
+        // app: un formulario de otro sitio no deja nada cargado en la
+        // sesion de nadie.
+        if ($origen !== null) {
+            setOld($_POST);
+        }
+        setFlash('warning',
+            'La página estuvo abierta mucho tiempo y, por seguridad, no se guardó nada. '
+          . 'Revisá los datos y volvé a confirmar.');
+        header('Location: ' . ($origen ?? inicioDeLaSesionActual()));
+        exit;
     }
+}
+
+/**
+ * URL de la pantalla desde la que se envio este formulario (el Referer),
+ * SOLO si es de esta misma app y es una pantalla, no el propio handler
+ * que esta procesando el POST. null si no se puede confiar en ella: otro
+ * sitio, otra app del mismo servidor, una ruta rara o ningun Referer.
+ *
+ * Se compara host y ruta, no el esquema: detras de un proxy, APP_URL
+ * puede salir "http" con el sitio en https, y eso no la vuelve ajena.
+ * La URL que se devuelve se arma siempre desde APP_URL, nunca se copia
+ * la del navegador entera.
+ */
+function paginaDeOrigen(): ?string
+{
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    if ($referer === '' || preg_match('/[\r\n\0]/', $referer)) {
+        return null;
+    }
+
+    $ref  = parse_url($referer);
+    $base = parse_url(APP_URL);
+    if (!$ref || !$base || !isset($ref['host'], $ref['path'])) {
+        return null;
+    }
+
+    $hostRef  = strtolower($ref['host']) . (isset($ref['port']) ? ':' . $ref['port'] : '');
+    $hostBase = strtolower($base['host']) . (isset($base['port']) ? ':' . $base['port'] : '');
+    if ($hostRef !== $hostBase) {
+        return null;
+    }
+
+    $prefijo = rtrim($base['path'] ?? '', '/');       // "/polla" en local, "" en el VPS
+    if (strpos($ref['path'], $prefijo . '/') !== 0) {
+        return null;
+    }
+    $ruta = substr($ref['path'], strlen($prefijo));   // "/portal/jugar.php"
+    if (!preg_match('#^(/[a-z0-9_]+)+\.php$#', $ruta)) {
+        return null;
+    }
+
+    // A la pantalla del formulario, no de vuelta al handler.
+    if ($prefijo . $ruta === ($_SERVER['SCRIPT_NAME'] ?? '')) {
+        return null;
+    }
+
+    $query = isset($ref['query']) && $ref['query'] !== '' ? '?' . $ref['query'] : '';
+
+    return rtrim(APP_URL, '/') . $ruta . $query;
+}
+
+/** La pantalla de inicio del "mundo" de la sesion abierta (panel, portal o vendedor). */
+function inicioDeLaSesionActual(): string
+{
+    switch (session_name()) {
+        case 'POLLA_CLIENTE':  return APP_URL . '/portal/index.php';
+        case 'POLLA_VENDEDOR': return APP_URL . '/vendedor/index.php';
+        default:               return APP_URL . '/admin/index.php';
+    }
+}
+
+/**
+ * Un POST que llega SIN sesion: vencio mientras el formulario estaba
+ * abierto. La llaman requireLogin()/requireCliente() justo antes de
+ * mandar al login.
+ *
+ * Deja el aviso para el login (que lee los avisos de las tres sesiones)
+ * y, si el formulario salio de una pantalla de esta app, guarda lo
+ * tipeado y a donde volver: despues de entrar de nuevo, destinoTrasLogin()
+ * lo lleva de vuelta ahi con todo cargado. Nada se guarda en la base: se
+ * vuelve a confirmar a mano, ya con sesion.
+ */
+function guardarFormularioSinSesion(): void
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        return;
+    }
+
+    $origen = paginaDeOrigen();
+    if ($origen !== null) {
+        setOld($_POST);
+        // Con vencimiento: si en vez de volver a entrar enseguida lo hace
+        // otro dia, no tiene sentido que aparezca en un formulario viejo.
+        $_SESSION['volver_tras_login'] = ['url' => $origen, 'hasta' => time() + 30 * 60];
+    }
+
+    setFlash('warning', $origen !== null
+        ? 'Tu sesión venció. Entrá de nuevo y vas a volver a lo que estabas cargando, sin perder nada.'
+        : 'Tu sesión venció. Entrá de nuevo para seguir.');
+}
+
+/**
+ * A donde mandar a alguien que acaba de iniciar sesion: la pantalla que
+ * guardo guardarFormularioSinSesion() si todavia vale, o $porDefecto.
+ * Se usa una sola vez: el login siguiente ya va al inicio de siempre.
+ */
+function destinoTrasLogin(string $porDefecto): string
+{
+    $volver = $_SESSION['volver_tras_login'] ?? null;
+    unset($_SESSION['volver_tras_login']);
+
+    if (is_array($volver) && is_string($volver['url'] ?? null) && (int) ($volver['hasta'] ?? 0) >= time()) {
+        return $volver['url'];
+    }
+
+    // Vencida o inexistente: tampoco tiene que quedar el formulario viejo
+    // esperando en la sesion.
+    if ($volver !== null) {
+        flushOld();
+    }
+
+    return $porDefecto;
 }
 
 
@@ -177,10 +309,21 @@ function getFlash(): ?array
     return $flash;
 }
 
-/** Guarda lo que el usuario habia tipeado para repoblar el form tras un error. */
+/**
+ * Guarda lo que el usuario habia tipeado para repoblar el form tras un error.
+ *
+ * Nunca guarda claves: ni las del alta de usuarios/vendedores (password,
+ * password2) ni las de "Cambiar contraseña" (actual, nueva, repetida).
+ * Estas ultimas importan desde que requirePost() repuebla cualquier
+ * formulario, sea cual sea, cuando vence la sesion.
+ */
 function setOld(array $data): void
 {
-    unset($data['csrf_token'], $data['password'], $data['password2']);
+    unset(
+        $data['csrf_token'],
+        $data['password'], $data['password2'],
+        $data['actual'], $data['nueva'], $data['repetida']
+    );
     $_SESSION['old'] = $data;
 }
 

@@ -123,6 +123,12 @@ require __DIR__ . '/../includes/portal_cabecera.php';
             <a href="<?= APP_URL ?>/portal/jugar.php" class="btn btn-outline-secondary w-100">
                 <i class="bi bi-plus-lg"></i> Armar otra jugada
             </a>
+        <?php elseif ($estado === 'rechazada'): ?>
+            <a href="<?= APP_URL ?>/portal/jugar.php?tipo=<?= e($solicitud['tipo_juego']) ?>&amp;reintentar=<?= (int) $solicitud['id'] ?>"
+               class="btn btn-outline-secondary w-100">
+                <i class="bi bi-arrow-repeat"></i>
+                Volver a cargar <?= (int) $solicitud['cantidad_jugadas'] === 1 ? 'esta jugada' : 'estas jugadas' ?>
+            </a>
         <?php endif; ?>
     </div>
 </main>

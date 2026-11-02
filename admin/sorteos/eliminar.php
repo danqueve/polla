@@ -17,7 +17,7 @@ try {
     AuditoriaService::crearDesde(getPDO())->registrar(
         AuditoriaService::SORTEO_ELIMINADO, 'sorteos', $id, 'usuario', currentUserId()
     );
-    setFlash('success', 'Sorteo borrado. Podés volver a cargarlo con los numeros corregidos.');
+    setFlash('success', 'Sorteo borrado. Podés volver a cargarlo con los números corregidos.');
 } catch (ValidacionException $e) {
     setFlash('danger', implode("\n", $e->errores()));
 }

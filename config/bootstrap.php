@@ -134,7 +134,7 @@ function requirePost(): void
 {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         http_response_code(405);
-        exit('Metodo no permitido.');
+        exit('Método no permitido.');
     }
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
         $origen = paginaDeOrigen();

@@ -85,48 +85,28 @@ class ConfiguracionService
         return $stmt->fetch() ?: null;
     }
 
-    /** @throws ValidacionException */
-    public function actualizarMontoJugada(string $monto, int $actualizadoPor): void
-    {
-        $this->parametros->actualizar(['importe_jugada' => $monto], $actualizadoPor);
-    }
-
-    /** @throws ValidacionException */
-    public function actualizarPremioBase(string $premioBase, int $actualizadoPor): void
-    {
-        $this->parametros->actualizar(['premio_base' => $premioBase], $actualizadoPor);
-    }
-
-    /** @throws ValidacionException */
-    public function actualizarMontoJugadaSabado(string $monto, int $actualizadoPor): void
-    {
-        $this->parametros->actualizar(['importe_jugada_sabado' => $monto], $actualizadoPor);
-    }
-
-    /** @throws ValidacionException */
-    public function actualizarPremioBaseSabado(string $premioBase, int $actualizadoPor): void
-    {
-        $this->parametros->actualizar(['premio_base_sabado' => $premioBase], $actualizadoPor);
-    }
-
-    /** @throws ValidacionException */
-    public function actualizarHorarios(string $limiteSemanal, string $limiteSabado, int $actualizadoPor): void
+    /**
+     * Guarda la pantalla entera de una sola vez: ParametroService valida
+     * todo antes de escribir y graba en una transaccion, asi que un campo
+     * invalido no deja los otros a medio cambiar.
+     *
+     * @param array{monto_jugada:string, premio_base:string, monto_jugada_sabado:string,
+     *              premio_base_sabado:string, horario_limite_semanal:string,
+     *              horario_limite_sabado:string, comision_jugada_porcentaje:string,
+     *              numeros_por_jugada_sabado:string} $form
+     * @throws ValidacionException
+     */
+    public function actualizar(array $form, int $actualizadoPor): void
     {
         $this->parametros->actualizar([
-            'horario_limite_semanal' => $limiteSemanal,
-            'horario_limite_sabado'  => $limiteSabado,
+            'importe_jugada'             => $form['monto_jugada'],
+            'premio_base'                => $form['premio_base'],
+            'importe_jugada_sabado'      => $form['monto_jugada_sabado'],
+            'premio_base_sabado'         => $form['premio_base_sabado'],
+            'horario_limite_semanal'     => $form['horario_limite_semanal'],
+            'horario_limite_sabado'      => $form['horario_limite_sabado'],
+            'comision_jugada_porcentaje' => $form['comision_jugada_porcentaje'],
+            'numeros_por_jugada_sabado'  => $form['numeros_por_jugada_sabado'],
         ], $actualizadoPor);
-    }
-
-    /** @throws ValidacionException */
-    public function actualizarComisionJugadaPorcentaje(string $porcentaje, int $actualizadoPor): void
-    {
-        $this->parametros->actualizar(['comision_jugada_porcentaje' => $porcentaje], $actualizadoPor);
-    }
-
-    /** @throws ValidacionException */
-    public function actualizarNumerosPorJugadaSabado(string $cantidad, int $actualizadoPor): void
-    {
-        $this->parametros->actualizar(['numeros_por_jugada_sabado' => $cantidad], $actualizadoPor);
     }
 }

@@ -81,7 +81,7 @@ class SorteoService
             $ciclo = $this->ciclos->bloquearAbierto(CicloService::TIPO_SEMANAL);
             if (!$ciclo) {
                 throw ValidacionException::de(
-                    'No hay ningun ciclo abierto. Entrá al tablero para que se abra el de esta semana.'
+                    'No hay ningún ciclo abierto. Entrá al tablero para que se abra el de esta semana.'
                 );
             }
 
@@ -138,7 +138,7 @@ class SorteoService
             $ciclo = $this->ciclos->bloquearAbierto(CicloService::TIPO_SABADO);
             if (!$ciclo) {
                 throw ValidacionException::de(
-                    'No hay ningun ciclo de sábado abierto. Entrá al tablero de sábados para que se abra.'
+                    'No hay ningún ciclo de sábado abierto. Entrá al tablero de sábados para que se abra.'
                 );
             }
 
@@ -475,7 +475,7 @@ class SorteoService
 
         $hoy = new DateTimeImmutable('today');
         if ($fecha > $hoy) {
-            throw ValidacionException::de('No se puede cargar un sorteo que todavia no ocurrio.');
+            throw ValidacionException::de('No se puede cargar un sorteo que todavía no ocurrió.');
         }
 
         if ($this->feriados->esFeriado($fecha)) {
@@ -513,9 +513,9 @@ class SorteoService
             $corte = $this->ultimoCicloCerradoConGanador();
             if ($corte) {
                 throw ValidacionException::de(
-                    'Ese sorteo no participa: el ciclo ' . $corte['numero'] . ' se corto el '
+                    'Ese sorteo no participa: el ciclo ' . $corte['numero'] . ' se cortó el '
                     . (new DateTimeImmutable($corte['fecha_cierre']))->format('d/m')
-                    . ' porque hubo ganador. El proximo sorteo que juega es el del '
+                    . ' porque hubo ganador. El próximo sorteo que juega es el del '
                     . $inicio->format('d/m/Y') . '.'
                 );
             }
@@ -526,8 +526,8 @@ class SorteoService
 
         if ($fecha > $fin) {
             throw ValidacionException::de(
-                'Todavia falta cargar el sorteo del ' . $fin->format('d/m/Y')
-                . ' para cerrar la semana. Cargá ese primero y despues seguí con este.'
+                'Todavía falta cargar el sorteo del ' . $fin->format('d/m/Y')
+                . ' para cerrar la semana. Cargá ese primero y después seguí con este.'
             );
         }
     }
@@ -593,7 +593,7 @@ class SorteoService
 
         $errores = [];
         if ($invalidos) {
-            $errores[] = 'Hay valores que no son numeros de dos cifras: '
+            $errores[] = 'Hay valores que no son números de dos cifras: '
                        . implode(', ', array_unique($invalidos)) . '.';
         }
         if ($vacios > 0 && !$invalidos) {
@@ -601,7 +601,7 @@ class SorteoService
                        . ' para completar los ' . $esperados . ' del extracto.';
         }
         if (!$errores && count($numeros) !== $esperados) {
-            $errores[] = 'El extracto tiene que tener exactamente ' . $esperados . ' numeros.';
+            $errores[] = 'El extracto tiene que tener exactamente ' . $esperados . ' números.';
         }
         if ($errores) {
             throw new ValidacionException($errores);
@@ -777,7 +777,7 @@ class SorteoService
         }
         if ($sorteo['ciclo_estado'] !== CicloService::ESTADO_ABIERTO) {
             throw ValidacionException::de(
-                'No se puede borrar: el ciclo ' . $sorteo['ciclo_numero'] . ' ya esta cerrado y liquidado.'
+                'No se puede borrar: el ciclo ' . $sorteo['ciclo_numero'] . ' ya está cerrado y liquidado.'
             );
         }
 

@@ -4,6 +4,7 @@ namespace Polla\Services;
 
 use PDO;
 use Polla\Support\ValidacionException;
+use Throwable;
 
 /**
  * Parametros configurables del juego (importe de la jugada, reparto
@@ -156,65 +157,105 @@ class ParametroService
     }
 
     /**
+     * Valida TODOS los valores y recien despues los graba, juntos en una
+     * transaccion: o se guardan todos o ninguno. Antes cada parametro se
+     * grababa por separado y uno invalido a mitad de camino dejaba los
+     * anteriores ya cambiados con un mensaje de error en pantalla.
+     *
+     * Los valores tienen que ser numeros escritos tal cual ("2000",
+     * "2000.50"): (float) "2000abc" daba 2000 y se guardaba la basura,
+     * y un campo vacio pasaba como 0.
+     *
      * @param array<string,string> $valores
      * @throws ValidacionException
      */
     public function actualizar(array $valores, ?int $actualizadoPor = null): void
     {
-        $errores = [];
+        $valores = array_map(static fn($valor): string => trim((string) $valor), $valores);
+        // Gastos es siempre el complemento del pozo: nunca se recibe suelto.
+        unset($valores['porcentaje_gastos']);
 
-        if (isset($valores['importe_jugada']) && (float) $valores['importe_jugada'] <= 0) {
-            $errores[] = 'El importe de la jugada tiene que ser mayor a cero.';
-        }
-        if (isset($valores['premio_base']) && (float) $valores['premio_base'] < 0) {
-            $errores[] = 'El premio base no puede ser negativo.';
-        }
-        if (isset($valores['importe_jugada_sabado']) && (float) $valores['importe_jugada_sabado'] <= 0) {
-            $errores[] = 'El importe de la jugada de sábados tiene que ser mayor a cero.';
-        }
-        if (isset($valores['premio_base_sabado']) && (float) $valores['premio_base_sabado'] < 0) {
-            $errores[] = 'El premio base de sábados no puede ser negativo.';
-        }
-        foreach (['horario_limite_semanal', 'horario_limite_sabado'] as $clave) {
-            if (isset($valores[$clave]) && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) $valores[$clave])) {
-                $errores[] = 'El horario tiene que tener formato HH:MM (24hs).';
+        $montos = [
+            'importe_jugada'        => ['El importe de la jugada', false],
+            'premio_base'           => ['El premio base', true],
+            'importe_jugada_sabado' => ['El importe de la jugada de sábados', false],
+            'premio_base_sabado'    => ['El premio base de sábados', true],
+        ];
+        $horarios = [
+            'horario_limite_semanal' => 'El horario límite semanal',
+            'horario_limite_sabado'  => 'El horario límite de sábados',
+        ];
+        $porcentajes = [
+            'comision_jugada_porcentaje' => 'El porcentaje de comisión',
+            'porcentaje_pozo'            => 'El porcentaje del pozo',
+        ];
+
+        $errores = [];
+        foreach ($valores as $clave => $valor) {
+            if (isset($montos[$clave])) {
+                [$rotulo, $admiteCero] = $montos[$clave];
+                if (!self::esNumeroDecimal($valor) || (!$admiteCero && (float) $valor <= 0)) {
+                    $errores[] = $rotulo . ($admiteCero
+                        ? ' tiene que ser un número igual o mayor a cero.'
+                        : ' tiene que ser un número mayor a cero.');
+                }
+            } elseif (isset($horarios[$clave])) {
+                if (!preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $valor)) {
+                    $errores[] = $horarios[$clave] . ' tiene que tener formato HH:MM (24 hs).';
+                }
+            } elseif (isset($porcentajes[$clave])) {
+                if (!self::esNumeroDecimal($valor) || (float) $valor > 100) {
+                    $errores[] = $porcentajes[$clave] . ' tiene que ser un número entre 0 y 100.';
+                }
+            } elseif ($clave === 'numeros_por_jugada_sabado') {
+                if (!ctype_digit($valor) || (int) $valor < 1 || (int) $valor > 20) {
+                    $errores[] = 'La cantidad de números por jugada de sábados tiene que ser un número entero entre 1 y 20.';
+                }
+            } else {
+                $errores[] = 'El parámetro "' . $clave . '" no se puede cambiar desde acá.';
             }
-        }
-        if (isset($valores['comision_jugada_porcentaje'])) {
-            $comision = (float) $valores['comision_jugada_porcentaje'];
-            if ($comision < 0 || $comision > 100) {
-                $errores[] = 'El porcentaje de comisión tiene que estar entre 0 y 100.';
-            }
-        }
-        if (isset($valores['numeros_por_jugada_sabado'])) {
-            $cantidadSabado = (int) $valores['numeros_por_jugada_sabado'];
-            if ($cantidadSabado < 1 || $cantidadSabado > 20) {
-                $errores[] = 'La cantidad de números por jugada de sábados tiene que estar entre 1 y 20.';
-            }
-        }
-        if (isset($valores['porcentaje_pozo'])) {
-            $pozo = (float) $valores['porcentaje_pozo'];
-            if ($pozo < 0 || $pozo > 100) {
-                $errores[] = 'El porcentaje del pozo tiene que estar entre 0 y 100.';
-            }
-            // Gastos es siempre el complemento: evita que queden desfasados.
-            $valores['porcentaje_gastos'] = (string) (100 - $pozo);
         }
         if ($errores) {
             throw new ValidacionException($errores);
         }
 
-        $sql = 'INSERT INTO parametros (clave, valor, actualizado_por) VALUES (:clave, :valor, :actualizado_por)
-                ON DUPLICATE KEY UPDATE valor = VALUES(valor), actualizado_por = VALUES(actualizado_por)';
-        $stmt = $this->db->prepare($sql);
-        foreach ($valores as $clave => $valor) {
-            $stmt->execute([
-                ':clave'           => $clave,
-                ':valor'           => (string) $valor,
-                ':actualizado_por' => $actualizadoPor,
-            ]);
+        if (isset($valores['porcentaje_pozo'])) {
+            $valores['porcentaje_gastos'] = (string) (100 - (float) $valores['porcentaje_pozo']);
         }
 
-        $this->cache = null;
+        $propia = !$this->db->inTransaction();
+        if ($propia) {
+            $this->db->beginTransaction();
+        }
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO parametros (clave, valor, actualizado_por) VALUES (:clave, :valor, :actualizado_por)
+                 ON DUPLICATE KEY UPDATE valor = VALUES(valor), actualizado_por = VALUES(actualizado_por)'
+            );
+            foreach ($valores as $clave => $valor) {
+                $stmt->execute([
+                    ':clave'           => $clave,
+                    ':valor'           => $valor,
+                    ':actualizado_por' => $actualizadoPor,
+                ]);
+            }
+
+            if ($propia) {
+                $this->db->commit();
+            }
+        } catch (Throwable $e) {
+            if ($propia && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        } finally {
+            $this->cache = null;
+        }
+    }
+
+    /** "2000", "2000.5" o "2000.50": sin signo, sin separador de miles, hasta 2 decimales. */
+    private static function esNumeroDecimal(string $valor): bool
+    {
+        return preg_match('/^\d+(\.\d{1,2})?$/', $valor) === 1;
     }
 }

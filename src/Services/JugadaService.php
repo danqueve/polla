@@ -61,22 +61,6 @@ class JugadaService
     }
 
     /**
-     * Registra una jugada pagada en el ciclo abierto.
-     *
-     * @param string[] $numerosCrudos Los 10 valores tal como vinieron del form.
-     * @return int Id de la jugada nueva.
-     * @throws ValidacionException
-     */
-    public function crear(
-        int $clienteId,
-        array $numerosCrudos,
-        ?int $cargadoPor,
-        string $tipoJuego = CicloService::TIPO_SEMANAL
-    ): int {
-        return $this->crearVarias($clienteId, [$numerosCrudos], $cargadoPor, null, $tipoJuego)[0];
-    }
-
-    /**
      * Registra varias jugadas para el mismo cliente en una sola operacion
      * (compra conjunta): todas al ciclo activo y todas marcadas con el
      * mismo grupo_compra para trazabilidad en reportes (no afecta el
@@ -265,7 +249,12 @@ class JugadaService
         ?int $promocionId = null,
         string $tipoJuego = CicloService::TIPO_SEMANAL
     ): array {
-        $this->db->beginTransaction();
+        // SolicitudService::crear() la llama dentro de su transaccion
+        // (encabezado + jugadas juntos): en ese caso se suma a esa.
+        $propia = !$this->db->inTransaction();
+        if ($propia) {
+            $this->db->beginTransaction();
+        }
         try {
             $stmt = $this->db->prepare(
                 "INSERT INTO jugadas (cliente_id, tipo_juego, ciclo_id, importe, aporte_pozo, aporte_gastos,
@@ -299,10 +288,14 @@ class JugadaService
                 }
             }
 
-            $this->db->commit();
+            if ($propia) {
+                $this->db->commit();
+            }
             return $ids;
         } catch (Throwable $e) {
-            $this->db->rollBack();
+            if ($propia && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }
@@ -353,16 +346,16 @@ class JugadaService
 
         $errores = [];
         if ($invalidos) {
-            $errores[] = 'Hay valores que no son numeros de dos cifras: ' . implode(', ', array_unique($invalidos)) . '.';
+            $errores[] = 'Hay valores que no son números de dos cifras: ' . implode(', ', array_unique($invalidos)) . '.';
         }
         if ($repetidos) {
-            $errores[] = 'No se puede repetir el mismo numero: ' . implode(', ', array_unique($repetidos)) . '.';
+            $errores[] = 'No se puede repetir el mismo número: ' . implode(', ', array_unique($repetidos)) . '.';
         }
         if ($vacios > 0 && !$invalidos && !$repetidos) {
             $errores[] = 'Faltan ' . $vacios . ' ' . ($vacios === 1 ? 'numero' : 'numeros') . ' para completar los ' . $esperados . '.';
         }
         if (!$errores && count($numeros) !== $esperados) {
-            $errores[] = 'La jugada tiene que tener exactamente ' . $esperados . ' numeros distintos.';
+            $errores[] = 'La jugada tiene que tener exactamente ' . $esperados . ' números distintos.';
         }
         if ($errores) {
             throw new ValidacionException($errores);
@@ -506,6 +499,26 @@ class JugadaService
         unset($fila);
 
         return $filas;
+    }
+
+    /**
+     * Suma de los importes cobrados de un lote, en una sola consulta. Con
+     * promo el importe varia en centavos entre jugadas del mismo lote
+     * (repartirEnPartesIguales), asi que no alcanza con multiplicar.
+     *
+     * @param int[] $ids
+     */
+    public function importeTotal(array $ids): float
+    {
+        if (!$ids) {
+            return 0.0;
+        }
+
+        $marcas = implode(',', array_fill(0, count($ids), '?'));
+        $stmt   = $this->db->prepare("SELECT COALESCE(SUM(importe), 0) FROM jugadas WHERE id IN ($marcas)");
+        $stmt->execute(array_map('intval', array_values($ids)));
+
+        return (float) $stmt->fetchColumn();
     }
 
     public function buscarPorId(int $id): ?array
@@ -952,7 +965,7 @@ class JugadaService
             throw ValidacionException::de('Elegí un cliente de la lista.');
         }
         if ((int) $cliente['activo'] !== 1) {
-            throw ValidacionException::de('El cliente ' . $cliente['nombre'] . ' esta desactivado.');
+            throw ValidacionException::de('El cliente ' . $cliente['nombre'] . ' está desactivado.');
         }
 
         return $cliente;

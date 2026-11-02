@@ -506,7 +506,7 @@ class CicloService
     public function cerrar(int $cicloId, string $estado): void
     {
         if ($estado !== self::ESTADO_CON_GANADOR && $estado !== self::ESTADO_SIN_GANADOR) {
-            throw ValidacionException::de('Estado de cierre invalido: ' . $estado);
+            throw ValidacionException::de('Estado de cierre inválido: ' . $estado);
         }
 
         $this->db->prepare(

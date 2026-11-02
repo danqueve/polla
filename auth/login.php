@@ -101,7 +101,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $password       = $_POST['password'] ?? '';
 
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
-        $errores[] = 'La pagina estuvo abierta demasiado tiempo. Reintentá.';
+        $errores[] = 'La página estuvo abierta demasiado tiempo. Reintentá.';
     } else {
         $db       = getPDO();
         $throttle = new LoginThrottle($db);

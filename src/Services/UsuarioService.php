@@ -5,6 +5,7 @@ namespace Polla\Services;
 use PDO;
 use PDOException;
 use Polla\Support\ValidacionException;
+use Throwable;
 
 /**
  * ABM de usuarios del panel. Reservado al administrador
@@ -63,13 +64,13 @@ class UsuarioService
 
         $errores = [];
         if (!preg_match('/^[a-z0-9._-]{3,50}$/', $usuario)) {
-            $errores[] = 'El usuario debe tener entre 3 y 50 caracteres: letras, numeros, punto, guion o guion bajo.';
+            $errores[] = 'El usuario debe tener entre 3 y 50 caracteres: letras, números, punto, guion o guion bajo.';
         }
         if ($nombre === '') {
             $errores[] = 'Cargá el nombre y apellido.';
         }
         if (!isset(self::ROLES[$rol])) {
-            $errores[] = 'Elegí un rol valido.';
+            $errores[] = 'Elegí un rol válido.';
         }
         if ($errores) {
             throw new ValidacionException($errores);
@@ -81,25 +82,34 @@ class UsuarioService
             throw ValidacionException::de('Ya existe un usuario con ese nombre de acceso.');
         }
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO usuarios (usuario, nombre, password_hash, rol, activo)
-             VALUES (:usuario, :nombre, :hash, :rol, :activo)'
-        );
-        $stmt->execute([
-            ':usuario' => $usuario,
-            ':nombre'  => $nombre,
-            ':hash'    => password_hash($datos['password'], PASSWORD_DEFAULT),
-            ':rol'     => $rol,
-            ':activo'  => !empty($datos['activo']) ? 1 : 0,
-        ]);
+        // Alta y codigo de referido van juntos: si el codigo no se puede
+        // generar, el usuario tampoco tiene que quedar creado a medias.
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO usuarios (usuario, nombre, password_hash, rol, activo)
+                 VALUES (:usuario, :nombre, :hash, :rol, :activo)'
+            );
+            $stmt->execute([
+                ':usuario' => $usuario,
+                ':nombre'  => $nombre,
+                ':hash'    => password_hash($datos['password'], PASSWORD_DEFAULT),
+                ':rol'     => $rol,
+                ':activo'  => !empty($datos['activo']) ? 1 : 0,
+            ]);
 
-        $id = (int) $this->db->lastInsertId();
+            $id = (int) $this->db->lastInsertId();
 
-        // Fase 11: todo supervisor tiene codigo de referido desde que
-        // nace, sin que nadie tenga que acordarse de generarlo aparte.
-        $this->asignarCodigoReferidoSiFalta($id);
+            // Fase 11: todo supervisor tiene codigo de referido desde que
+            // nace, sin que nadie tenga que acordarse de generarlo aparte.
+            $this->asignarCodigoReferidoSiFalta($id);
 
-        return $id;
+            $this->db->commit();
+            return $id;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
     }
 
     /**
@@ -123,10 +133,18 @@ class UsuarioService
             $errores[] = 'Cargá el nombre y apellido.';
         }
         if (!isset(self::ROLES[$rol])) {
-            $errores[] = 'Elegí un rol valido.';
+            $errores[] = 'Elegí un rol válido.';
         }
         if ($errores) {
             throw new ValidacionException($errores);
+        }
+
+        // La clave se valida ANTES de escribir: si no, una clave mal
+        // repetida dejaba guardados nombre, rol y estado con un mensaje
+        // de error en pantalla que decia lo contrario.
+        $cambiaClave = !empty($datos['password']);
+        if ($cambiaClave) {
+            self::validarPassword($datos['password'], $datos['password2'] ?? '');
         }
 
         // No dejar el sistema sin ningun admin activo por el que entrar.
@@ -135,22 +153,29 @@ class UsuarioService
             throw ValidacionException::de('Tiene que quedar al menos un administrador activo.');
         }
 
-        $this->db->prepare(
-            'UPDATE usuarios SET nombre = :nombre, rol = :rol, activo = :activo WHERE id = :id'
-        )->execute([':nombre' => $nombre, ':rol' => $rol, ':activo' => $activo, ':id' => $id]);
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare(
+                'UPDATE usuarios SET nombre = :nombre, rol = :rol, activo = :activo WHERE id = :id'
+            )->execute([':nombre' => $nombre, ':rol' => $rol, ':activo' => $activo, ':id' => $id]);
 
-        if (!empty($datos['password'])) {
-            self::validarPassword($datos['password'], $datos['password2'] ?? '');
-            $this->db->prepare('UPDATE usuarios SET password_hash = :h WHERE id = :id')
-                     ->execute([':h' => password_hash($datos['password'], PASSWORD_DEFAULT), ':id' => $id]);
+            if ($cambiaClave) {
+                $this->db->prepare('UPDATE usuarios SET password_hash = :h WHERE id = :id')
+                         ->execute([':h' => password_hash($datos['password'], PASSWORD_DEFAULT), ':id' => $id]);
+            }
+
+            // Fase 11: si paso a supervisor (o ya lo era pero nunca tuvo
+            // codigo, ej. una fila migrada a mano) y todavia no tiene uno,
+            // se lo asigna aca. Nunca se lo saca si deja de ser supervisor:
+            // un codigo inactivo no hace nada, y sacarlo podria romper un
+            // link que alguien ya tiene compartido si vuelve a serlo.
+            $this->asignarCodigoReferidoSiFalta($id);
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
         }
-
-        // Fase 11: si paso a supervisor (o ya lo era pero nunca tuvo
-        // codigo, ej. una fila migrada a mano) y todavia no tiene uno,
-        // se lo asigna aca. Nunca se lo saca si deja de ser supervisor:
-        // un codigo inactivo no hace nada, y sacarlo podria romper un
-        // link que alguien ya tiene compartido si vuelve a serlo.
-        $this->asignarCodigoReferidoSiFalta($id);
     }
 
     /**
@@ -216,7 +241,7 @@ class UsuarioService
     public function eliminar(int $id, int $idUsuarioActual): string
     {
         if ($id === $idUsuarioActual) {
-            throw ValidacionException::de('No podes borrar tu propio usuario.');
+            throw ValidacionException::de('No podés borrar tu propio usuario.');
         }
 
         $usuario = $this->buscarPorId($id);
@@ -271,10 +296,10 @@ class UsuarioService
     {
         $errores = [];
         if (mb_strlen($nueva) < self::PASSWORD_MIN) {
-            $errores[] = 'La contrasena tiene que tener al menos ' . self::PASSWORD_MIN . ' caracteres.';
+            $errores[] = 'La contraseña tiene que tener al menos ' . self::PASSWORD_MIN . ' caracteres.';
         }
         if ($nueva !== $repetida) {
-            $errores[] = 'Las dos contrasenas no coinciden.';
+            $errores[] = 'Las dos contraseñas no coinciden.';
         }
         if ($errores) {
             throw new ValidacionException($errores);

@@ -170,14 +170,19 @@ class SolicitudService
         }
         $montoTotal = round($montoTotal, 2);
 
-        [$solicitudId, $codigo] = $this->insertarSolicitudConReintento(
-            (int) $cliente['id'],
-            $cantidad,
-            $montoTotal,
-            $tipoJuego
-        );
-
+        // Encabezado y jugadas en la misma transaccion: antes iban por
+        // separado y un corte en el medio (timeout, reinicio de PHP)
+        // dejaba una solicitud pendiente sin jugadas, imposible de
+        // confirmar o rechazar desde el panel.
+        $this->db->beginTransaction();
         try {
+            [$solicitudId, $codigo] = $this->insertarSolicitudConReintento(
+                (int) $cliente['id'],
+                $cantidad,
+                $montoTotal,
+                $tipoJuego
+            );
+
             $this->jugadas->crearPendientes(
                 $clienteId,
                 $numerosPorJugada,
@@ -186,10 +191,10 @@ class SolicitudService
                 $promocionId,
                 $tipoJuego
             );
+
+            $this->db->commit();
         } catch (Throwable $e) {
-            // No dejar la solicitud huerfana: si las jugadas no se
-            // pudieron grabar, tampoco tiene que quedar el encabezado.
-            $this->db->prepare('DELETE FROM solicitudes WHERE id = :id')->execute([':id' => $solicitudId]);
+            $this->db->rollBack();
             throw $e;
         }
 

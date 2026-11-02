@@ -61,6 +61,10 @@ try {
     if ((float) $resultado['aporte_pozo_revertido'] > 0) {
         $mensaje .= ' Se revirtió ' . formatPesos((float) $resultado['aporte_pozo_revertido']) . ' del pozo.';
     }
+    if ((float) $resultado['comision_revertida'] > 0) {
+        $mensaje .= ' También se descontó la comisión del referido ('
+                  . formatPesosDec((float) $resultado['comision_revertida']) . ').';
+    }
     setFlash('success', $mensaje);
     header('Location: ' . $destinoListado($cicloResultado, $tipoResultado, $busqueda, $pagina));
     exit;

@@ -31,26 +31,22 @@ $old = [
 
 try {
     $configuracion = new ConfiguracionService(getPDO());
-    $usuarioId     = currentUserId();
+    $usuarioId     = (int) currentUserId();
 
-    $configuracion->actualizarMontoJugada($monto, $usuarioId);
-    $configuracion->actualizarPremioBase($premioBase, $usuarioId);
-    $configuracion->actualizarMontoJugadaSabado($montoSabado, $usuarioId);
-    $configuracion->actualizarPremioBaseSabado($premioBaseSabado, $usuarioId);
-    $configuracion->actualizarHorarios($horarioSemanal, $horarioSabado, $usuarioId);
-    $configuracion->actualizarComisionJugadaPorcentaje($comisionPorcentaje, $usuarioId);
-    $configuracion->actualizarNumerosPorJugadaSabado($cantidadSabado, $usuarioId);
+    $configuracion->actualizar($old, $usuarioId);
 
     AuditoriaService::crearDesde(getPDO())->registrar(
         AuditoriaService::CONFIG_ACTUALIZADA, 'parametros', null, 'usuario', $usuarioId, $old
     );
 
+    // Con lo que quedo guardado, no con lo tipeado.
     setFlash('success',
-        'Configuración actualizada: monto de jugada ' . formatPesos($monto)
-        . ' · premio base ' . formatPesos($premioBase)
-        . ' · sábados ' . formatPesos($montoSabado) . '/' . formatPesos($premioBaseSabado)
-        . ' (' . $cantidadSabado . ' números)'
-        . ' · comisión ' . $comisionPorcentaje . '%.'
+        'Configuración actualizada: monto de jugada ' . formatPesos($configuracion->montoJugada())
+        . ' · premio base ' . formatPesos($configuracion->premioBase())
+        . ' · sábados ' . formatPesos($configuracion->montoJugadaSabado())
+        . '/' . formatPesos($configuracion->premioBaseSabado())
+        . ' (' . $configuracion->numerosPorJugadaSabado() . ' números)'
+        . ' · comisión ' . $configuracion->comisionJugadaPorcentaje() . '%.'
     );
 } catch (ValidacionException $e) {
     setOld($old);

@@ -85,7 +85,7 @@ class ClienteAuthService
 
         if ((int) $cliente['activo'] !== 1) {
             throw new CuentaInactivaException([
-                'Tu acceso esta dado de baja. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.',
+                'Tu acceso está dado de baja. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.',
             ]);
         }
 

@@ -4,6 +4,7 @@ namespace Polla\Services;
 
 use DateTimeImmutable;
 use PDO;
+use Throwable;
 
 /**
  * Sesion persistente ("recordarme") del portal del cliente [PWA].
@@ -40,8 +41,14 @@ class RememberTokenService
     /** Emite un token nuevo para este cliente y lo deja en la cookie. */
     public function emitir(int $clienteId): void
     {
+        [$token, $expira] = $this->insertarToken($clienteId);
+        $this->setCookie($token, $expira);
+    }
+
+    /** @return array{0:string, 1:int} [token en claro, vencimiento como timestamp] */
+    private function insertarToken(int $clienteId): array
+    {
         $token  = bin2hex(random_bytes(32));
-        $hash   = hash('sha256', $token);
         $expira = new DateTimeImmutable('+' . self::DIAS_VIGENCIA . ' days');
 
         $this->db->prepare(
@@ -49,11 +56,11 @@ class RememberTokenService
              VALUES (:cliente, :hash, :expira)'
         )->execute([
             ':cliente' => $clienteId,
-            ':hash'    => $hash,
+            ':hash'    => hash('sha256', $token),
             ':expira'  => $expira->format('Y-m-d H:i:s'),
         ]);
 
-        $this->setCookie($token, $expira->getTimestamp());
+        return [$token, $expira->getTimestamp()];
     }
 
     /**
@@ -76,25 +83,42 @@ class RememberTokenService
         }
 
         $hash = hash('sha256', $token);
-        $stmt = $this->db->prepare(
-            'SELECT c.id, c.nro_cliente, c.dni, c.nombre, c.activo
-               FROM remember_tokens rt
-               JOIN clientes c ON c.id = rt.cliente_id
-              WHERE rt.token_hash = :hash AND rt.expira_en > NOW()
-              LIMIT 1'
-        );
-        $stmt->execute([':hash' => $hash]);
-        $cliente = $stmt->fetch();
 
-        $this->db->prepare('DELETE FROM remember_tokens WHERE token_hash = :hash')
-                 ->execute([':hash' => $hash]);
+        // Borrar el viejo y emitir el nuevo van juntos: antes, si el
+        // INSERT fallaba despues del DELETE, el cliente perdia el
+        // "recordarme" sin enterarse. La cookie se manda recien despues
+        // del commit, para no entregar un token que no quedo guardado.
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'SELECT c.id, c.nro_cliente, c.dni, c.nombre, c.activo
+                   FROM remember_tokens rt
+                   JOIN clientes c ON c.id = rt.cliente_id
+                  WHERE rt.token_hash = :hash AND rt.expira_en > NOW()
+                  LIMIT 1'
+            );
+            $stmt->execute([':hash' => $hash]);
+            $cliente = $stmt->fetch();
 
-        if (!$cliente || (int) $cliente['activo'] !== 1) {
+            $this->db->prepare('DELETE FROM remember_tokens WHERE token_hash = :hash')
+                     ->execute([':hash' => $hash]);
+
+            $nuevo = $cliente && (int) $cliente['activo'] === 1
+                ? $this->insertarToken((int) $cliente['id'])
+                : null;
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+
+        if ($nuevo === null) {
             $this->borrarCookie();
             return null;
         }
 
-        $this->emitir((int) $cliente['id']);
+        $this->setCookie($nuevo[0], $nuevo[1]);
 
         return $cliente;
     }

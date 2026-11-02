@@ -5,6 +5,7 @@ namespace Polla\Services;
 use PDO;
 use PDOException;
 use Polla\Support\ValidacionException;
+use Throwable;
 
 /**
  * ABM de vendedores [Fase 11]. Un vendedor no juega ni carga nada: solo
@@ -107,6 +108,26 @@ class VendedorService
             throw ValidacionException::de('Ya hay un vendedor cargado con el DNI ' . $dni . '.');
         }
 
+        // La cuenta de cliente y la de vendedor nacen juntas o ninguna:
+        // antes, si el alta del vendedor fallaba, el cliente quedaba
+        // creado igual y el reintento lo informaba como "ya existente".
+        $this->db->beginTransaction();
+        try {
+            $resultado = $this->insertarConCodigo($nombre, $dni, $telefono, $datos['password']);
+            $this->db->commit();
+            return $resultado;
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /**
+     * @return array{id:int, cliente_id:int, cliente_nro:string, cliente_nuevo:bool}
+     * @throws ValidacionException
+     */
+    private function insertarConCodigo(string $nombre, string $dni, string $telefono, string $password): array
+    {
         $cliente = $this->resolverClienteId($dni, $nombre, $telefono);
 
         $stmt = $this->db->prepare(
@@ -122,7 +143,7 @@ class VendedorService
                     ':dni'        => $dni,
                     ':cliente_id' => $cliente['id'],
                     ':telefono'   => $telefono !== '' ? $telefono : null,
-                    ':hash'       => password_hash($datos['password'], PASSWORD_DEFAULT),
+                    ':hash'       => password_hash($password, PASSWORD_DEFAULT),
                     ':codigo'     => $codigo,
                 ]);
                 return [
@@ -226,21 +247,35 @@ class VendedorService
             throw ValidacionException::de('Ya hay otro vendedor con el DNI ' . $dni . '.');
         }
 
-        $this->db->prepare(
-            'UPDATE vendedores SET nombre = :nombre, dni = :dni, telefono = :telefono, activo = :activo
-              WHERE id = :id'
-        )->execute([
-            ':nombre'   => $nombre,
-            ':dni'      => $dni,
-            ':telefono' => $telefono !== '' ? $telefono : null,
-            ':activo'   => $activo,
-            ':id'       => $id,
-        ]);
-
-        if (!empty($datos['password'])) {
+        // Antes de escribir: una clave mal repetida no tiene que dejar
+        // guardado el resto del formulario con un mensaje de error.
+        $cambiaClave = !empty($datos['password']);
+        if ($cambiaClave) {
             self::validarPassword($datos['password'], $datos['password2'] ?? '');
-            $this->db->prepare('UPDATE vendedores SET password_hash = :h WHERE id = :id')
-                     ->execute([':h' => password_hash($datos['password'], PASSWORD_DEFAULT), ':id' => $id]);
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare(
+                'UPDATE vendedores SET nombre = :nombre, dni = :dni, telefono = :telefono, activo = :activo
+                  WHERE id = :id'
+            )->execute([
+                ':nombre'   => $nombre,
+                ':dni'      => $dni,
+                ':telefono' => $telefono !== '' ? $telefono : null,
+                ':activo'   => $activo,
+                ':id'       => $id,
+            ]);
+
+            if ($cambiaClave) {
+                $this->db->prepare('UPDATE vendedores SET password_hash = :h WHERE id = :id')
+                         ->execute([':h' => password_hash($datos['password'], PASSWORD_DEFAULT), ':id' => $id]);
+            }
+
+            $this->db->commit();
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
         }
     }
 

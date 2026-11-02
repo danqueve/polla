@@ -57,7 +57,7 @@ class AuthService
         $usuario = trim($usuario);
 
         if ($usuario === '' || $password === '') {
-            throw ValidacionException::de('Completa usuario y contrasena.');
+            throw ValidacionException::de('Completá usuario y contraseña.');
         }
 
         $stmt = $this->db->prepare(
@@ -71,7 +71,7 @@ class AuthService
 
         // Mismo mensaje para usuario inexistente y clave incorrecta: no le
         // regalamos al que prueba credenciales la pista de cuales existen.
-        $generico = 'Usuario o contrasena incorrectos.';
+        $generico = 'Usuario o contraseña incorrectos.';
 
         if (!$fila) {
             password_verify($password, self::HASH_SENUELO);
@@ -83,7 +83,7 @@ class AuthService
         }
 
         if ((int) $fila['activo'] !== 1) {
-            throw new CuentaInactivaException(['Tu usuario esta desactivado. Hablalo con el administrador.']);
+            throw new CuentaInactivaException(['Tu usuario está desactivado. Hablalo con el administrador.']);
         }
 
         // Rehash si el costo por defecto de PHP cambio desde el alta.
@@ -135,7 +135,7 @@ class AuthService
         $hash = $stmt->fetchColumn();
 
         if (!$hash || !password_verify($actual, $hash)) {
-            throw ValidacionException::de('La contrasena actual no es correcta.');
+            throw ValidacionException::de('La contraseña actual no es correcta.');
         }
 
         UsuarioService::validarPassword($nueva, $repetida);

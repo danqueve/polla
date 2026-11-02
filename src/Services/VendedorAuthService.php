@@ -69,7 +69,7 @@ class VendedorAuthService
 
         if ((int) $vendedor['activo'] !== 1) {
             throw new CuentaInactivaException([
-                'Tu acceso de vendedor esta dado de baja. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.',
+                'Tu acceso de vendedor está dado de baja. Hablá con Decena de Oro al ' . CONTACTO_WHATSAPP_LEGIBLE . '.',
             ]);
         }
 

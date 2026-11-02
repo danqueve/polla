@@ -65,7 +65,7 @@ function requireAdmin(): void
 {
     requireLogin();
     if (!isAdmin()) {
-        setFlash('danger', 'Esa accion es exclusiva del administrador.');
+        setFlash('danger', 'Esa acción es exclusiva del administrador.');
         header('Location: ' . APP_URL . '/admin/index.php');
         exit;
     }

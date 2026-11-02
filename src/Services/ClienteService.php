@@ -5,6 +5,7 @@ namespace Polla\Services;
 use PDO;
 use PDOException;
 use Polla\Support\ValidacionException;
+use Throwable;
 
 /**
  * ABM de clientes.
@@ -294,30 +295,43 @@ class ClienteService
      */
     public function eliminar(int $id): string
     {
-        if (!$this->buscarPorId($id)) {
-            throw ValidacionException::de('El cliente no existe.');
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare('SELECT id FROM clientes WHERE id = :id LIMIT 1 FOR UPDATE');
+            $stmt->execute([':id' => $id]);
+            if (!$stmt->fetchColumn()) {
+                throw ValidacionException::de('El cliente no existe.');
+            }
+
+            // El chequeo y el borrado son UNA sentencia: antes eran tres
+            // consultas sueltas, y una jugada cargada entre medio dejaba
+            // una jugada sin cliente. Las solicitudes cuentan igual que
+            // las jugadas: son historial del cliente.
+            $borrado = $this->db->prepare(
+                'DELETE FROM clientes
+                  WHERE id = :id
+                    AND NOT EXISTS (SELECT 1 FROM jugadas     WHERE cliente_id = :id2)
+                    AND NOT EXISTS (SELECT 1 FROM solicitudes WHERE cliente_id = :id3)
+                    AND NOT EXISTS (SELECT 1 FROM vendedores  WHERE cliente_id = :id4)'
+            );
+            $borrado->execute([':id' => $id, ':id2' => $id, ':id3' => $id, ':id4' => $id]);
+
+            if ($borrado->rowCount() === 0) {
+                $this->db->prepare('UPDATE clientes SET activo = 0 WHERE id = :id')->execute([':id' => $id]);
+                $this->db->commit();
+                return 'desactivado';
+            }
+
+            // jugadas_favoritas no tiene FK: se borran a mano para no dejar
+            // filas colgando de un cliente que ya no existe.
+            $this->db->prepare('DELETE FROM jugadas_favoritas WHERE cliente_id = :id')->execute([':id' => $id]);
+
+            $this->db->commit();
+            return 'borrado';
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
         }
-
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM jugadas WHERE cliente_id = :id');
-        $stmt->execute([':id' => $id]);
-        $tieneJugadas = (int) $stmt->fetchColumn() > 0;
-
-        $stmt = $this->db->prepare('SELECT COUNT(*) FROM vendedores WHERE cliente_id = :id');
-        $stmt->execute([':id' => $id]);
-        $tieneVendedor = (int) $stmt->fetchColumn() > 0;
-
-        if ($tieneJugadas || $tieneVendedor) {
-            $this->db->prepare('UPDATE clientes SET activo = 0 WHERE id = :id')->execute([':id' => $id]);
-            return 'desactivado';
-        }
-
-        // Sin jugadas ni vendedor, pero puede tener favoritas escritas a
-        // mano en "Mis favoritas". jugadas_favoritas no tiene FK (igual
-        // que el resto del esquema), asi que se borran aca para no dejar
-        // filas colgando de un cliente que ya no existe.
-        $this->db->prepare('DELETE FROM jugadas_favoritas WHERE cliente_id = :id')->execute([':id' => $id]);
-        $this->db->prepare('DELETE FROM clientes WHERE id = :id')->execute([':id' => $id]);
-        return 'borrado';
     }
 
     // ── Internos ────────────────────────────────────────────
@@ -337,7 +351,7 @@ class ClienteService
         $errores = [];
 
         if (!preg_match('/^\d{7,9}$/', $dni)) {
-            $errores[] = 'El DNI tiene que ser un numero de 7 a 9 digitos, sin puntos.';
+            $errores[] = 'El DNI tiene que ser un número de 7 a 9 dígitos, sin puntos.';
         }
         if (mb_strlen($nombre) < 3) {
             $errores[] = 'Cargá el nombre y apellido del cliente.';
@@ -349,7 +363,7 @@ class ClienteService
             $errores[] = 'Cargá el teléfono del cliente.';
         }
         if ($telefono !== '' && !preg_match('/^[\d\s()+-]{6,30}$/', $telefono)) {
-            $errores[] = 'El telefono solo puede tener numeros, espacios y los signos + - ( ).';
+            $errores[] = 'El teléfono solo puede tener números, espacios y los signos + - ( ).';
         }
         if ($errores) {
             throw new ValidacionException($errores);

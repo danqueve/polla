@@ -3,6 +3,7 @@
 namespace Polla\Services;
 
 use PDO;
+use PDOException;
 use Polla\Support\ValidacionException;
 
 /**
@@ -70,16 +71,24 @@ class ComisionService
 
         $monto = round($importeJugada * $porcentaje / 100, 2);
 
-        $this->db->prepare(
-            'INSERT INTO comisiones (referidor_tipo, referidor_id, jugada_id, monto, porcentaje_aplicado)
-             VALUES (:tipo, :id, :jugada, :monto, :porcentaje)'
-        )->execute([
-            ':tipo'       => $cliente['referido_por_tipo'],
-            ':id'         => $cliente['referido_por_id'],
-            ':jugada'     => $jugadaId,
-            ':monto'      => $monto,
-            ':porcentaje' => $porcentaje,
-        ]);
+        try {
+            $this->db->prepare(
+                'INSERT INTO comisiones (referidor_tipo, referidor_id, jugada_id, monto, porcentaje_aplicado)
+                 VALUES (:tipo, :id, :jugada, :monto, :porcentaje)'
+            )->execute([
+                ':tipo'       => $cliente['referido_por_tipo'],
+                ':id'         => $cliente['referido_por_id'],
+                ':jugada'     => $jugadaId,
+                ':monto'      => $monto,
+                ':porcentaje' => $porcentaje,
+            ]);
+        } catch (PDOException $e) {
+            // Ya estaba acreditada: no se duplica, y tampoco tiene que
+            // tirar abajo la confirmacion del pago que la llamo.
+            if (strpos($e->getMessage(), 'uk_comisiones_jugada') === false) {
+                throw $e;
+            }
+        }
     }
 
     /**

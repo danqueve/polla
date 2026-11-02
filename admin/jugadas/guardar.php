@@ -34,15 +34,8 @@ try {
         'usuario', currentUserId(), ['cliente_id' => $clienteId, 'cantidad' => count($ids), 'ids' => $ids]
     );
 
-    $primero = $jugadas->buscarPorId($ids[0]);
-
-    // Con promo, el importe puede variar en centavos entre jugadas del
-    // mismo lote (repartirEnPartesIguales): sumamos cada una en vez de
-    // multiplicar la primera por la cantidad.
-    $totalCobrado = (float) $primero['importe'];
-    for ($i = 1; $i < count($ids); $i++) {
-        $totalCobrado += (float) $jugadas->buscarPorId($ids[$i])['importe'];
-    }
+    $primero      = $jugadas->buscarPorId($ids[0]);
+    $totalCobrado = $jugadas->importeTotal($ids);
 
     if (count($ids) === 1) {
         $listaNumeros = implode(' ', array_map('num2', $primero['numeros']));

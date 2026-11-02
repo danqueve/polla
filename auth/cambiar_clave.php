@@ -11,7 +11,7 @@ $errores = [];
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if (!verifyCsrf($_POST['csrf_token'] ?? '')) {
-        $errores[] = 'La sesion expiro. Reintentá.';
+        $errores[] = 'La sesión expiró. Reintentá.';
     } else {
         try {
             (new AuthService(getPDO()))->cambiarPassword(
@@ -20,7 +20,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                 $_POST['nueva']     ?? '',
                 $_POST['repetida']  ?? ''
             );
-            setFlash('success', 'Listo, tu contrasena quedo cambiada.');
+            setFlash('success', 'Listo, tu contraseña quedó cambiada.');
             header('Location: ' . APP_URL . '/admin/index.php');
             exit;
         } catch (ValidacionException $e) {
@@ -29,7 +29,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     }
 }
 
-$pageTitle        = 'Cambiar contrasena · ' . APP_NAME;
+$pageTitle        = 'Cambiar contraseña · ' . APP_NAME;
 $navSeccion       = '';
 $pageSectionTitle = 'Cambiar Contraseña';
 $breadcrumb       = [

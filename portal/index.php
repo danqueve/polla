@@ -42,15 +42,13 @@ $rechazadas     = $solicitudesSvc->rechazadasSinAtender($clienteId, $tipoJuego);
 // garantizado a lo acumulado real esta semana (o este sabado) -- el
 // ganador se lleva el piso completo MAS lo recaudado, no el mayor
 // entre los dos. Caja separada: cada juego tiene su propio premio base.
-$premioBase   = $esSabado
-    ? (new ParametroService($db))->premioBaseSabado()
-    : (new ParametroService($db))->premioBase();
+$parametros   = new ParametroService($db);
+$premioBase   = $esSabado ? $parametros->premioBaseSabado() : $parametros->premioBase();
 $pozoMostrado = PozoService::montoAMostrar((float) ($ciclo['monto_acumulado'] ?? 0), $premioBase);
 
 // Para los botones "Volver a jugar" / "Guardar como favorita" de cada
 // tarjeta (includes/portal_jugada.php): se calculan UNA vez aca, no por
 // jugada.
-$parametros     = new ParametroService($db);
 $cantidadHoy    = $esSabado ? $parametros->numerosPorJugadaSabado() : $parametros->numerosPorJugada();
 $favoritasCanon = FavoritaService::crearDesde($db)->canonicasDelCliente($clienteId, $tipoJuego);
 $volverA        = 'index';

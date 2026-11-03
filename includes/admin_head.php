@@ -12,7 +12,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#1a2332">
+    <meta name="theme-color" content="#10201a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -35,7 +35,7 @@
     ?>
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/bootstrap/bootstrap.min.css?v=<?= $_v('assets/vendor/bootstrap/bootstrap.min.css') ?>">
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/bootstrap-icons/bootstrap-icons.min.css?v=<?= $_v('assets/vendor/bootstrap-icons/bootstrap-icons.min.css') ?>">
-    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/fuentes-admin.css?v=<?= $_v('assets/vendor/fuentes-admin.css') ?>">
+    <link rel="stylesheet" href="<?= APP_URL ?>/assets/vendor/fuentes-portal.css?v=<?= $_v('assets/vendor/fuentes-portal.css') ?>">
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/app.css?v=<?= $_v('assets/css/app.css') ?>">
     <link rel="stylesheet" href="<?= APP_URL ?>/assets/css/admin.css?v=<?= $_v('assets/css/admin.css') ?>">
 </head>

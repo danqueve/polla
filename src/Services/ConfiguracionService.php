@@ -57,6 +57,16 @@ class ConfiguracionService
         return $this->parametros->horarioLimiteSabado();
     }
 
+    public function fechaLimiteSemanal(): string
+    {
+        return $this->parametros->fechaLimiteSemanal();
+    }
+
+    public function fechaLimiteSabado(): string
+    {
+        return $this->parametros->fechaLimiteSabado();
+    }
+
     public function comisionJugadaPorcentaje(): float
     {
         return $this->parametros->comisionJugadaPorcentaje();
@@ -92,7 +102,8 @@ class ConfiguracionService
      *
      * @param array{monto_jugada:string, premio_base:string, monto_jugada_sabado:string,
      *              premio_base_sabado:string, horario_limite_semanal:string,
-     *              horario_limite_sabado:string, comision_jugada_porcentaje:string,
+     *              horario_limite_sabado:string, fecha_limite_semanal:string,
+     *              fecha_limite_sabado:string, comision_jugada_porcentaje:string,
      *              numeros_por_jugada_sabado:string} $form
      * @throws ValidacionException
      */
@@ -105,6 +116,8 @@ class ConfiguracionService
             'premio_base_sabado'         => $form['premio_base_sabado'],
             'horario_limite_semanal'     => $form['horario_limite_semanal'],
             'horario_limite_sabado'      => $form['horario_limite_sabado'],
+            'fecha_limite_semanal'       => $form['fecha_limite_semanal'],
+            'fecha_limite_sabado'        => $form['fecha_limite_sabado'],
             'comision_jugada_porcentaje' => $form['comision_jugada_porcentaje'],
             'numeros_por_jugada_sabado'  => $form['numeros_por_jugada_sabado'],
         ], $actualizadoPor);

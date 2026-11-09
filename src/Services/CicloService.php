@@ -211,8 +211,11 @@ class CicloService
             return false;
         }
 
+        $fechaLimite = $this->parametros->fechaLimiteSemanal();
+        $fechaCorte  = ($fechaLimite !== '') ? $fechaLimite : $ciclo['fecha_inicio'];
+
         $corte = new DateTimeImmutable(
-            $ciclo['fecha_inicio'] . ' ' . $this->parametros->horarioLimiteSemanal() . ':00'
+            $fechaCorte . ' ' . $this->parametros->horarioLimiteSemanal() . ':00'
         );
 
         return new DateTimeImmutable('now') > $corte;

@@ -30,6 +30,8 @@ class ParametroService
         'premio_base_sabado'     => '25000',
         'horario_limite_semanal' => '18:00',
         'horario_limite_sabado'  => '11:00',
+        'fecha_limite_semanal'   => '',
+        'fecha_limite_sabado'    => '',
         'comision_jugada_porcentaje' => '0',
         'numeros_por_jugada_sabado'  => '5',
     ];
@@ -133,6 +135,18 @@ class ParametroService
         return (string) $this->get('horario_limite_sabado');
     }
 
+    /** Fecha limite (YYYY-MM-DD) opcional para el corte semanal. Vacío = usa el lunes del ciclo. */
+    public function fechaLimiteSemanal(): string
+    {
+        return (string) $this->get('fecha_limite_semanal');
+    }
+
+    /** Fecha limite (YYYY-MM-DD) opcional para el corte de sábados. Vacío = usa el sábado del ciclo. */
+    public function fechaLimiteSabado(): string
+    {
+        return (string) $this->get('fecha_limite_sabado');
+    }
+
     /**
      * Porcentaje global de comision [Fase 11] para el vendedor/supervisor
      * que refirio al cliente, sobre el importe de cada jugada confirmada.
@@ -185,6 +199,10 @@ class ParametroService
             'horario_limite_semanal' => 'El horario límite semanal',
             'horario_limite_sabado'  => 'El horario límite de sábados',
         ];
+        $fechasLimite = [
+            'fecha_limite_semanal' => 'La fecha límite semanal',
+            'fecha_limite_sabado'  => 'La fecha límite de sábados',
+        ];
         $porcentajes = [
             'comision_jugada_porcentaje' => 'El porcentaje de comisión',
             'porcentaje_pozo'            => 'El porcentaje del pozo',
@@ -206,6 +224,10 @@ class ParametroService
             } elseif (isset($porcentajes[$clave])) {
                 if (!self::esNumeroDecimal($valor) || (float) $valor > 100) {
                     $errores[] = $porcentajes[$clave] . ' tiene que ser un número entre 0 y 100.';
+                }
+            } elseif (isset($fechasLimite[$clave])) {
+                if ($valor !== '' && !preg_match('/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/', $valor)) {
+                    $errores[] = $fechasLimite[$clave] . ' tiene que tener formato AAAA-MM-DD o quedar vacía.';
                 }
             } elseif ($clave === 'numeros_por_jugada_sabado') {
                 if (!ctype_digit($valor) || (int) $valor < 1 || (int) $valor > 20) {

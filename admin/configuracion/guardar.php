@@ -15,6 +15,8 @@ $montoSabado = trim($_POST['monto_jugada_sabado'] ?? '');
 $premioBaseSabado = trim($_POST['premio_base_sabado'] ?? '');
 $horarioSemanal   = trim($_POST['horario_limite_semanal'] ?? '');
 $horarioSabado    = trim($_POST['horario_limite_sabado'] ?? '');
+$fechaLimiteSemanal = trim($_POST['fecha_limite_semanal'] ?? '');
+$fechaLimiteSabado  = trim($_POST['fecha_limite_sabado'] ?? '');
 $comisionPorcentaje = trim($_POST['comision_jugada_porcentaje'] ?? '');
 $cantidadSabado      = trim($_POST['numeros_por_jugada_sabado'] ?? '');
 
@@ -25,6 +27,8 @@ $old = [
     'premio_base_sabado'         => $premioBaseSabado,
     'horario_limite_semanal'     => $horarioSemanal,
     'horario_limite_sabado'      => $horarioSabado,
+    'fecha_limite_semanal'       => $fechaLimiteSemanal,
+    'fecha_limite_sabado'        => $fechaLimiteSabado,
     'comision_jugada_porcentaje' => $comisionPorcentaje,
     'numeros_por_jugada_sabado'  => $cantidadSabado,
 ];

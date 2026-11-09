@@ -22,8 +22,12 @@ $ultimaPremioSabado = $configuracion->ultimaActualizacion('premio_base_sabado');
 
 $horarioSemanal      = old('horario_limite_semanal', $configuracion->horarioLimiteSemanal());
 $horarioSabado       = old('horario_limite_sabado', $configuracion->horarioLimiteSabado());
+$fechaLimiteSemanal  = old('fecha_limite_semanal', $configuracion->fechaLimiteSemanal());
+$fechaLimiteSabado   = old('fecha_limite_sabado', $configuracion->fechaLimiteSabado());
 $ultimoHorarioSemanal = $configuracion->ultimaActualizacion('horario_limite_semanal');
 $ultimoHorarioSabado  = $configuracion->ultimaActualizacion('horario_limite_sabado');
+$ultimaFechaSemanal   = $configuracion->ultimaActualizacion('fecha_limite_semanal');
+$ultimaFechaSabado    = $configuracion->ultimaActualizacion('fecha_limite_sabado');
 
 $comisionPorcentaje = old('comision_jugada_porcentaje', (string) $configuracion->comisionJugadaPorcentaje());
 $ultimaComision     = $configuracion->ultimaActualizacion('comision_jugada_porcentaje');
@@ -282,12 +286,12 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                     </div>
                     <div class="g-card__body">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold small text-muted" for="horario_limite_semanal">Semanal (corte del lunes)</label>
+                            <label class="form-label fw-semibold small text-muted" for="horario_limite_semanal">Semanal — Hora de corte</label>
                             <input type="time" class="form-control form-control-lg" id="horario_limite_semanal" name="horario_limite_semanal"
                                    value="<?= e($horarioSemanal) ?>" required>
                             <div class="form-text">
-                                Hasta esta hora del lunes, lo que se cargue cuenta para el pozo
-                                de esta semana. Después (martes a domingo), la carga no se
+                                Hasta esta hora, lo que se cargue cuenta para el pozo
+                                de esta semana. Después, la carga no se
                                 bloquea: lo que se cargue queda anotado automáticamente para
                                 la semana que viene.
                             </div>
@@ -301,8 +305,29 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                             <?php endif; ?>
                         </div>
 
-                        <div class="mb-2">
-                            <label class="form-label fw-semibold small text-muted" for="horario_limite_sabado">Sábados</label>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted" for="fecha_limite_semanal">Semanal — Fecha de corte <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input type="date" class="form-control form-control-lg" id="fecha_limite_semanal" name="fecha_limite_semanal"
+                                   value="<?= e($fechaLimiteSemanal) ?>">
+                            <div class="form-text">
+                                Si se deja vacío, el corte es el lunes del ciclo (por defecto).
+                                Si se pone una fecha, el corte es ese día a la hora de arriba
+                                en vez del lunes.
+                            </div>
+                            <?php if ($ultimaFechaSemanal): ?>
+                                <p class="text-muted small mb-0 mt-1">
+                                    Último cambio: <?= e(formatFechaHora($ultimaFechaSemanal['actualizado_en'])) ?>
+                                    <?php if ($ultimaFechaSemanal['actualizado_por']): ?>
+                                        · por <?= e($ultimaFechaSemanal['actualizado_por']) ?>
+                                    <?php endif; ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small text-muted" for="horario_limite_sabado">Sábados — Hora de corte</label>
                             <input type="time" class="form-control form-control-lg" id="horario_limite_sabado" name="horario_limite_sabado"
                                    value="<?= e($horarioSabado) ?>" required>
                             <div class="form-text">
@@ -314,6 +339,25 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                     Último cambio: <?= e(formatFechaHora($ultimoHorarioSabado['actualizado_en'])) ?>
                                     <?php if ($ultimoHorarioSabado['actualizado_por']): ?>
                                         · por <?= e($ultimoHorarioSabado['actualizado_por']) ?>
+                                    <?php endif; ?>
+                                </p>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold small text-muted" for="fecha_limite_sabado">Sábados — Fecha de corte <span class="text-muted fw-normal">(opcional)</span></label>
+                            <input type="date" class="form-control form-control-lg" id="fecha_limite_sabado" name="fecha_limite_sabado"
+                                   value="<?= e($fechaLimiteSabado) ?>">
+                            <div class="form-text">
+                                Si se deja vacío, el corte es cada sábado (por defecto).
+                                Si se pone una fecha, el corte es ese día a la hora de arriba
+                                en vez del sábado habitual.
+                            </div>
+                            <?php if ($ultimaFechaSabado): ?>
+                                <p class="text-muted small mb-0 mt-1">
+                                    Último cambio: <?= e(formatFechaHora($ultimaFechaSabado['actualizado_en'])) ?>
+                                    <?php if ($ultimaFechaSabado['actualizado_por']): ?>
+                                        · por <?= e($ultimaFechaSabado['actualizado_por']) ?>
                                     <?php endif; ?>
                                 </p>
                             <?php endif; ?>

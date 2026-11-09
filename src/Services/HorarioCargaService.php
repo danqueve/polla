@@ -48,9 +48,18 @@ class HorarioCargaService
         }
 
         $ahora   = $ahora ?? new DateTimeImmutable('now');
-        $diaIso  = (int) $ahora->format('N'); // 1 = lunes ... 7 = domingo
         $minutos = self::minutosDelDia($ahora);
 
+        $fechaLimite = $this->parametros->fechaLimiteSabado();
+        if ($fechaLimite !== '') {
+            $hoyStr = $ahora->format('Y-m-d');
+            if ($hoyStr === $fechaLimite) {
+                return $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSabado());
+            }
+            return $hoyStr < $fechaLimite;
+        }
+
+        $diaIso = (int) $ahora->format('N'); // 1 = lunes ... 7 = domingo
         // Sabado: solo el sabado tiene corte; domingo a viernes, sin limite.
         return $diaIso !== 6 || $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSabado());
     }
@@ -65,6 +74,13 @@ class HorarioCargaService
     {
         if ($this->abierto($tipoJuego, $ahora)) {
             return null;
+        }
+
+        $fechaLimite = $this->parametros->fechaLimiteSabado();
+        if ($fechaLimite !== '') {
+            return 'El plazo para cargar jugadas de sábados cerró el '
+                 . date('d/m/Y', strtotime($fechaLimite))
+                 . ' a las ' . $this->parametros->horarioLimiteSabado() . '.';
         }
 
         return 'El horario para cargar jugadas de sábados cerró a las '

@@ -112,6 +112,11 @@ $_altasCount = $_pendientes['altas'];
                     <i class="bi bi-cash-coin"></i>
                     <span>Liquidaciones</span>
                 </a>
+                <a href="<?= APP_URL ?>/admin/ganancias/index.php"
+                   class="g-sidebar__link <?= ($navSeccion ?? '') === 'ganancias' ? 'active' : '' ?>">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Ganancias</span>
+                </a>
                 <a href="<?= APP_URL ?>/admin/configuracion/index.php"
                    class="g-sidebar__link <?= ($navSeccion ?? '') === 'configuracion' ? 'active' : '' ?>">
                     <i class="bi bi-sliders"></i>

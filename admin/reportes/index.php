@@ -83,6 +83,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                 <a href="<?= APP_URL ?>/admin/reportes/detalle_por_cliente.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-journal-text"></i> Detalle por Cliente
                 </a>
+                <a href="<?= APP_URL ?>/admin/ganancias/index.php" class="g-btn g-btn--outline">
+                    <i class="bi bi-graph-up-arrow"></i> Ganancias
+                </a>
                 <a href="<?= APP_URL ?>/admin/reportes/ganadores.php<?= $qs ? '?' . e($qs) : '' ?>" class="g-btn g-btn--outline">
                     <i class="bi bi-trophy"></i> Ganadores
                 </a>

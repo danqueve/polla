@@ -91,6 +91,10 @@
                     <i class="bi bi-cash-coin" aria-hidden="true"></i>
                     <span>Liquidaciones</span>
                 </a>
+                <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/ganancias/index.php">
+                    <i class="bi bi-graph-up-arrow" aria-hidden="true"></i>
+                    <span>Ganancias</span>
+                </a>
             <?php else: ?>
                 <a class="menu-mas__fila" href="<?= APP_URL ?>/admin/referidos/mios.php">
                     <i class="bi bi-diagram-3" aria-hidden="true"></i>

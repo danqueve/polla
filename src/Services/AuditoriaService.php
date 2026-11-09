@@ -47,6 +47,10 @@ class AuditoriaService
     // Liquidaciones
     public const LIQUIDACION_GENERADA  = 'liquidacion_generada';
 
+    // Ganancias de la empresa (el 40% de cada ciclo)
+    public const GANANCIA_LIQUIDADA            = 'ganancia_liquidada';
+    public const GANANCIA_LIQUIDACION_ANULADA  = 'ganancia_liquidacion_anulada';
+
     // Usuarios
     public const USUARIO_CREADO        = 'usuario_creado';
     public const USUARIO_EDITADO       = 'usuario_editado';

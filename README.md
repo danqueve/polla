@@ -29,6 +29,13 @@ parciales. El detalle funcional completo está en
    producción como el entorno local). `config/db.php` está en
    `.gitignore`, así que no se pisa con los `git pull`.
 
+   En el mismo archivo van `APP_ENV` (`development` en local,
+   `production` en el servidor) y `APP_URL` (la URL base, sin barra
+   final: `http://localhost/polla` en local, `https://<dominio>` en
+   producción). El entorno nunca se deduce del pedido: si falta
+   `APP_ENV`, la app arranca en `production`, y en `http://localhost`
+   el login no anda (la cookie de sesión exige https).
+
    El repo no versiona un script de instalación limpia (`db/schema.sql`
    y `db/seed.sql` se sacaron por traer datos reales pegados a la
    estructura): para levantar una base desde cero, pedí un volcado sin

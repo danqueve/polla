@@ -28,17 +28,48 @@ function whatsappUrl(): string
     return 'https://wa.me/' . CONTACTO_WHATSAPP;
 }
 
-// ── Entorno segun el host ───────────────────────────────────
-$_appHost = $_SERVER['HTTP_HOST'] ?? 'localhost';
-if ($_appHost === 'localhost' || $_appHost === '127.0.0.1') {
-    define('APP_URL', 'http://localhost/polla');
-    define('APP_ENV', 'development');
-} else {
-    $_appScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    define('APP_URL', $_appScheme . '://' . $_appHost);
+// ── Entorno: lo fija config/db.php, nunca el pedido ─────────
+// config/db.php (no versionado) es el que sabe en que maquina esta, y
+// va primero porque de APP_ENV dependen los errores en pantalla y la
+// cookie Secure. No tiene efectos: solo define constantes y getPDO().
+//
+// Antes el entorno se deducia del header Host. Pero el Host lo manda el
+// cliente: un pedido a produccion con "Host: localhost" la ponia en modo
+// desarrollo (errores con rutas y trazas a la vista, cookie de sesion
+// sin Secure). Ahora, si db.php no dice nada, el entorno es produccion:
+// ante la duda, el modo seguro.
+require_once __DIR__ . '/db.php';
+
+if (!defined('APP_ENV')) {
     define('APP_ENV', 'production');
 }
-unset($_appHost, $_appScheme);
+if (APP_ENV !== 'production' && APP_ENV !== 'development') {
+    // Un valor mal tipeado ("prod") dejaria a medias los chequeos de
+    // === 'production' (la cookie Secure, entre otros): mejor no arrancar.
+    error_log('[polla] APP_ENV invalido en config/db.php: ' . var_export(APP_ENV, true));
+    http_response_code(500);
+    exit('Configuración inválida del servidor.');
+}
+
+if (!defined('APP_URL')) {
+    // Respaldo para un config/db.php anterior a APP_URL (el de produccion
+    // hasta que se le agregue): se arma con el host del pedido, como antes,
+    // pero solo si tiene forma de host. APP_URL se imprime sin escapar en
+    // muchas vistas y en los Location, asi que no puede traer otra cosa.
+    $_appHost = $_SERVER['HTTP_HOST'] ?? '';
+    if (!preg_match('/^[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:\d{1,5})?$/i', $_appHost)) {
+        $_appHost = 'localhost';
+    }
+    $_appScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    define('APP_URL', $_appScheme . '://' . $_appHost);
+    unset($_appHost, $_appScheme);
+}
+if (!preg_match('#^https?://[^/\s"\'<>]+(/[^\s"\'<>]*[^/\s"\'<>])?$#', APP_URL)) {
+    // Sin barra final: todo el codigo hace APP_URL . '/algo'.
+    error_log('[polla] APP_URL invalida en config/db.php: ' . var_export(APP_URL, true));
+    http_response_code(500);
+    exit('Configuración inválida del servidor.');
+}
 
 if (APP_ENV === 'development') {
     ini_set('display_errors', '1');
@@ -69,8 +100,6 @@ if (APP_ENV === 'production') {
     ini_set('session.cookie_secure', '1');
 }
 
-require_once __DIR__ . '/db.php';
-
 // ── Autoloader de src/ (sin Composer) ───────────────────────
 spl_autoload_register(static function (string $class): void {
     $prefix = 'Polla\\';
@@ -97,8 +126,9 @@ spl_autoload_register(static function (string $class): void {
  * recien ahi se puede arrancar la otra leyendo su propia cookie.
  *
  * La usan auth/login.php (para probar login contra las tres tablas en
- * cascada) y los saltos sin clave entre panel de vendedor y portal del
- * cliente (vendedor/jugar.php, portal/panel_vendedor.php).
+ * cascada) y los saltos entre panel de vendedor y portal del cliente
+ * (vendedor/jugar.php sin clave, portal/panel_vendedor.php con la clave
+ * del vendedor).
  */
 function cambiarASesion(string $nombre): void
 {
@@ -346,6 +376,34 @@ function flushOld(): void
 function e($valor): string
 {
     return htmlspecialchars((string) $valor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+/**
+ * Una celda de CSV a salvo de inyeccion de formulas (CWE-1236): el
+ * equivalente de e() para los exportables.
+ *
+ * Excel y LibreOffice ejecutan como formula cualquier celda que empiece
+ * con = + - @, tabulador o retorno de carro. El nombre y el telefono del
+ * cliente salen del autorregistro publico: un "=HYPERLINK(...)" cargado
+ * ahi se ejecutaria en la maquina de quien abre el exportable. A esas
+ * celdas se les antepone un apostrofo, que las deja como texto.
+ *
+ * Lo que es solo un numero pasa intacto: un importe negativo como
+ * "-150,00" tiene que seguir siendo un numero en la planilla, y no puede
+ * esconder una formula.
+ */
+function celdaCsv($valor): string
+{
+    $texto = (string) $valor;
+
+    if (preg_match('/^-?\d+(?:[.,]\d+)?$/', $texto)) {
+        return $texto;
+    }
+    if ($texto !== '' && strpos("=+-@\t\r", $texto[0]) !== false) {
+        return "'" . $texto;
+    }
+
+    return $texto;
 }
 
 /** 7 -> "07"  ·  formato de la quiniela. */

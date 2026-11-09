@@ -55,9 +55,12 @@ $salida = fopen('php://output', 'w');
 // BOM UTF-8 para que Excel en Windows respete los acentos.
 fwrite($salida, "\xEF\xBB\xBF");
 
-/** Escribe una fila con ; como separador. */
+/**
+ * Escribe una fila con ; como separador. Cada celda pasa por celdaCsv():
+ * el nombre y el telefono los carga el propio cliente en el autorregistro.
+ */
 $fila = static function (array $campos) use ($salida): void {
-    fputcsv($salida, $campos, ';', '"');
+    fputcsv($salida, array_map('celdaCsv', $campos), ';', '"');
 };
 
 // Encabezado con el alcance, para que el archivo diga de que es.

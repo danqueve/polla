@@ -43,8 +43,10 @@ header('Cache-Control: no-store');
 $salida = fopen('php://output', 'w');
 fwrite($salida, "\xEF\xBB\xBF");   // BOM para que Excel respete los acentos
 
+// Cada celda pasa por celdaCsv() (config/bootstrap.php): la nota y los
+// nombres son texto libre y no pueden llegar a Excel como formula.
 $fila = static function (array $campos) use ($salida): void {
-    fputcsv($salida, $campos, ';', '"');
+    fputcsv($salida, array_map('celdaCsv', $campos), ';', '"');
 };
 $monto = static fn($n): string => number_format((float) $n, 2, ',', '');
 

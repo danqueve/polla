@@ -58,8 +58,8 @@ class VendedorService
     /**
      * Vendedor a partir del cliente que tiene vinculado -- lo usa el
      * portal para saber si el cliente logueado tambien es vendedor (y
-     * mostrarle el salto "Mi panel de vendedor" sin pedirle clave de
-     * nuevo).
+     * mostrarle "Mi panel de vendedor", que le pide su clave de vendedor:
+     * ver portal/panel_vendedor.php).
      */
     public function buscarPorClienteId(int $clienteId): ?array
     {

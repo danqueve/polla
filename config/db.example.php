@@ -14,6 +14,17 @@ define('DB_USER',    'root');
 define('DB_PASS',    '');
 define('DB_CHARSET', 'utf8mb4');
 
+// Entorno de ESTA maquina. Nunca se deduce del pedido (el header Host
+// lo manda el cliente y se puede falsificar).
+//   'development' -> errores en pantalla, cookies sin Secure (http llano)
+//   'production'  -> errores solo al log, cookies Secure (exige https)
+// Si falta, config/bootstrap.php asume 'production'.
+define('APP_ENV', 'development');
+
+// URL base del sitio, sin barra final. En produccion, el dominio
+// canonico: define('APP_URL', 'https://decenadeoro.lol');
+define('APP_URL', 'http://localhost/polla');
+
 function getPDO(): PDO
 {
     static $pdo = null;

@@ -27,8 +27,8 @@ use Polla\Support\CuentaInactivaException;
 use Polla\Support\ValidacionException;
 
 // cambiarASesion() vive en config/bootstrap.php (nucleo comun a los
-// tres mundos) -- la usa este archivo y ademas los saltos sin clave
-// entre panel de vendedor y portal del cliente.
+// tres mundos) -- la usa este archivo y ademas los saltos entre panel de
+// vendedor y portal del cliente (vendedor/jugar.php, portal/panel_vendedor.php).
 
 // Nombre de sesion por defecto (la del panel), capturado antes de que
 // nada lo cambie: hace falta para poder reabrirla mas abajo sin depender

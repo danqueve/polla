@@ -29,6 +29,16 @@ $ultimoHorarioSabado  = $configuracion->ultimaActualizacion('horario_limite_saba
 $ultimaFechaSemanal   = $configuracion->ultimaActualizacion('fecha_limite_semanal');
 $ultimaFechaSabado    = $configuracion->ultimaActualizacion('fecha_limite_sabado');
 
+// Las fechas de corte son una excepcion de una vez: pasada la fecha, el
+// corte vuelve al de siempre (ver ParametroService::fechaCorteSemanalPara()
+// y fechaCorteSabadoVigente()). Se avisa cuando la GUARDADA ya paso, asi
+// no queda ahi como si siguiera mandando.
+$hoyStr                = date('Y-m-d');
+$guardadaSemanal       = $configuracion->fechaLimiteSemanal();
+$guardadaSabado        = $configuracion->fechaLimiteSabado();
+$fechaSemanalVencida   = $guardadaSemanal !== '' && $guardadaSemanal < $hoyStr;
+$fechaSabadoVencida    = $guardadaSabado !== '' && $guardadaSabado < $hoyStr;
+
 $comisionPorcentaje = old('comision_jugada_porcentaje', (string) $configuracion->comisionJugadaPorcentaje());
 $ultimaComision     = $configuracion->ultimaActualizacion('comision_jugada_porcentaje');
 
@@ -311,9 +321,17 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                                    value="<?= e($fechaLimiteSemanal) ?>">
                             <div class="form-text">
                                 Si se deja vacío, el corte es el lunes del ciclo (por defecto).
-                                Si se pone una fecha, el corte es ese día a la hora de arriba
-                                en vez del lunes.
+                                Si se pone una fecha, el corte de <strong>esa semana</strong> es ese día
+                                a la hora de arriba en vez del lunes. Es una excepción de una sola vez:
+                                pasada la fecha, las semanas siguientes vuelven a cortar el lunes.
                             </div>
+                            <?php if ($fechaSemanalVencida): ?>
+                                <p class="small text-warning-emphasis mb-0 mt-1">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    La fecha guardada (<?= e(formatFecha($guardadaSemanal)) ?>) ya pasó: ya no
+                                    cambia ningún corte. Podés dejar el campo vacío.
+                                </p>
+                            <?php endif; ?>
                             <?php if ($ultimaFechaSemanal): ?>
                                 <p class="text-muted small mb-0 mt-1">
                                     Último cambio: <?= e(formatFechaHora($ultimaFechaSemanal['actualizado_en'])) ?>
@@ -351,8 +369,16 @@ require __DIR__ . '/../../includes/admin_topbar.php';
                             <div class="form-text">
                                 Si se deja vacío, el corte es cada sábado (por defecto).
                                 Si se pone una fecha, el corte es ese día a la hora de arriba
-                                en vez del sábado habitual.
+                                en vez del sábado habitual. Es una excepción de una sola vez:
+                                pasada la fecha, vuelve el corte de cada sábado.
                             </div>
+                            <?php if ($fechaSabadoVencida): ?>
+                                <p class="small text-warning-emphasis mb-0 mt-1">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    La fecha guardada (<?= e(formatFecha($guardadaSabado)) ?>) ya pasó: ya no
+                                    cambia ningún corte. Podés dejar el campo vacío.
+                                </p>
+                            <?php endif; ?>
                             <?php if ($ultimaFechaSabado): ?>
                                 <p class="text-muted small mb-0 mt-1">
                                     Último cambio: <?= e(formatFechaHora($ultimaFechaSabado['actualizado_en'])) ?>

@@ -50,13 +50,14 @@ class HorarioCargaService
         $ahora   = $ahora ?? new DateTimeImmutable('now');
         $minutos = self::minutosDelDia($ahora);
 
-        $fechaLimite = $this->parametros->fechaLimiteSabado();
-        if ($fechaLimite !== '') {
-            $hoyStr = $ahora->format('Y-m-d');
-            if ($hoyStr === $fechaLimite) {
-                return $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSabado());
-            }
-            return $hoyStr < $fechaLimite;
+        // Fecha de excepcion vigente (hoy o futura): antes de esa fecha se
+        // puede cargar y ese dia, hasta la hora. Una fecha ya pasada no
+        // cuenta (ver ParametroService::fechaCorteSabadoVigente()): vuelve
+        // el corte de siempre, cada sabado.
+        $fechaLimite = $this->parametros->fechaCorteSabadoVigente($ahora);
+        if ($fechaLimite !== null) {
+            return $ahora->format('Y-m-d') !== $fechaLimite
+                || $minutos <= self::minutosDeHora($this->parametros->horarioLimiteSabado());
         }
 
         $diaIso = (int) $ahora->format('N'); // 1 = lunes ... 7 = domingo
@@ -76,8 +77,10 @@ class HorarioCargaService
             return null;
         }
 
-        $fechaLimite = $this->parametros->fechaLimiteSabado();
-        if ($fechaLimite !== '') {
+        // La misma fecha que uso abierto(): si esta cerrado con una fecha
+        // vigente, es porque hoy ES esa fecha y ya paso la hora.
+        $fechaLimite = $this->parametros->fechaCorteSabadoVigente($ahora ?? new DateTimeImmutable('now'));
+        if ($fechaLimite !== null) {
             return 'El plazo para cargar jugadas de sábados cerró el '
                  . date('d/m/Y', strtotime($fechaLimite))
                  . ' a las ' . $this->parametros->horarioLimiteSabado() . '.';

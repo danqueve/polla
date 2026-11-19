@@ -2,6 +2,7 @@
 
 namespace Polla\Services;
 
+use DateTimeImmutable;
 use PDO;
 use Polla\Support\ValidacionException;
 use Throwable;
@@ -135,16 +136,73 @@ class ParametroService
         return (string) $this->get('horario_limite_sabado');
     }
 
-    /** Fecha limite (YYYY-MM-DD) opcional para el corte semanal. Vacío = usa el lunes del ciclo. */
+    /**
+     * Fecha limite (YYYY-MM-DD) opcional para el corte semanal, TAL COMO
+     * QUEDO GUARDADA. Vacío = usa el lunes del ciclo. Para saber si rige
+     * para un ciclo, usar fechaCorteSemanalPara(): esta fecha es un unico
+     * valor global y no vence sola.
+     */
     public function fechaLimiteSemanal(): string
     {
         return (string) $this->get('fecha_limite_semanal');
     }
 
-    /** Fecha limite (YYYY-MM-DD) opcional para el corte de sábados. Vacío = usa el sábado del ciclo. */
+    /**
+     * Fecha limite (YYYY-MM-DD) opcional para el corte de sábados, TAL
+     * COMO QUEDO GUARDADA. Vacío = el sabado de siempre. Para saber si
+     * rige hoy, usar fechaCorteSabadoVigente().
+     */
     public function fechaLimiteSabado(): string
     {
         return (string) $this->get('fecha_limite_sabado');
+    }
+
+    /**
+     * La fecha de corte semanal que RIGE para el ciclo que arranca el
+     * lunes $inicioCiclo, o null si ese ciclo corta como siempre (el
+     * lunes).
+     *
+     * La fecha es una excepcion de UNA semana (por ejemplo un feriado que
+     * corre el corte al martes), pero se guarda como un unico valor
+     * global. Sin esta guarda, una vez que pasaba seguia valiendo para
+     * todos los ciclos siguientes: cada semana nueva nacia con el corte
+     * "ya vencido", las jugadas iban a la semana de al lado desde el
+     * lunes a primera hora, y nadie se enteraba hasta que alguien
+     * notaba que habia que borrar la fecha a mano.
+     *
+     * Rige solo para el ciclo cuya semana (lunes a domingo) la contiene.
+     */
+    public function fechaCorteSemanalPara(string $inicioCiclo): ?string
+    {
+        $fecha = $this->fechaLimiteSemanal();
+        if ($fecha === '' || !self::esFechaReal($fecha) || !self::esFechaReal($inicioCiclo)) {
+            return null;
+        }
+
+        $inicio = new DateTimeImmutable($inicioCiclo);
+        $limite = new DateTimeImmutable($fecha);
+
+        return ($limite >= $inicio && $limite <= $inicio->modify('+6 days')) ? $fecha : null;
+    }
+
+    /**
+     * La fecha de corte de sabados que RIGE en el momento $ahora, o null
+     * si hoy corta como siempre (cada sabado a la hora configurada).
+     *
+     * Rige mientras sea hoy o futura: antes de esa fecha se puede cargar
+     * y ese dia, hasta la hora. Pasada la fecha vuelve sola el corte de
+     * siempre -- antes quedaba cerrada la carga de sabados para todos los
+     * dias siguientes, para clientes y para el staff, hasta que alguien
+     * se acordaba de borrar la fecha.
+     */
+    public function fechaCorteSabadoVigente(DateTimeImmutable $ahora): ?string
+    {
+        $fecha = $this->fechaLimiteSabado();
+        if ($fecha === '' || !self::esFechaReal($fecha)) {
+            return null;
+        }
+
+        return $fecha >= $ahora->format('Y-m-d') ? $fecha : null;
     }
 
     /**
@@ -226,8 +284,11 @@ class ParametroService
                     $errores[] = $porcentajes[$clave] . ' tiene que ser un número entre 0 y 100.';
                 }
             } elseif (isset($fechasLimite[$clave])) {
-                if ($valor !== '' && !preg_match('/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/', $valor)) {
-                    $errores[] = $fechasLimite[$clave] . ' tiene que tener formato AAAA-MM-DD o quedar vacía.';
+                // Fecha real, no solo "con forma de fecha": el formato dejaba
+                // pasar 2026-11-31 o 2026-02-30, que PHP corre en silencio al
+                // dia siguiente.
+                if ($valor !== '' && !self::esFechaReal($valor)) {
+                    $errores[] = $fechasLimite[$clave] . ' tiene que ser una fecha real (AAAA-MM-DD) o quedar vacía.';
                 }
             } elseif ($clave === 'numeros_por_jugada_sabado') {
                 if (!ctype_digit($valor) || (int) $valor < 1 || (int) $valor > 20) {
@@ -273,6 +334,14 @@ class ParametroService
         } finally {
             $this->cache = null;
         }
+    }
+
+    /** "2026-11-24": con el formato AAAA-MM-DD Y existente en el calendario. */
+    private static function esFechaReal(string $valor): bool
+    {
+        $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', $valor);
+
+        return $fecha !== false && $fecha->format('Y-m-d') === $valor;
     }
 
     /** "2000", "2000.5" o "2000.50": sin signo, sin separador de miles, hasta 2 decimales. */

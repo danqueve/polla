@@ -204,6 +204,12 @@ class CicloService
      * ningun sorteo -- va para la semana que viene. No aplica a
      * sabados, que siguen cortando solo por HorarioCargaService (gate
      * duro a las horario_limite_sabado).
+     *
+     * El corte es el lunes, salvo que haya una fecha de excepcion
+     * (fecha_limite_semanal, p. ej. un feriado que lo corre al martes) QUE
+     * CAIGA EN LA SEMANA DE ESTE CICLO: la fecha es un unico valor global,
+     * asi que sin esa condicion seguia valiendo para todos los ciclos
+     * siguientes, que nacian con el corte ya vencido.
      */
     private function pasoCorteSemanal(array $ciclo): bool
     {
@@ -211,8 +217,8 @@ class CicloService
             return false;
         }
 
-        $fechaLimite = $this->parametros->fechaLimiteSemanal();
-        $fechaCorte  = ($fechaLimite !== '') ? $fechaLimite : $ciclo['fecha_inicio'];
+        $fechaCorte = $this->parametros->fechaCorteSemanalPara($ciclo['fecha_inicio'])
+            ?? $ciclo['fecha_inicio'];
 
         $corte = new DateTimeImmutable(
             $fechaCorte . ' ' . $this->parametros->horarioLimiteSemanal() . ':00'

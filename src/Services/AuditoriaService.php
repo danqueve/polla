@@ -33,6 +33,7 @@ class AuditoriaService
     public const SORTEO_CARGADO        = 'sorteo_cargado';
     public const SORTEO_CORREGIDO      = 'sorteo_corregido';
     public const SORTEO_ELIMINADO      = 'sorteo_eliminado';
+    public const SORTEO_ANULADO_FERIADO = 'sorteo_anulado_feriado';
 
     // Jugadas
     public const JUGADA_CARGADA        = 'jugada_cargada';

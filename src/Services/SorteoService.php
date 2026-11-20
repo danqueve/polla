@@ -254,6 +254,121 @@ class SorteoService
     }
 
     /**
+     * Deshace el cierre de un ciclo cerrado para poder tocar sus sorteos
+     * (corregir() un numero, o anular el sorteo de un dia que resulto ser
+     * feriado): revierte el pozo y los ganadores, devuelve las jugadas a
+     * "activa", baja el ciclo siguiente a "programado" y deja este abierto.
+     *
+     * Solo se puede con el ciclo que cerro LO ULTIMO: el siguiente tiene
+     * que ser exactamente numero+1 y no tener sorteos propios (si los
+     * tuviera, ya paso una semana o sabado real). Debe llamarse dentro de
+     * una transaccion, con $viejo ya bloqueado (bloquearPorId()).
+     *
+     * @param string $prefijo Como empieza el mensaje de rechazo, segun
+     *                        quien lo pide ("No se puede corregir", ...).
+     * @throws ValidacionException
+     */
+    private function reabrirCicloCerrado(array $viejo, string $tipo, string $prefijo): void
+    {
+        $siguiente = $this->ciclos->bloquearAbierto($tipo);
+        if (!$siguiente || (int) $siguiente['numero'] !== (int) $viejo['numero'] + 1) {
+            throw ValidacionException::de(
+                $prefijo . ': ya pasaron más ciclos desde que este se cerró.'
+            );
+        }
+        if ($this->tieneSorteosPropios((int) $siguiente['id'])) {
+            throw ValidacionException::de(
+                $prefijo . ': el ciclo siguiente ya tiene sorteos propios cargados '
+              . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
+              . 'jugadas o pozo acumulado, pero no sorteos.'
+            );
+        }
+
+        // El "programado" (un paso mas adelante que $siguiente)
+        // retoma $siguiente en cuanto lo bajemos de categoria.
+        // Desde 8913716 es NORMAL que ya tenga jugadas propias
+        // (el corte del lunes 22hs las manda ahi sin que haya
+        // corrido ningun sorteo de $siguiente todavia) -- lo
+        // unico que de verdad impide reacomodar son sorteos
+        // propios, que significarian que ya paso una semana o
+        // sabado real.
+        $extra = $this->ciclos->buscarProgramado($tipo);
+        if ($extra) {
+            if ($this->tieneSorteosPropios((int) $extra['id'])) {
+                throw ValidacionException::de(
+                    $prefijo . ': el ciclo siguiente ya tiene sorteos propios cargados '
+                  . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
+                  . 'jugadas o pozo acumulado, pero no sorteos.'
+                );
+            }
+
+            // Las jugadas y el pozo que ya tenia $extra pasan a
+            // $siguiente, que es quien retoma su rol de
+            // "programado" -- antes de borrar $extra, que un
+            // FK RESTRICT rechazaria si todavia tuviera jugadas
+            // colgando.
+            $this->db->prepare('UPDATE jugadas SET ciclo_id = :nuevo WHERE ciclo_id = :extra')
+                ->execute([':nuevo' => $siguiente['id'], ':extra' => $extra['id']]);
+            $this->db->prepare(
+                'UPDATE pozo_ciclo AS destino
+                    JOIN pozo_ciclo AS origen ON origen.ciclo_id = :extra
+                    SET destino.monto_acumulado = destino.monto_acumulado + origen.monto_acumulado
+                  WHERE destino.ciclo_id = :siguiente'
+            )->execute([':extra' => $extra['id'], ':siguiente' => $siguiente['id']]);
+
+            // El pozo de $extra hay que borrarlo a mano: el
+            // comentario de arriba daba por hecho un FK en
+            // cascada que el esquema no tiene (solo hay FK en
+            // clientes.alta_por y comisiones.jugada_id), asi que
+            // cada correccion dejaba una fila de pozo_ciclo
+            // colgada -- y con la plata ya sumada a $siguiente,
+            // o sea contada dos veces si alguien la leyera.
+            $this->db->prepare('DELETE FROM pozo_ciclo WHERE ciclo_id = :id')
+                ->execute([':id' => $extra['id']]);
+
+            $this->db->prepare('DELETE FROM ciclos WHERE id = :id')
+                ->execute([':id' => $extra['id']]);
+        }
+
+        if ($viejo['estado'] === CicloService::ESTADO_SIN_GANADOR) {
+            // Deshacer el arrastre que la promocion erronea le
+            // sumo al pozo del siguiente.
+            $arrastre = $this->pozo->montoAcumulado((int) $viejo['id']);
+            if ($arrastre > 0) {
+                $this->db->prepare(
+                    'UPDATE pozo_ciclo
+                        SET monto_arrastrado = monto_arrastrado - :a1,
+                            monto_acumulado  = monto_acumulado  - :a2
+                      WHERE ciclo_id = :ciclo'
+                )->execute([':a1' => $arrastre, ':a2' => $arrastre, ':ciclo' => $siguiente['id']]);
+            }
+        } else {
+            // CON_GANADOR: deshacer la liquidacion falsa.
+            $this->db->prepare('DELETE FROM ganadores WHERE ciclo_id = :ciclo')
+                ->execute([':ciclo' => $viejo['id']]);
+            $this->db->prepare(
+                'UPDATE pozo_ciclo
+                    SET monto_piso_aplicado = NULL, monto_pagado = 0, fecha_liquidacion = NULL
+                  WHERE ciclo_id = :ciclo'
+            )->execute([':ciclo' => $viejo['id']]);
+        }
+
+        $this->db->prepare(
+            "UPDATE jugadas SET estado = 'activa'
+              WHERE ciclo_id = :ciclo AND estado IN ('ganadora','perdedora')"
+        )->execute([':ciclo' => $viejo['id']]);
+
+        // Orden OBLIGATORIO por el UNIQUE(tipo, *_flag): primero
+        // el siguiente sale de 'abierto' (a 'programado'),
+        // recien despues el viejo puede entrar a 'abierto'.
+        $this->db->prepare("UPDATE ciclos SET estado = 'programado' WHERE id = :id")
+            ->execute([':id' => $siguiente['id']]);
+        $this->db->prepare(
+            "UPDATE ciclos SET estado = 'abierto', fecha_cierre = NULL WHERE id = :id"
+        )->execute([':id' => $viejo['id']]);
+    }
+
+    /**
      * Corrige los 20 numeros de un sorteo ya cargado y vuelve a correr
      * el cotejo desde cero. Solo corrige numeros, no fecha ni turno.
      *
@@ -299,103 +414,7 @@ class SorteoService
 
             if ($viejo['estado'] !== CicloService::ESTADO_ABIERTO) {
                 $reabierto = true;
-
-                $siguiente = $this->ciclos->bloquearAbierto($tipo);
-                if (!$siguiente || (int) $siguiente['numero'] !== (int) $viejo['numero'] + 1) {
-                    throw ValidacionException::de(
-                        'No se puede corregir: ya pasaron más ciclos desde que este se cerró.'
-                    );
-                }
-                if ($this->tieneSorteosPropios((int) $siguiente['id'])) {
-                    throw ValidacionException::de(
-                        'No se puede corregir: el ciclo siguiente ya tiene sorteos propios cargados '
-                      . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
-                      . 'jugadas o pozo acumulado, pero no sorteos.'
-                    );
-                }
-
-                // El "programado" (un paso mas adelante que $siguiente)
-                // retoma $siguiente en cuanto lo bajemos de categoria.
-                // Desde 8913716 es NORMAL que ya tenga jugadas propias
-                // (el corte del lunes 22hs las manda ahi sin que haya
-                // corrido ningun sorteo de $siguiente todavia) -- lo
-                // unico que de verdad impide reacomodar son sorteos
-                // propios, que significarian que ya paso una semana o
-                // sabado real.
-                $extra = $this->ciclos->buscarProgramado($tipo);
-                if ($extra) {
-                    if ($this->tieneSorteosPropios((int) $extra['id'])) {
-                        throw ValidacionException::de(
-                            'No se puede corregir: el ciclo siguiente ya tiene sorteos propios cargados '
-                          . '(ya pasó una semana/sábado real). Se puede reacomodar mientras solo tenga '
-                          . 'jugadas o pozo acumulado, pero no sorteos.'
-                        );
-                    }
-
-                    // Las jugadas y el pozo que ya tenia $extra pasan a
-                    // $siguiente, que es quien retoma su rol de
-                    // "programado" -- antes de borrar $extra, que un
-                    // FK RESTRICT rechazaria si todavia tuviera jugadas
-                    // colgando.
-                    $this->db->prepare('UPDATE jugadas SET ciclo_id = :nuevo WHERE ciclo_id = :extra')
-                        ->execute([':nuevo' => $siguiente['id'], ':extra' => $extra['id']]);
-                    $this->db->prepare(
-                        'UPDATE pozo_ciclo AS destino
-                            JOIN pozo_ciclo AS origen ON origen.ciclo_id = :extra
-                            SET destino.monto_acumulado = destino.monto_acumulado + origen.monto_acumulado
-                          WHERE destino.ciclo_id = :siguiente'
-                    )->execute([':extra' => $extra['id'], ':siguiente' => $siguiente['id']]);
-
-                    // El pozo de $extra hay que borrarlo a mano: el
-                    // comentario de arriba daba por hecho un FK en
-                    // cascada que el esquema no tiene (solo hay FK en
-                    // clientes.alta_por y comisiones.jugada_id), asi que
-                    // cada correccion dejaba una fila de pozo_ciclo
-                    // colgada -- y con la plata ya sumada a $siguiente,
-                    // o sea contada dos veces si alguien la leyera.
-                    $this->db->prepare('DELETE FROM pozo_ciclo WHERE ciclo_id = :id')
-                        ->execute([':id' => $extra['id']]);
-
-                    $this->db->prepare('DELETE FROM ciclos WHERE id = :id')
-                        ->execute([':id' => $extra['id']]);
-                }
-
-                if ($viejo['estado'] === CicloService::ESTADO_SIN_GANADOR) {
-                    // Deshacer el arrastre que la promocion erronea le
-                    // sumo al pozo del siguiente.
-                    $arrastre = $this->pozo->montoAcumulado((int) $viejo['id']);
-                    if ($arrastre > 0) {
-                        $this->db->prepare(
-                            'UPDATE pozo_ciclo
-                                SET monto_arrastrado = monto_arrastrado - :a1,
-                                    monto_acumulado  = monto_acumulado  - :a2
-                              WHERE ciclo_id = :ciclo'
-                        )->execute([':a1' => $arrastre, ':a2' => $arrastre, ':ciclo' => $siguiente['id']]);
-                    }
-                } else {
-                    // CON_GANADOR: deshacer la liquidacion falsa.
-                    $this->db->prepare('DELETE FROM ganadores WHERE ciclo_id = :ciclo')
-                        ->execute([':ciclo' => $viejo['id']]);
-                    $this->db->prepare(
-                        'UPDATE pozo_ciclo
-                            SET monto_piso_aplicado = NULL, monto_pagado = 0, fecha_liquidacion = NULL
-                          WHERE ciclo_id = :ciclo'
-                    )->execute([':ciclo' => $viejo['id']]);
-                }
-
-                $this->db->prepare(
-                    "UPDATE jugadas SET estado = 'activa'
-                      WHERE ciclo_id = :ciclo AND estado IN ('ganadora','perdedora')"
-                )->execute([':ciclo' => $viejo['id']]);
-
-                // Orden OBLIGATORIO por el UNIQUE(tipo, *_flag): primero
-                // el siguiente sale de 'abierto' (a 'programado'),
-                // recien despues el viejo puede entrar a 'abierto'.
-                $this->db->prepare("UPDATE ciclos SET estado = 'programado' WHERE id = :id")
-                    ->execute([':id' => $siguiente['id']]);
-                $this->db->prepare(
-                    "UPDATE ciclos SET estado = 'abierto', fecha_cierre = NULL WHERE id = :id"
-                )->execute([':id' => $viejo['id']]);
+                $this->reabrirCicloCerrado($viejo, $tipo, 'No se puede corregir');
             }
 
             // Reemplazar los 20 numeros del sorteo.
@@ -805,6 +824,161 @@ class SorteoService
         // cotejo tomaria como un extracto vacio.
         $this->db->prepare('DELETE FROM sorteos WHERE id = :id')->execute([':id' => $id]);
         $this->db->prepare('DELETE FROM sorteo_numeros WHERE sorteo_id = :id')->execute([':id' => $id]);
+    }
+
+    // ── Anulacion por feriado ──────────────────────────────────
+
+    /**
+     * Sorteos cargados en una fecha, con el estado de su ciclo. Solo
+     * lectura. Un sabado puede devolver varios (un turno cada uno).
+     *
+     * @return array<int,array{id:int,turno:int,ciclo_id:?int,ciclo_numero:?int,
+     *                         ciclo_tipo:?string,ciclo_estado:?string}>
+     */
+    public function sorteosDeFecha(DateTimeImmutable $fecha): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT s.id, s.turno, s.ciclo_id,
+                    c.numero AS ciclo_numero, c.tipo AS ciclo_tipo, c.estado AS ciclo_estado
+               FROM sorteos s
+               LEFT JOIN ciclos c ON c.id = s.ciclo_id
+              WHERE s.fecha = :fecha
+              ORDER BY s.turno ASC, s.id ASC'
+        );
+        $stmt->execute([':fecha' => $fecha->format('Y-m-d')]);
+
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Fechas que ya tienen sorteo cargado, para que la pantalla de
+     * Feriados le pida confirmacion al admin ANTES de enviar: marcar
+     * feriado una de ellas anula ese sorteo.
+     *
+     * @return array<string,array{cantidad:int,ciclo:?string,cerrado:bool}> fecha 'Y-m-d' => datos
+     */
+    public function fechasConSorteo(int $dias = 400): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT s.fecha, COUNT(*) AS cantidad,
+                    MIN(c.numero) AS ciclo_numero, MIN(c.tipo) AS ciclo_tipo, MIN(c.estado) AS ciclo_estado
+               FROM sorteos s
+               LEFT JOIN ciclos c ON c.id = s.ciclo_id
+              WHERE s.fecha >= :desde
+              GROUP BY s.fecha'
+        );
+        $stmt->execute([':desde' => (new DateTimeImmutable('today'))->modify("-{$dias} days")->format('Y-m-d')]);
+
+        $mapa = [];
+        foreach ($stmt->fetchAll() as $fila) {
+            $mapa[$fila['fecha']] = [
+                'cantidad' => (int) $fila['cantidad'],
+                'ciclo'    => $fila['ciclo_numero'] !== null
+                    ? self::etiquetaCiclo($fila['ciclo_tipo'], (int) $fila['ciclo_numero'])
+                    : null,
+                'cerrado'  => in_array($fila['ciclo_estado'], [
+                    CicloService::ESTADO_CON_GANADOR, CicloService::ESTADO_SIN_GANADOR,
+                ], true),
+            ];
+        }
+
+        return $mapa;
+    }
+
+    /**
+     * Anula TODOS los sorteos cargados en una fecha: ese dia resulto ser
+     * feriado y no hubo extracto. Se llama antes de marcar el feriado
+     * (admin/feriados/guardar.php), y despues ese handler recoteja el
+     * ciclo -- este metodo no coteja, solo deja los sorteos afuera.
+     *
+     * Si el sorteo estaba en un ciclo que ya cerro, se aplican las MISMAS
+     * reglas que para corregirlo (reabrirCicloCerrado()): solo si es el
+     * ultimo ciclo cerrado y el siguiente todavia no tiene sorteos
+     * propios. Si no se puede, lanza y NO cambia nada: ni se anula el
+     * sorteo ni (en el handler) se marca el feriado.
+     *
+     * Orden: primero todo lo transaccional (reabrir el ciclo), y recien al
+     * final el borrado de sorteos/sorteo_numeros, que son MyISAM y no se
+     * deshacen con rollBack() -- igual que eliminar().
+     *
+     * @return array<int,array{id:int,turno:int,ciclo_id:?int,ciclo:?string,numeros:int[],reabrio:bool}>
+     *         Lo anulado, con los numeros que tenia (para la auditoria).
+     * @throws ValidacionException
+     */
+    public function anularDeFecha(DateTimeImmutable $fecha): array
+    {
+        $sorteos = $this->sorteosDeFecha($fecha);
+        if (!$sorteos) {
+            return [];
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $porCiclo = [];
+            foreach ($sorteos as $sorteo) {
+                $porCiclo[(int) ($sorteo['ciclo_id'] ?? 0)][] = $sorteo;
+            }
+
+            $anulados = [];
+            foreach ($porCiclo as $cicloId => $lista) {
+                $reabrio  = false;
+                $etiqueta = null;
+
+                // Un sorteo sin ciclo (reasignado al cerrarse otro) no
+                // afecta ningun pozo: alcanza con borrarlo.
+                $ciclo = $cicloId > 0 ? $this->ciclos->bloquearPorId($cicloId) : null;
+                if ($ciclo) {
+                    $etiqueta = self::etiquetaCiclo($ciclo['tipo'], (int) $ciclo['numero']);
+
+                    if (in_array($ciclo['estado'], [
+                        CicloService::ESTADO_CON_GANADOR, CicloService::ESTADO_SIN_GANADOR,
+                    ], true)) {
+                        $this->reabrirCicloCerrado(
+                            $ciclo,
+                            $ciclo['tipo'],
+                            'El ' . $fecha->format('d/m/Y') . ' ya tiene un sorteo cargado y no se puede anular'
+                        );
+                        $reabrio = true;
+                    }
+                }
+
+                foreach ($lista as $sorteo) {
+                    $stmt = $this->db->prepare(
+                        'SELECT numero FROM sorteo_numeros WHERE sorteo_id = :id ORDER BY posicion ASC'
+                    );
+                    $stmt->execute([':id' => $sorteo['id']]);
+
+                    $anulados[] = [
+                        'id'       => (int) $sorteo['id'],
+                        'turno'    => (int) $sorteo['turno'],
+                        'ciclo_id' => $cicloId > 0 ? $cicloId : null,
+                        'ciclo'    => $etiqueta,
+                        'numeros'  => array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN)),
+                        'reabrio'  => $reabrio,
+                    ];
+                }
+            }
+
+            foreach ($anulados as $anulado) {
+                $this->db->prepare('DELETE FROM sorteos WHERE id = :id')->execute([':id' => $anulado['id']]);
+                $this->db->prepare('DELETE FROM sorteo_numeros WHERE sorteo_id = :id')
+                    ->execute([':id' => $anulado['id']]);
+            }
+
+            $this->db->commit();
+
+            return $anulados;
+
+        } catch (Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
+    /** "Semanal 5" / "Sábado 12". */
+    private static function etiquetaCiclo(?string $tipo, int $numero): string
+    {
+        return ($tipo === CicloService::TIPO_SABADO ? 'Sábado' : 'Semanal') . ' ' . $numero;
     }
 
     /** "3,17,42" -> [3, 17, 42] */

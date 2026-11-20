@@ -8,12 +8,29 @@ require_once __DIR__ . '/../../config/app.php';
 
 use Polla\Services\CicloService;
 use Polla\Services\FeriadoService;
+use Polla\Services\SorteoService;
 
 requireAdmin();
 
 $db       = getPDO();
 $feriados = FeriadoService::crearDesde($db);
 $lista    = $feriados->listar();
+
+// Fechas que ya tienen sorteo cargado: marcarlas feriado anula ese sorteo,
+// asi que el formulario pide confirmacion antes de enviar (el servidor
+// decide igual si se puede; esto solo avisa).
+$avisosAnulacion = [];
+foreach (SorteoService::crearDesde($db)->fechasConSorteo() as $fechaSorteo => $datos) {
+    $aviso = 'El ' . formatFecha($fechaSorteo) . ' ya tiene '
+        . ($datos['cantidad'] === 1 ? 'un sorteo cargado' : $datos['cantidad'] . ' sorteos cargados')
+        . ($datos['ciclo'] ? ' (' . $datos['ciclo'] . ')' : '')
+        . '. Al marcarlo feriado se anula y se vuelve a calcular el ciclo.';
+    if ($datos['cerrado']) {
+        $aviso .= ' Ese ciclo ya cerró: si todavía se puede, se reabre y se deshace su cierre '
+                . '(ganador y premio incluidos); si no se puede, no se marca nada.';
+    }
+    $avisosAnulacion[$fechaSorteo] = $aviso . ' ¿Seguir?';
+}
 
 $ciclos        = new CicloService($db);
 $cicloSemanal  = $ciclos->buscarAbierto(CicloService::TIPO_SEMANAL);
@@ -56,6 +73,10 @@ require __DIR__ . '/../../includes/admin_topbar.php';
             casos, si con eso ya queda todo lo demás cargado, el ciclo
             cierra "sin ganador" apenas guardás el feriado — no hace falta
             cargar nada más para que avance.
+            <strong>Si ese día ya tenía un sorteo cargado (incluso hoy), se
+            anula</strong>: un feriado no tiene extracto. Si su ciclo ya había
+            cerrado, solo se reabre cuando todavía es el último cerrado (las
+            mismas reglas que para corregir un sorteo).
         </div>
     </div>
 
@@ -63,7 +84,9 @@ require __DIR__ . '/../../includes/admin_topbar.php';
 
         <div class="col-12 col-lg-5">
             <form method="post" id="form-feriado"
-                  action="<?= APP_URL ?>/admin/feriados/guardar.php" novalidate>
+                  action="<?= APP_URL ?>/admin/feriados/guardar.php" novalidate
+                  data-avisos="<?= e(json_encode($avisosAnulacion, JSON_UNESCAPED_UNICODE | JSON_FORCE_OBJECT)) ?>"
+                  onsubmit="return confirmarFeriado(this)">
                 <?= csrfField() ?>
                 <div class="g-card mb-4 g-animate g-animate-delay-1">
                     <div class="g-card__header">
@@ -172,6 +195,19 @@ require __DIR__ . '/../../includes/admin_topbar.php';
     </div>
 
 </main>
+
+<script>
+// Si la fecha elegida ya tiene sorteo cargado, marcarla feriado lo anula:
+// pedir confirmacion antes de enviar.
+function confirmarFeriado(form) {
+    var avisos = {};
+    try { avisos = JSON.parse(form.getAttribute('data-avisos') || '{}'); } catch (e) { avisos = {}; }
+    var campo = form.elements['fecha'];
+    var fecha = campo ? campo.value : '';
+    if (!Object.prototype.hasOwnProperty.call(avisos, fecha)) { return true; }
+    return window.confirm(avisos[fecha]);
+}
+</script>
 
 <?php
 flushOld();

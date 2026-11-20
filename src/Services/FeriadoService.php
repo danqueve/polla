@@ -38,14 +38,20 @@ class FeriadoService
     }
 
     /**
-     * Marca una fecha como feriado (sin sorteo ese dia).
+     * Revisa que se pueda marcar el feriado, SIN guardar nada: fecha
+     * valida, motivo y que no este ya marcada.
+     *
+     * Existe aparte de marcar() porque admin/feriados/guardar.php anula
+     * el sorteo que ese dia ya tuviera cargado ANTES de guardar el
+     * feriado, y borrar un sorteo no se deshace: todo lo que pueda
+     * fallar por datos mal escritos tiene que fallar antes.
      *
      * @throws ValidacionException
      */
-    public function marcar(string $fechaCruda, string $motivoCrudo, ?int $usuarioId): DateTimeImmutable
+    public function validar(string $fechaCruda, string $motivoCrudo): DateTimeImmutable
     {
         $fecha = DateTimeImmutable::createFromFormat('!Y-m-d', trim($fechaCruda));
-        if (!$fecha) {
+        if (!$fecha || $fecha->format('Y-m-d') !== trim($fechaCruda)) {
             throw ValidacionException::de('Elegí la fecha del feriado.');
         }
 
@@ -57,17 +63,36 @@ class FeriadoService
             throw ValidacionException::de('El motivo es demasiado largo (máximo 160 caracteres).');
         }
 
+        if ($this->esFeriado($fecha)) {
+            throw ValidacionException::de('Esa fecha ya está marcada como feriado.');
+        }
+
+        return $fecha;
+    }
+
+    /**
+     * Marca una fecha como feriado (sin sorteo ese dia).
+     *
+     * Si ese dia todavia tiene un sorteo cargado, el que llama tiene que
+     * haberlo anulado antes (SorteoService::anularDeFecha()): un dia no
+     * puede ser feriado y tener extracto a la vez.
+     *
+     * @throws ValidacionException
+     */
+    public function marcar(string $fechaCruda, string $motivoCrudo, ?int $usuarioId): DateTimeImmutable
+    {
+        $fecha  = $this->validar($fechaCruda, $motivoCrudo);
+        $motivo = trim($motivoCrudo);
+
         $fechaFmt = $fecha->format('Y-m-d');
 
-        // Si ya hay un sorteo cargado ese dia, marcarlo feriado seria
-        // una contradiccion (¿hubo sorteo o no?) que ademas nunca haria
-        // falta: secuenciaCompleta() ya lo da por cubierto con el
-        // sorteo real.
+        // Red de seguridad: si entre anular y guardar alguien cargo otro
+        // sorteo ese dia, no se deja la contradiccion.
         $yaHaySorteo = $this->db->prepare('SELECT COUNT(*) FROM sorteos WHERE fecha = :fecha');
         $yaHaySorteo->execute([':fecha' => $fechaFmt]);
         if ((int) $yaHaySorteo->fetchColumn() > 0) {
             throw ValidacionException::de(
-                'El ' . $fecha->format('d/m/Y') . ' ya tiene un sorteo cargado: no puede ser feriado.'
+                'El ' . $fecha->format('d/m/Y') . ' tiene un sorteo cargado: anulalo antes de marcarlo feriado.'
             );
         }
 
